@@ -1,0 +1,36 @@
+{
+  "manifest_version": 3,
+  "name": "Lumen v2",
+  "version": "0.1.0",
+  "description": "Contextual social commenting on real webpages.",
+  "action": {
+    "default_popup": "popup.html",
+    "default_title": "Lumen"
+  },
+  "background": {
+    "service_worker": "src/service-worker.ts",
+    "type": "module"
+  },
+  "content_scripts": [
+    {
+      "matches": [
+        "https://paulgraham.com/*",
+        "https://karpathy.github.io/*",
+        "https://www.joelonsoftware.com/*",
+        "https://kk.org/*",
+        "https://sre.google/*"
+      ],
+      "js": ["src/content.tsx"],
+      "run_at": "document_idle"
+    }
+  ],
+  "permissions": ["storage"],
+  "host_permissions": [
+    "http://localhost:3000/*",
+    "https://paulgraham.com/*",
+    "https://karpathy.github.io/*",
+    "https://www.joelonsoftware.com/*",
+    "https://kk.org/*",
+    "https://sre.google/*"
+  ]
+}

@@ -1,0 +1,14 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "lib": ["ESNext", "DOM", "DOM.Iterable"],
+    "jsx": "react-jsx",
+    "types": ["chrome", "vite/client"],
+    "rootDir": "..",
+    "baseUrl": ".",
+    "paths": {
+      "@lumen/schema": ["../../packages/schema/src/index.ts"]
+    }
+  },
+  "include": ["src/**/*", "*.ts", "*.tsx"]
+}
