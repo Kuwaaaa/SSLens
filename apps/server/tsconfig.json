@@ -1,0 +1,13 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "lib": ["ESNext"],
+    "types": ["bun-types"],
+    "rootDir": "..",
+    "baseUrl": ".",
+    "paths": {
+      "@lumen/schema": ["../../packages/schema/src/index.ts"]
+    }
+  },
+  "include": ["src/**/*", "../../scripts/**/*"]
+}

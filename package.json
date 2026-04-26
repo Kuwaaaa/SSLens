@@ -1,0 +1,23 @@
+{
+  "name": "lumen",
+  "private": true,
+  "version": "0.2.0",
+  "description": "Lumen v2 — social Lens layer for the web",
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "scripts": {
+    "dev:server": "bun --hot apps/server/src/index.ts",
+    "start:server": "bun apps/server/src/index.ts",
+    "keygen": "bun scripts/keygen.ts",
+    "issue-invite": "bun scripts/issue-invite.ts"
+  },
+  "engines": {
+    "bun": ">=1.1.0"
+  },
+  "devDependencies": {
+    "@types/bun": "latest",
+    "typescript": "^5.4.0"
+  }
+}

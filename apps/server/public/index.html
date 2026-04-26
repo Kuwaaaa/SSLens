@@ -1,0 +1,334 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Lumen v2 — operator console</title>
+<style>
+  :root { --bg: #fafafa; --card: #fff; --border: #e0e0e0; --muted: #666; --fg: #1a1a1a; --accent: #1a1a1a; --ok: #16a34a; --err: #ef4444; }
+  * { box-sizing: border-box; }
+  body { font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif; max-width: 920px; margin: 0 auto; padding: 28px 22px 64px; color: var(--fg); background: var(--bg); }
+  h1 { font-size: 22px; letter-spacing: -0.02em; margin: 0 0 6px; }
+  .sub { color: var(--muted); font-size: 13px; margin-bottom: 22px; }
+  section { background: var(--card); border: 1px solid var(--border); border-radius: 12px; padding: 18px 22px; margin-bottom: 14px; }
+  h2 { font-size: 15px; margin: 0 0 12px; color: #444; font-weight: 600; }
+  label { display: block; margin: 10px 0 4px; font-size: 12px; color: var(--muted); }
+  input, textarea, button, select { font: inherit; padding: 7px 10px; border: 1px solid #d0d0d0; border-radius: 8px; background: white; color: var(--fg); }
+  input, textarea, select { width: 100%; }
+  textarea { resize: vertical; font-family: ui-monospace, monospace; font-size: 13px; }
+  button { cursor: pointer; background: var(--accent); color: white; border-color: var(--accent); padding: 7px 14px; font-weight: 500; }
+  button:hover:not(:disabled) { opacity: 0.9; }
+  button.secondary { background: white; color: var(--fg); }
+  button:disabled { opacity: 0.4; cursor: not-allowed; }
+  pre { background: #f4f4f4; padding: 10px 12px; border-radius: 8px; font-size: 11px; overflow: auto; max-height: 220px; margin: 8px 0 0; font-family: ui-monospace, monospace; }
+  .row { display: flex; gap: 8px; align-items: end; }
+  .row > * { flex: 1; }
+  .row > button { flex: 0 0 auto; white-space: nowrap; }
+  .pill { display: inline-block; padding: 2px 8px; border-radius: 999px; background: #eee; font-size: 11px; color: #333; }
+  .pill.live { background: var(--ok); color: white; }
+  .pill.error { background: var(--err); color: white; }
+  .lens { padding: 10px 12px; border: 1px solid #eee; border-radius: 8px; margin-bottom: 8px; font-size: 13px; }
+  .lens .meta { color: #888; font-size: 11px; margin-bottom: 4px; display: flex; gap: 6px; flex-wrap: wrap; align-items: center; }
+  .lens .quote { color: #666; font-style: italic; margin: 4px 0; font-size: 12px; }
+  .log { background: #111; color: #d0d0d0; padding: 10px 12px; border-radius: 8px; font-family: ui-monospace, monospace; font-size: 11px; max-height: 240px; overflow-y: auto; margin-top: 8px; }
+  .log .l { padding: 1px 0; }
+  .log .l.send { color: #7dd3fc; }
+  .log .l.recv { color: #86efac; }
+  .log .l.err { color: #fca5a5; }
+  .helprow { color: var(--muted); font-size: 12px; margin-top: 6px; }
+</style>
+</head>
+<body>
+<h1>Lumen v2 — operator console</h1>
+<div class="sub">Local dev tool for testing the backend. All state in this page (token, current room) is stored in localStorage.</div>
+
+<section>
+  <h2>Status</h2>
+  <div>Server: <span class="pill" id="health-pill">checking…</span></div>
+  <div id="auth-status" style="margin-top:10px;">Not logged in</div>
+  <button class="secondary" id="logout-btn" style="margin-top:10px; display:none;">Logout</button>
+</section>
+
+<section>
+  <h2>1 · Redeem invite</h2>
+  <div class="helprow">Mint a code via terminal: <code>bun run issue-invite</code>. Then paste below.</div>
+  <div class="row" style="margin-top:6px;">
+    <div>
+      <label>Invite code</label>
+      <input id="code-input" placeholder="e.g. UDC6PP6A" />
+    </div>
+    <div>
+      <label>Handle</label>
+      <input id="handle-input" placeholder="e.g. alice" />
+    </div>
+    <button id="redeem-btn">Redeem</button>
+  </div>
+  <pre id="redeem-result" style="display:none;"></pre>
+</section>
+
+<section>
+  <h2>2 · Resolve room (URL → roomId)</h2>
+  <div class="row">
+    <div>
+      <label>URL</label>
+      <input id="url-input" value="https://paulgraham.com/ds.html" />
+    </div>
+    <button id="resolve-btn" class="secondary">Resolve</button>
+    <button id="load-lens-btn">Load lens</button>
+  </div>
+  <pre id="resolve-result" style="display:none;"></pre>
+  <div id="lens-list" style="margin-top:10px;"></div>
+</section>
+
+<section>
+  <h2>3 · Create Lens</h2>
+  <label>Quote (the text the user "selected")</label>
+  <input id="lens-quote" value="Manual work is a feature." />
+  <div class="row" style="margin-top:6px;">
+    <div>
+      <label>Type</label>
+      <select id="lens-type">
+        <option>quick</option><option>fun</option><option>question</option>
+        <option>poll</option><option>knowledge</option><option>challenge</option>
+      </select>
+    </div>
+    <div>
+      <label>Tags (comma-separated)</label>
+      <input id="lens-tags" value="startup" />
+    </div>
+  </div>
+  <label>Body (Markdown; supports <code>[[lens:id]]</code> and <code>[[url:...]]</code>)</label>
+  <textarea id="lens-body" rows="3">A quick observation about this passage.</textarea>
+  <label style="display:flex; align-items:center; gap:6px;">
+    <input type="checkbox" id="lens-anonymous" style="width:auto;" /> Post anonymously
+  </label>
+  <div style="margin-top:10px;"><button id="create-lens-btn">Create</button></div>
+  <pre id="create-result" style="display:none;"></pre>
+</section>
+
+<section>
+  <h2>4 · WebSocket</h2>
+  <div class="helprow">Connect, subscribe to the current room, watch <code>lens_created</code> / <code>presence_*</code> events arrive.</div>
+  <div class="row" style="margin-top:6px;">
+    <button id="ws-connect-btn">Connect</button>
+    <button id="ws-disconnect-btn" class="secondary" disabled>Disconnect</button>
+  </div>
+  <div id="ws-status" style="margin: 8px 0;"><span class="pill">disconnected</span></div>
+  <div id="ws-log" class="log"></div>
+</section>
+
+<script>
+const API = location.origin;
+const $ = (id) => document.getElementById(id);
+
+let token = localStorage.getItem("lumen_token");
+let userInfo = JSON.parse(localStorage.getItem("lumen_user") || "null");
+let currentRoom = JSON.parse(localStorage.getItem("lumen_room") || "null");
+let ws = null;
+
+function escapeHtml(s) {
+  return String(s).replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+}
+
+function refreshAuthStatus() {
+  if (token && userInfo) {
+    $("auth-status").innerHTML = `Logged in as <strong>${escapeHtml(userInfo.handle)}</strong> <span class="pill">${escapeHtml(userInfo.userId.slice(0, 8))}…</span>`;
+    $("logout-btn").style.display = "inline-block";
+  } else {
+    $("auth-status").textContent = "Not logged in";
+    $("logout-btn").style.display = "none";
+  }
+}
+
+$("logout-btn").onclick = () => {
+  localStorage.removeItem("lumen_token");
+  localStorage.removeItem("lumen_user");
+  token = null; userInfo = null;
+  refreshAuthStatus();
+};
+
+async function fetchJson(path, opts = {}) {
+  const headers = { "Content-Type": "application/json", ...(opts.headers || {}) };
+  if (token) headers.Authorization = `Bearer ${token}`;
+  const res = await fetch(API + path, { ...opts, headers });
+  const text = await res.text();
+  let data; try { data = JSON.parse(text); } catch { data = text; }
+  return { status: res.status, data };
+}
+
+// Health
+fetchJson("/api/health").then(({ data }) => {
+  const ok = data && data.ok;
+  $("health-pill").textContent = ok ? "ok" : "down";
+  $("health-pill").className = "pill " + (ok ? "live" : "error");
+}).catch(() => {
+  $("health-pill").textContent = "down"; $("health-pill").className = "pill error";
+});
+
+// --- Redeem ---
+$("redeem-btn").onclick = async () => {
+  const code = $("code-input").value.trim();
+  const handle = $("handle-input").value.trim();
+  if (!code || !handle) return;
+  const { status, data } = await fetchJson("/api/redeem", {
+    method: "POST",
+    body: JSON.stringify({ code, handle }),
+  });
+  $("redeem-result").style.display = "block";
+  $("redeem-result").textContent = JSON.stringify(data, null, 2);
+  if (status === 200 && data.token) {
+    token = data.token;
+    userInfo = { userId: data.userId, handle: data.handle };
+    localStorage.setItem("lumen_token", token);
+    localStorage.setItem("lumen_user", JSON.stringify(userInfo));
+    refreshAuthStatus();
+  }
+};
+
+// --- URL canonicalization (mirror of scripts/canonicalize-url.ts) ---
+const TRACKING_PARAMS = new Set(["fbclid","gclid","ref","mc_eid","mc_cid","yclid","msclkid","twclid","igshid","ck_subscriber_id","_hsenc","_hsmi"]);
+function canonicalizeUrl(input) {
+  const u = new URL(input);
+  u.hash = ""; u.host = u.host.toLowerCase();
+  const toRemove = [];
+  for (const k of u.searchParams.keys()) {
+    const lower = k.toLowerCase();
+    if (TRACKING_PARAMS.has(lower) || lower.startsWith("utm_")) toRemove.push(k);
+  }
+  for (const k of toRemove) u.searchParams.delete(k);
+  const entries = [...u.searchParams.entries()].sort(([a],[b]) => a < b ? -1 : a > b ? 1 : 0);
+  u.search = "";
+  for (const [k,v] of entries) u.searchParams.append(k,v);
+  if (u.pathname.length > 1 && u.pathname.endsWith("/")) u.pathname = u.pathname.slice(0,-1);
+  return u.toString();
+}
+async function roomIdFor(url) {
+  const canonical = canonicalizeUrl(url);
+  const buf = new TextEncoder().encode(canonical);
+  const hash = await crypto.subtle.digest("SHA-256", buf);
+  return [...new Uint8Array(hash)].map(b => b.toString(16).padStart(2,"0")).join("");
+}
+
+async function resolveCurrentRoom() {
+  const url = $("url-input").value.trim();
+  if (!url) return null;
+  const canonical = canonicalizeUrl(url);
+  const roomId = await roomIdFor(url);
+  currentRoom = { url, canonical, roomId };
+  localStorage.setItem("lumen_room", JSON.stringify(currentRoom));
+  return currentRoom;
+}
+
+$("resolve-btn").onclick = async () => {
+  const r = await resolveCurrentRoom();
+  if (!r) return;
+  $("resolve-result").style.display = "block";
+  $("resolve-result").textContent = JSON.stringify(r, null, 2);
+};
+
+// --- List lens ---
+async function loadLens() {
+  if (!token) { alert("Redeem an invite first"); return; }
+  const r = await resolveCurrentRoom();
+  if (!r) return;
+  $("resolve-result").style.display = "block";
+  $("resolve-result").textContent = JSON.stringify(r, null, 2);
+  const { status, data } = await fetchJson(`/api/lenses?room=${r.roomId}`);
+  const list = $("lens-list");
+  list.innerHTML = "";
+  if (status !== 200 || !data.lenses) {
+    list.innerHTML = `<div class="pill error">${escapeHtml(JSON.stringify(data))}</div>`;
+    return;
+  }
+  if (data.lenses.length === 0) {
+    list.innerHTML = `<div style="color:#888; padding:8px 0;">No lens in this room yet.</div>`;
+    return;
+  }
+  for (const lens of data.lenses) {
+    const div = document.createElement("div");
+    div.className = "lens";
+    const tags = (lens.tags || []).map(t => `<span class="pill">${escapeHtml(t)}</span>`).join(" ");
+    const quote = lens.anchor && lens.anchor.quote && lens.anchor.quote.exact ? lens.anchor.quote.exact : "";
+    div.innerHTML = `
+      <div class="meta">
+        <span class="pill">${escapeHtml(lens.type)}</span>
+        ${tags}
+        <span>@${escapeHtml(lens.author.handle)} · ${new Date(lens.createdAt).toLocaleString()}</span>
+      </div>
+      ${quote ? `<div class="quote">"${escapeHtml(quote.slice(0, 120))}"</div>` : ""}
+      <div>${escapeHtml(lens.body)}</div>
+    `;
+    list.appendChild(div);
+  }
+}
+
+$("load-lens-btn").onclick = loadLens;
+
+// --- Create lens ---
+$("create-lens-btn").onclick = async () => {
+  if (!token) { alert("Redeem an invite first"); return; }
+  const r = await resolveCurrentRoom();
+  if (!r) return;
+  const quote = $("lens-quote").value.trim();
+  const body = {
+    roomId: r.roomId,
+    url: r.canonical,
+    type: $("lens-type").value,
+    tags: $("lens-tags").value.split(",").map(s => s.trim()).filter(Boolean),
+    body: $("lens-body").value,
+    anchor: { quote: { exact: quote } },
+    anonymous: $("lens-anonymous").checked,
+  };
+  const { status, data } = await fetchJson("/api/lenses", {
+    method: "POST",
+    body: JSON.stringify(body),
+  });
+  $("create-result").style.display = "block";
+  $("create-result").textContent = JSON.stringify(data, null, 2);
+  if (status === 201) await loadLens();
+};
+
+// --- WebSocket ---
+function logWs(s, cls) {
+  const div = document.createElement("div");
+  div.className = "l" + (cls ? " " + cls : "");
+  div.textContent = `[${new Date().toLocaleTimeString()}] ${s}`;
+  $("ws-log").appendChild(div);
+  $("ws-log").scrollTop = $("ws-log").scrollHeight;
+}
+
+$("ws-connect-btn").onclick = async () => {
+  if (!token) { alert("Redeem an invite first"); return; }
+  const proto = location.protocol === "https:" ? "wss:" : "ws:";
+  ws = new WebSocket(`${proto}//${location.host}/ws?token=${encodeURIComponent(token)}`);
+  ws.onopen = async () => {
+    $("ws-status").innerHTML = `<span class="pill live">connected</span>`;
+    $("ws-connect-btn").disabled = true;
+    $("ws-disconnect-btn").disabled = false;
+    logWs("OPEN");
+    const r = await resolveCurrentRoom();
+    if (r) {
+      ws.send(JSON.stringify({ type: "subscribe", roomId: r.roomId }));
+      logWs(`>> subscribe ${r.roomId.slice(0, 12)}…`, "send");
+    }
+  };
+  ws.onmessage = (e) => logWs(`<< ${e.data}`, "recv");
+  ws.onerror = () => logWs("ERR (see browser console)", "err");
+  ws.onclose = () => {
+    $("ws-status").innerHTML = `<span class="pill">disconnected</span>`;
+    $("ws-connect-btn").disabled = false;
+    $("ws-disconnect-btn").disabled = true;
+    logWs("CLOSE");
+  };
+};
+
+$("ws-disconnect-btn").onclick = () => { if (ws) ws.close(); };
+
+// --- Init ---
+refreshAuthStatus();
+if (currentRoom) {
+  $("url-input").value = currentRoom.url;
+}
+</script>
+</body>
+</html>
