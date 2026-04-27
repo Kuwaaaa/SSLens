@@ -256,7 +256,7 @@ function Overlay({ url, roomId, canonical }: { url: string; roomId: string; cano
     return () => document.removeEventListener("click", onClick);
   }, []);
 
-  async function publish(input: { type: LensType; body: string; tags: string[] }) {
+  async function publish(input: { type: LensType; body: string; tags: string[]; anonymous: boolean }) {
     if (!token || !draft) return;
     const anchor = createAnchor(draft.range);
     await createLens(
@@ -267,6 +267,7 @@ function Overlay({ url, roomId, canonical }: { url: string; roomId: string; cano
         body: input.body,
         anchor,
         tags: input.tags,
+        anonymous: input.anonymous,
       },
       token,
     );
@@ -445,11 +446,12 @@ function Composer({
 }: {
   draft: SelectionDraft;
   onCancel: () => void;
-  onSubmit: (input: { type: LensType; body: string; tags: string[] }) => void | Promise<void>;
+  onSubmit: (input: { type: LensType; body: string; tags: string[]; anonymous: boolean }) => void | Promise<void>;
 }) {
   const [type, setType] = useState<LensType>("quick");
   const [body, setBody] = useState("");
   const [tagsRaw, setTagsRaw] = useState("");
+  const [anonymous, setAnonymous] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -465,7 +467,7 @@ function Composer({
     setError(null);
     try {
       const tags = tagsRaw.split(",").map((s) => s.trim()).filter(Boolean);
-      await onSubmit({ type, body: body.trim(), tags });
+      await onSubmit({ type, body: body.trim(), tags, anonymous });
     } catch (e) {
       setError(e instanceof Error ? e.message : String(e));
     } finally {
@@ -490,6 +492,14 @@ function Composer({
         <label>Tags (comma-separated)</label>
         <input type="text" value={tagsRaw} onChange={(e) => setTagsRaw(e.target.value)} />
       </div>
+      <label className="checkbox-row">
+        <input
+          type="checkbox"
+          checked={anonymous}
+          onChange={(e) => setAnonymous(e.currentTarget.checked)}
+        />
+        <span>Post as Anonymous</span>
+      </label>
       {error && <div className="err">{error}</div>}
       <div className="row">
         <button className="cancel" onClick={onCancel} disabled={busy}>Cancel</button>
@@ -497,6 +507,27 @@ function Composer({
       </div>
     </div>
   );
+}
+
+async function writeClipboardText(text: string): Promise<void> {
+  if (navigator.clipboard?.writeText) {
+    try {
+      await navigator.clipboard.writeText(text);
+      return;
+    } catch {
+      // Some content-script contexts expose Clipboard API but reject writes.
+    }
+  }
+
+  const el = document.createElement("textarea");
+  el.value = text;
+  el.setAttribute("readonly", "");
+  el.style.cssText = "position: fixed; left: -9999px; top: 0;";
+  document.body.appendChild(el);
+  el.select();
+  const copied = document.execCommand("copy");
+  el.remove();
+  if (!copied) throw new Error("copy failed");
 }
 
 function LensCard({
@@ -513,6 +544,8 @@ function LensCard({
   onMount?: (rect: DOMRect) => void;
 }) {
   const sectionRef = useRef<HTMLElement>(null);
+  const [copyState, setCopyState] = useState<"idle" | "copied" | "failed">("idle");
+  const copyResetTimer = useRef<number | null>(null);
   const range = getRangeForLens(lens.id);
   const rect = range?.getBoundingClientRect();
   const top = rect ? Math.min(window.innerHeight - 280, rect.bottom + 8) : 96;
@@ -526,6 +559,23 @@ function LensCard({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  useEffect(() => {
+    return () => {
+      if (copyResetTimer.current !== null) window.clearTimeout(copyResetTimer.current);
+    };
+  }, []);
+
+  async function copyRef() {
+    try {
+      await writeClipboardText(`[[lens:${lens.id}]]`);
+      setCopyState("copied");
+    } catch {
+      setCopyState("failed");
+    }
+    if (copyResetTimer.current !== null) window.clearTimeout(copyResetTimer.current);
+    copyResetTimer.current = window.setTimeout(() => setCopyState("idle"), 1400);
+  }
+
   return (
     <section ref={sectionRef} className="card" style={{ top, left }} data-lumen-overlay="">
       <button className="close" onClick={onClose} aria-label="Close">×</button>
@@ -535,6 +585,9 @@ function LensCard({
           <span key={t} className="pill" style={{ background: "#f0f0f0", color: "#555" }}>{t}</span>
         ))}
         <span>@{lens.author?.handle ?? "unknown"}</span>
+        <button className="copy-ref" onClick={copyRef}>
+          {copyState === "copied" ? "Copied" : copyState === "failed" ? "Failed" : "Copy ref"}
+        </button>
       </div>
       {quote && <div className="quote">"{quote.slice(0, 160)}"</div>}
       <div className="body">

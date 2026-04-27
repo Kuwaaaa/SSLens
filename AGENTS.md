@@ -1,4 +1,4 @@
-# CLAUDE.md — Onboarding for AI assistants working on Lumen v2
+# AGENTS.md — Onboarding for AI assistants working on Lumen v2
 
 You are working on **Lumen v2**, a redesigned browser extension for contextual social commenting on webpages. This file gets you up to speed in ~5 minutes. Read it before doing anything else.
 
@@ -102,7 +102,7 @@ Rationale for each choice is in `docs/ARCHITECTURE.md` §3 and §4–§6. Do not
 
 ```
 SStree/                          (currently SStree-v2 pending a manual rename)
-├── CLAUDE.md                    you are here
+├── AGENTS.md                    you are here
 ├── docs/                        read these first
 ├── apps/
 │   ├── extension/               MV3 extension
@@ -135,7 +135,7 @@ These are decisions / context from the conversations that produced v2. They live
 - **Lens body is Markdown.** Inter-Lens references use `[[lens:id]]` syntax; URL refs use `[[url:...]]`. The original Chat.md called out citation as a first-class feature ("user researched a formula and summarizes the explanation in a card") — make sure refs render well, not as raw text.
 - **Anonymity is moderation-aware.** Per-Lens `anonymous` flag hides the author in the UI, but the server records the real author. The privacy policy must say so. Do not promote this as "anonymous" without that caveat.
 - **The user's habitual language is Chinese**, but documentation and code are in English. Match this when writing docs; respond to the user in Chinese unless they switch.
-- **Chinese mirror docs exist** at `docs/*.zh.md` and `CLAUDE.zh.md`. They are mirrors of the English versions; if you change content in one, update the mirror.
+- **Chinese mirror docs exist** at `docs/*.zh.md` and `Codex.zh.md`. They are mirrors of the English versions; if you change content in one, update the mirror.
 - **Architecture deviations from initial spec, all documented in code / READMEs**:
   - WebSocket lives in the **content script, not the service worker** (`apps/extension/README.md`). Each tab owns its own WS; presence is detected via WS connect/close, not via `chrome.runtime.connect` ports as ARCHITECTURE.md §5 originally proposed. The original SW-hosted design is the right long-term pattern; the deviation is an MVP shortcut documented for revisit.
   - Anchoring is a **clean ~250-LOC implementation, not vendored hypothesis** (`packages/anchoring/README.md`). The W3C selector model and `approx-string-match` (the actual algorithmic value) are preserved; the surrounding hypothesis-internal scaffolding is not.
