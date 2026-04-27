@@ -6,8 +6,8 @@ export interface WSData {
   roomId: string | null;
 }
 
-let serverRef: Server | null = null;
-export function setServerRef(s: Server) {
+let serverRef: Server<WSData> | null = null;
+export function setServerRef(s: Server<WSData>) {
   serverRef = s;
 }
 
@@ -36,14 +36,14 @@ function presenceList(roomId: string): string[] {
   return [...(presence.get(roomId) ?? [])];
 }
 
-export async function handleUpgrade(req: Request, server: Server): Promise<Response | undefined> {
+export async function handleUpgrade(req: Request, server: Server<WSData>): Promise<Response | undefined> {
   const url = new URL(req.url);
   const token = url.searchParams.get("token");
   if (!token) return new Response("missing token", { status: 401 });
   const user = await verifyToken(token);
   if (!user) return new Response("invalid token", { status: 401 });
 
-  const upgraded = server.upgrade<WSData>(req, { data: { user, roomId: null } });
+  const upgraded = server.upgrade(req, { data: { user, roomId: null } });
   if (!upgraded) return new Response("upgrade failed", { status: 500 });
   return undefined;
 }

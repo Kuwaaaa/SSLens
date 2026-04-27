@@ -1,4 +1,5 @@
 import type { Server } from "bun";
+import { REACTION_KINDS, type ReactionKind } from "@lumen/schema";
 import { db } from "./db.ts";
 import { ulid } from "./ulid.ts";
 import { signToken, type TokenPayload } from "./auth.ts";
@@ -90,7 +91,30 @@ const fetchLensById = db.query<LensRow, [string]>(`
   WHERE l.id = ?
 `);
 
-function rowToLens(r: LensRow) {
+const reactionCountsByLens = db.query<{ kind: string; count: number }, [string]>(`
+  SELECT kind, COUNT(*) AS count
+  FROM reactions
+  WHERE lens_id = ?
+  GROUP BY kind
+  ORDER BY count DESC, kind ASC
+`);
+
+const userReactionsByLens = db.query<{ kind: string }, [string, string]>(`
+  SELECT kind
+  FROM reactions
+  WHERE lens_id = ? AND user_id = ?
+  ORDER BY kind ASC
+`);
+
+function reactionsForLens(lensId: string): Record<string, number> {
+  const out: Record<string, number> = {};
+  for (const row of reactionCountsByLens.all(lensId)) {
+    out[row.kind] = row.count;
+  }
+  return out;
+}
+
+function rowToLens(r: LensRow, viewerId?: string) {
   const isAnon = r.anonymous === 1;
   return {
     id: r.id,
@@ -106,17 +130,21 @@ function rowToLens(r: LensRow) {
     url: r.url,
     roomId: r.room_id,
     createdAt: r.created_at,
+    reactions: reactionsForLens(r.id),
+    myReactions: viewerId ? myReactionsForLens(r.id, viewerId) : [],
+    replyCount: 0,
+    saveCount: 0,
   };
 }
 
-export function handleListLenses(req: Request, _user: TokenPayload): Response {
+export function handleListLenses(req: Request, user: TokenPayload): Response {
   const url = new URL(req.url);
   const room = url.searchParams.get("room");
   if (!room || !/^[a-f0-9]{64}$/.test(room)) {
     return json({ error: "invalid room" }, 400);
   }
   const rows = listLensesByRoom.all(room);
-  return json({ lenses: rows.map(rowToLens) });
+  return json({ lenses: rows.map((r) => rowToLens(r, user.sub)) });
 }
 
 // --- POST /api/lenses -------------------------------------------------------
@@ -145,7 +173,7 @@ const VALID_TYPES = new Set(["quick", "fun", "question", "poll", "knowledge", "c
 export async function handleCreateLens(
   req: Request,
   user: TokenPayload,
-  server: Server,
+  server: Server<unknown>,
 ): Promise<Response> {
   const body = (await req.json().catch(() => null)) as CreateLensBody | null;
   if (!body) return json({ error: "invalid body" }, 400);
@@ -172,9 +200,67 @@ export async function handleCreateLens(
 
   const row = fetchLensById.get(id);
   if (!row) return json({ error: "internal" }, 500);
-  const lens = rowToLens(row);
+  const lens = rowToLens(row, user.sub);
 
   server.publish(body.roomId, JSON.stringify({ type: "lens_created", lens }));
 
   return json({ lens }, 201);
+}
+
+// --- POST /api/reactions ----------------------------------------------------
+
+const ALLOWED_REACTIONS = new Set<string>(REACTION_KINDS);
+
+function myReactionsForLens(lensId: string, userId: string): ReactionKind[] {
+  return userReactionsByLens.all(lensId, userId)
+    .map((r) => r.kind)
+    .filter((kind): kind is ReactionKind => ALLOWED_REACTIONS.has(kind));
+}
+
+const findLensRoom = db.query<{ id: string; room_id: string }, [string]>(
+  "SELECT id, room_id FROM lenses WHERE id = ?",
+);
+
+const findReaction = db.query<{ kind: string }, [string, string, string]>(
+  "SELECT kind FROM reactions WHERE lens_id = ? AND user_id = ? AND kind = ?",
+);
+
+const insertReaction = db.query<unknown, [string, string, string, number]>(
+  "INSERT INTO reactions (lens_id, user_id, kind, created_at) VALUES (?, ?, ?, ?)",
+);
+
+const deleteReaction = db.query<unknown, [string, string, string]>(
+  "DELETE FROM reactions WHERE lens_id = ? AND user_id = ? AND kind = ?",
+);
+
+export async function handleToggleReaction(
+  req: Request,
+  user: TokenPayload,
+  server: Server<unknown>,
+): Promise<Response> {
+  const body = (await req.json().catch(() => null)) as { lensId?: string; kind?: string } | null;
+  if (!body?.lensId || !body?.kind) return json({ error: "lensId and kind required" }, 400);
+  if (!ALLOWED_REACTIONS.has(body.kind)) return json({ error: "unsupported reaction" }, 400);
+
+  const lens = findLensRoom.get(body.lensId);
+  if (!lens) return json({ error: "lens not found" }, 404);
+
+  const existing = findReaction.get(body.lensId, user.sub, body.kind);
+  const selected = !existing;
+  if (existing) {
+    deleteReaction.run(body.lensId, user.sub, body.kind);
+  } else {
+    insertReaction.run(body.lensId, user.sub, body.kind, Date.now());
+  }
+
+  const reactions = reactionsForLens(body.lensId);
+  const myReactions = myReactionsForLens(body.lensId, user.sub);
+  const payload = {
+    type: "reaction_updated",
+    lensId: body.lensId,
+    reactions,
+  };
+  server.publish(lens.room_id, JSON.stringify(payload));
+
+  return json({ lensId: body.lensId, kind: body.kind, selected, reactions, myReactions });
 }

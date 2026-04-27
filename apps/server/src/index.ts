@@ -1,5 +1,11 @@
 import "./db.ts"; // ensure schema is applied before queries are prepared
-import { json, handleRedeem, handleListLenses, handleCreateLens } from "./routes.ts";
+import {
+  json,
+  handleRedeem,
+  handleListLenses,
+  handleCreateLens,
+  handleToggleReaction,
+} from "./routes.ts";
 import { handleUpgrade, websocket, setServerRef } from "./ws.ts";
 import { verifyToken, type TokenPayload } from "./auth.ts";
 
@@ -52,6 +58,10 @@ const server = Bun.serve({
       if (url.pathname === "/api/lenses") {
         if (req.method === "GET") return handleListLenses(req, user);
         if (req.method === "POST") return await handleCreateLens(req, user, srv);
+      }
+
+      if (url.pathname === "/api/reactions" && req.method === "POST") {
+        return await handleToggleReaction(req, user, srv);
       }
 
       return json({ error: "not_found" }, 404);

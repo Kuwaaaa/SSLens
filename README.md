@@ -2,7 +2,7 @@
 
 Browser extension + backend for contextual social commenting on real webpages.
 
-Read `CLAUDE.md` first if you are an AI assistant. Read `docs/PROJECT_OVERVIEW.md` first if you are a human.
+Read `AGENTS.md` first if you are an AI assistant. Read `docs/PROJECT_OVERVIEW.md` first if you are a human.
 
 ## Setup
 
@@ -22,7 +22,7 @@ bun run issue-invite -- --by founder   # mint an invite code
 
 ## Docs
 
-- `CLAUDE.md` — onboarding for AI assistants (also `CLAUDE.zh.md`)
+- `AGENTS.md` - onboarding for AI assistants (also `AGENTS.zh.md`)
 - `docs/PROJECT_OVERVIEW.md` — what v2 is and why
 - `docs/ARCHITECTURE.md` — every technical decision
 - `docs/mvp/lumen-mvp-plan.md` — 5-week build + 4-week soak plan

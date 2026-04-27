@@ -117,6 +117,121 @@ button, input, textarea, select {
   line-height: 1.45;
 }
 
+.card .reaction-bar {
+  position: relative;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+  margin-top: 10px;
+}
+
+.card .reaction-chip,
+.card .reaction-add,
+.card .reaction-choice {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid rgba(107, 33, 168, 0.16);
+  background: #fff;
+  color: #4a1a7a;
+  cursor: pointer;
+  line-height: 1;
+}
+
+.card .reaction-chip {
+  gap: 4px;
+  min-width: 28px;
+  height: 24px;
+  padding: 0 7px;
+  border-radius: 999px;
+  font-size: 12px;
+}
+
+.card .reaction-add {
+  width: 24px;
+  height: 24px;
+  padding: 0;
+  border-radius: 999px;
+  font-size: 15px;
+  font-weight: 600;
+}
+
+.card .reaction-chip:hover:not(:disabled),
+.card .reaction-add:hover,
+.card .reaction-choice:hover:not(:disabled) {
+  background: #faf6ff;
+  border-color: rgba(107, 33, 168, 0.28);
+}
+
+.card .reaction-chip.selected {
+  border-color: rgba(245, 158, 11, 0.45);
+  background: #fff7df;
+  color: #92400e;
+}
+
+.card .reaction-chip:disabled,
+.card .reaction-choice:disabled {
+  cursor: default;
+  opacity: 0.65;
+}
+
+.card .reaction-count {
+  font-size: 10px;
+  font-weight: 700;
+}
+
+.card .reaction-picker {
+  position: absolute;
+  left: 0;
+  top: calc(100% + 6px);
+  z-index: 2;
+  display: grid;
+  grid-template-columns: repeat(8, 28px);
+  gap: 4px;
+  padding: 6px;
+  max-width: min(300px, calc(100vw - 56px));
+  max-height: 190px;
+  overflow-y: auto;
+  border: 1px solid rgba(107, 33, 168, 0.16);
+  border-radius: 8px;
+  background: #fff;
+  box-shadow: 0 10px 24px rgba(80, 60, 130, 0.16);
+}
+
+.card .reaction-choice {
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  border-radius: 7px;
+  font-size: 15px;
+}
+
+.card-stack {
+  display: grid;
+  gap: 10px;
+  max-height: min(680px, calc(100vh - 24px));
+  overflow-y: visible;
+}
+
+.card-stack .lens-panel {
+  min-width: 0;
+}
+
+.card-stack .ref-panel {
+  margin-left: 12px;
+  padding-left: 12px;
+  border-left: 2px solid rgba(245, 158, 11, 0.35);
+}
+
+.card-stack .stack-label {
+  margin-bottom: 6px;
+  color: #92400e;
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
 .card .close {
   position: absolute;
   top: 8px;
@@ -128,21 +243,85 @@ button, input, textarea, select {
   cursor: pointer;
 }
 
-.card .copy-ref {
+.card .card-actions {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
   margin-left: auto;
-  padding: 2px 7px;
-  min-width: 54px;
-  border: 1px solid rgba(107, 33, 168, 0.22);
+}
+
+.card .icon-action {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  padding: 0;
+  border: 1px solid rgba(107, 33, 168, 0.2);
   border-radius: 6px;
   background: #fff;
   color: #4a1a7a;
-  font-size: 10px;
-  font-weight: 600;
   cursor: pointer;
 }
 
-.card .copy-ref:hover {
+.card .icon-action svg {
+  width: 14px;
+  height: 14px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.7;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.card .icon-action:hover {
   background: #faf6ff;
+}
+
+.card .jump-anchor {
+  border-color: rgba(245, 158, 11, 0.35);
+  color: #92400e;
+}
+
+.card .jump-anchor:hover {
+  background: #fef3c7;
+}
+
+.card .copy-ref.copied {
+  border-color: rgba(22, 163, 74, 0.35);
+  color: #15803d;
+}
+
+.card .copy-ref.failed {
+  border-color: rgba(185, 28, 28, 0.35);
+  color: #b91c1c;
+}
+
+.card .icon-action::after {
+  position: absolute;
+  right: 0;
+  top: calc(100% + 5px);
+  z-index: 1;
+  padding: 3px 7px;
+  border-radius: 6px;
+  background: #1f1630;
+  color: #fff;
+  content: attr(data-tooltip);
+  font-size: 10px;
+  font-weight: 600;
+  line-height: 1.2;
+  opacity: 0;
+  pointer-events: none;
+  transform: translateY(2px);
+  transition: opacity 120ms ease, transform 120ms ease;
+  white-space: nowrap;
+}
+
+.card .icon-action:hover::after,
+.card .icon-action:focus-visible::after {
+  opacity: 1;
+  transform: translateY(0);
 }
 
 .pill {

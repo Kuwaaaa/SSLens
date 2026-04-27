@@ -1,4 +1,4 @@
-import type { Lens, LensAnchor, LensType } from "@lumen/schema";
+import type { Lens, LensAnchor, LensType, ReactionKind } from "@lumen/schema";
 import { API_BASE } from "./config";
 
 export interface RedeemResult {
@@ -55,4 +55,32 @@ export async function createLens(input: CreateLensInput, token: string): Promise
   }
   const data = (await res.json()) as { lens: Lens };
   return data.lens;
+}
+
+export interface ReactionResult {
+  lensId: string;
+  kind: ReactionKind;
+  selected: boolean;
+  reactions: Partial<Record<ReactionKind, number>>;
+  myReactions: ReactionKind[];
+}
+
+export async function toggleReaction(
+  lensId: string,
+  kind: ReactionKind,
+  token: string,
+): Promise<ReactionResult> {
+  const res = await fetch(`${API_BASE}/api/reactions`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${token}`,
+    },
+    body: JSON.stringify({ lensId, kind }),
+  });
+  if (!res.ok) {
+    const txt = await res.text();
+    throw new Error(`toggleReaction ${res.status}: ${txt}`);
+  }
+  return (await res.json()) as ReactionResult;
 }

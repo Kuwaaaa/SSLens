@@ -55,11 +55,17 @@ When to refactor back to SW-hosted WS: if N tabs per user routinely exceeds 5–
 
 - Companion mode (Find companion button, emoji toss, chat layer)
 - GitHub OAuth badge
-- Anonymous flag UI in composer
 - Hide controls (per-tab / per-site Lumen toggle)
 - Re-anchor flow for orphan Lens (orphans are surfaced but not yet repairable)
 - Composer UI for inserting `[[lens:id]]` references (user types syntax manually for now)
 - Cross-page Lens lookup (referencing a Lens not on the current page renders as a disabled chip)
+
+## Recently implemented
+
+- Anonymous flag UI in composer
+- Lens card copy-ref action for `[[lens:id]]`
+- Inline Lens reference card stack
+- Reaction MVP with shared reaction kinds in `@lumen/schema`
 
 ## Deferred verifications
 

@@ -84,9 +84,9 @@ function bytesToB64url(bytes: Uint8Array): string {
   return b64urlEncode(s);
 }
 
-function b64urlToBytes(s: string): Uint8Array {
+function b64urlToBytes(s: string): Uint8Array<ArrayBuffer> {
   const decoded = b64urlDecode(s);
-  const bytes = new Uint8Array(decoded.length);
+  const bytes = new Uint8Array(new ArrayBuffer(decoded.length));
   for (let i = 0; i < decoded.length; i++) bytes[i] = decoded.charCodeAt(i);
   return bytes;
 }

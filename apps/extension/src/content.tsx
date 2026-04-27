@@ -12,17 +12,16 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { createRoot } from "react-dom/client";
 import { WebSocket as ReconnectingWS } from "partysocket";
-import type { Lens, LensType, ReadingMode } from "@lumen/schema";
+import { REACTION_KINDS, type Lens, type LensType, type ReactionKind, type ReadingMode } from "@lumen/schema";
 
 import { canonicalizeUrl, roomIdFor } from "./shared/canonicalize";
 import { getReadingMode, getToken, KEY_READING_MODE } from "./shared/storage";
-import { fetchLensesForRoom, createLens } from "./shared/api";
+import { fetchLensesForRoom, createLens, toggleReaction } from "./shared/api";
 import { WS_BASE } from "./shared/config";
 import { createAnchor, restoreAnchor } from "@lumen/anchoring";
 import {
   applyHighlight,
   clearAllHighlights,
-  getRangeForLens,
   injectMarkerStyles,
   lensAtPoint,
 } from "./marker";
@@ -32,11 +31,47 @@ import { BloomLayer, makeBloomSpec, type BloomIntent, type BloomSpec } from "./s
 import overlayCss from "./styles.css?inline";
 
 const LENS_TYPES: LensType[] = ["quick", "fun", "question", "knowledge"];
+const REACTION_CHOICES = REACTION_KINDS;
 
 interface SelectionDraft {
   range: Range;
   text: string;
   rect: DOMRect;
+}
+
+interface ActiveLensStack {
+  rootId: string;
+  childIds: string[];
+}
+
+interface CardPosition {
+  top: number;
+  left: number;
+}
+
+const CARD_WIDTH = 340;
+const CARD_HEIGHT_ESTIMATE = 280;
+const VIEWPORT_GUTTER = 8;
+
+function clamp(n: number, min: number, max: number): number {
+  return Math.max(min, Math.min(max, n));
+}
+
+function positionCardNear(rect: DOMRect | null | undefined): CardPosition {
+  if (!rect) return { top: 96, left: 24 };
+
+  const cardWidth = Math.min(CARD_WIDTH, Math.max(160, window.innerWidth - 32));
+  const maxLeft = Math.max(VIEWPORT_GUTTER, window.innerWidth - cardWidth - VIEWPORT_GUTTER);
+  const below = rect.bottom + 8;
+  const above = rect.top - CARD_HEIGHT_ESTIMATE - 8;
+  const hasRoomBelow = below + CARD_HEIGHT_ESTIMATE <= window.innerHeight - VIEWPORT_GUTTER;
+  const preferredTop = hasRoomBelow || above < VIEWPORT_GUTTER ? below : above;
+  const maxTop = Math.max(VIEWPORT_GUTTER, window.innerHeight - 80);
+
+  return {
+    top: clamp(preferredTop, VIEWPORT_GUTTER, maxTop),
+    left: clamp(rect.left, VIEWPORT_GUTTER, maxLeft),
+  };
 }
 
 // Reading-mode filter. Quiet keeps the page nearly clean; Thinking adds
@@ -75,7 +110,7 @@ function Overlay({ url, roomId, canonical }: { url: string; roomId: string; cano
   // PATCH server). Currently orphan Lens are visible but not repairable.
   const [orphanIds, setOrphanIds] = useState<Set<string>>(new Set());
   const [presence, setPresence] = useState<string[]>([]);
-  const [activeLensId, setActiveLensId] = useState<string | null>(null);
+  const [activeLens, setActiveLens] = useState<ActiveLensStack | null>(null);
   const [draft, setDraft] = useState<SelectionDraft | null>(null);
   const [composerOpen, setComposerOpen] = useState(false);
   const [token, setToken] = useState<string | null>(null);
@@ -188,6 +223,12 @@ function Overlay({ url, roomId, canonical }: { url: string; roomId: string; cano
           }
         }
         setLenses((prev) => (prev.some((l) => l.id === lens.id) ? prev : [...prev, lens]));
+      } else if (msg.type === "reaction_updated") {
+        const lensId = msg.lensId as string;
+        const reactions = msg.reactions as Partial<Record<ReactionKind, number>>;
+        setLenses((prev) => prev.map((l) => (
+          l.id === lensId ? { ...l, reactions } : l
+        )));
       }
     });
 
@@ -211,12 +252,13 @@ function Overlay({ url, roomId, canonical }: { url: string; roomId: string; cano
     }
   }, [visibleLenses]);
 
-  // Auto-close active card if its lens got filtered out
+  // Auto-close only if the root Lens disappears. Ref children may be hidden
+  // by the current reading mode and should stay readable inside the stack.
   useEffect(() => {
-    if (activeLensId && !visibleLenses.find((l) => l.id === activeLensId)) {
-      setActiveLensId(null);
+    if (activeLens && !lenses.find((l) => l.id === activeLens.rootId)) {
+      setActiveLens(null);
     }
-  }, [activeLensId, visibleLenses]);
+  }, [activeLens, lenses]);
 
   // Capture text selection
   useEffect(() => {
@@ -248,7 +290,7 @@ function Overlay({ url, roomId, canonical }: { url: string; roomId: string; cano
       if (target && (target as Element).closest?.("#lumen-root, [data-lumen-overlay]")) return;
       const id = lensAtPoint(e.clientX, e.clientY);
       if (id) {
-        setActiveLensId(id);
+        setActiveLens({ rootId: id, childIds: [] });
         setDraft(null);
       }
     }
@@ -278,9 +320,55 @@ function Overlay({ url, roomId, canonical }: { url: string; roomId: string; cano
 
   if (!token) return <NoTokenHint />;
 
-  const activeLens = activeLensId ? lenses.find((l) => l.id === activeLensId) ?? null : null;
+  const activeLensStack = activeLens
+    ? [activeLens.rootId, ...activeLens.childIds]
+        .map((id) => lenses.find((l) => l.id === id) ?? null)
+        .filter((l): l is Lens => !!l)
+    : [];
+  const activeLensRange = activeLens ? anchorRanges.current.get(activeLens.rootId) ?? null : null;
   const others = presence.length;
   const hiddenCount = lenses.length - visibleLenses.length - orphanIds.size;
+
+  function jumpToLensAnchor(id: string) {
+    const range = anchorRanges.current.get(id);
+    if (!range) return;
+    const rect = range.getBoundingClientRect();
+    if (rect.width > 0 || rect.height > 0) {
+      window.scrollBy({
+        top: rect.top - window.innerHeight * 0.35,
+        behavior: "smooth",
+      });
+    } else {
+      const node = range.startContainer;
+      const el = node.nodeType === Node.ELEMENT_NODE
+        ? (node as Element)
+        : node.parentElement;
+      el?.scrollIntoView({ block: "center", behavior: "smooth" });
+    }
+    setActiveLens({ rootId: id, childIds: [] });
+  }
+
+  function openReferencedLens(id: string) {
+    setActiveLens((current) => {
+      if (!current) return { rootId: id, childIds: [] };
+      const existingIndex = current.childIds.indexOf(id);
+      if (current.rootId === id) return { ...current, childIds: [] };
+      if (existingIndex >= 0) {
+        return { ...current, childIds: current.childIds.slice(0, existingIndex + 1) };
+      }
+      return { ...current, childIds: [...current.childIds, id] };
+    });
+  }
+
+  async function reactToLens(id: string, kind: ReactionKind) {
+    if (!token) return;
+    const result = await toggleReaction(id, kind, token);
+    setLenses((prev) => prev.map((l) => (
+      l.id === result.lensId
+        ? { ...l, reactions: result.reactions, myReactions: result.myReactions }
+        : l
+    )));
+  }
 
   return (
     <>
@@ -313,12 +401,17 @@ function Overlay({ url, roomId, canonical }: { url: string; roomId: string; cano
           onSubmit={publish}
         />
       )}
-      {activeLens && (
+      {activeLens && activeLensStack.length > 0 && (
         <LensCard
-          lens={activeLens}
-          onClose={() => setActiveLensId(null)}
+          key={activeLens.rootId}
+          lenses={activeLensStack}
+          rootAnchorRange={activeLensRange}
+          hasAnchor={(id) => anchorRanges.current.has(id)}
+          onClose={() => setActiveLens(null)}
+          onJumpToAnchor={jumpToLensAnchor}
           knownLenses={lenses}
-          onLensClick={(id) => setActiveLensId(id)}
+          onLensClick={openReferencedLens}
+          onReact={reactToLens}
           onMount={(rect) => triggerBloom(rect, "card-open")}
         />
       )}
@@ -531,26 +624,30 @@ async function writeClipboardText(text: string): Promise<void> {
 }
 
 function LensCard({
-  lens,
+  lenses,
+  rootAnchorRange,
+  hasAnchor,
   onClose,
+  onJumpToAnchor,
   knownLenses,
   onLensClick,
+  onReact,
   onMount,
 }: {
-  lens: Lens;
+  lenses: Lens[];
+  rootAnchorRange: Range | null;
+  hasAnchor: (id: string) => boolean;
   onClose: () => void;
+  onJumpToAnchor: (id: string) => void;
   knownLenses?: Lens[];
   onLensClick?: (id: string) => void;
+  onReact: (id: string, kind: ReactionKind) => void | Promise<void>;
   onMount?: (rect: DOMRect) => void;
 }) {
   const sectionRef = useRef<HTMLElement>(null);
-  const [copyState, setCopyState] = useState<"idle" | "copied" | "failed">("idle");
-  const copyResetTimer = useRef<number | null>(null);
-  const range = getRangeForLens(lens.id);
-  const rect = range?.getBoundingClientRect();
-  const top = rect ? Math.min(window.innerHeight - 280, rect.bottom + 8) : 96;
-  const left = rect ? Math.max(8, Math.min(window.innerWidth - 360, rect.left)) : 24;
-  const quote = lens.anchor?.quote?.exact ?? "";
+  const [position, setPosition] = useState<CardPosition>(() =>
+    positionCardNear(rootAnchorRange?.getBoundingClientRect()),
+  );
 
   useEffect(() => {
     if (sectionRef.current && onMount) {
@@ -558,6 +655,72 @@ function LensCard({
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  useEffect(() => {
+    let frame: number | null = null;
+    const update = () => {
+      frame = null;
+      const next = positionCardNear(rootAnchorRange?.getBoundingClientRect());
+      setPosition((prev) => (
+        prev.top === next.top && prev.left === next.left ? prev : next
+      ));
+    };
+    const schedule = () => {
+      if (frame === null) frame = window.requestAnimationFrame(update);
+    };
+
+    update();
+    window.addEventListener("resize", schedule);
+    window.addEventListener("scroll", schedule, true);
+
+    return () => {
+      if (frame !== null) window.cancelAnimationFrame(frame);
+      window.removeEventListener("resize", schedule);
+      window.removeEventListener("scroll", schedule, true);
+    };
+  }, [rootAnchorRange]);
+
+  return (
+    <section ref={sectionRef} className="card card-stack" style={position} data-lumen-overlay="">
+      <button className="close" onClick={onClose} aria-label="Close">×</button>
+      {lenses.map((lens, index) => (
+        <LensPanel
+          key={`${lens.id}-${index}`}
+          lens={lens}
+          depth={index}
+          hasAnchor={hasAnchor(lens.id)}
+          knownLenses={knownLenses}
+          onLensClick={onLensClick}
+          onReact={onReact}
+          onJumpToAnchor={() => onJumpToAnchor(lens.id)}
+        />
+      ))}
+    </section>
+  );
+}
+
+function LensPanel({
+  lens,
+  depth,
+  hasAnchor,
+  knownLenses,
+  onLensClick,
+  onReact,
+  onJumpToAnchor,
+}: {
+  lens: Lens;
+  depth: number;
+  hasAnchor: boolean;
+  knownLenses?: Lens[];
+  onLensClick?: (id: string) => void;
+  onReact: (id: string, kind: ReactionKind) => void | Promise<void>;
+  onJumpToAnchor: () => void;
+}) {
+  const [copyState, setCopyState] = useState<"idle" | "copied" | "failed">("idle");
+  const copyResetTimer = useRef<number | null>(null);
+  const quote = lens.anchor?.quote?.exact ?? "";
+  const [reactionBusy, setReactionBusy] = useState<string | null>(null);
+  const [pickerOpen, setPickerOpen] = useState(false);
 
   useEffect(() => {
     return () => {
@@ -576,24 +739,137 @@ function LensCard({
     copyResetTimer.current = window.setTimeout(() => setCopyState("idle"), 1400);
   }
 
+  async function toggleEmoji(kind: ReactionKind) {
+    setReactionBusy(kind);
+    try {
+      await onReact(lens.id, kind);
+      setPickerOpen(false);
+    } finally {
+      setReactionBusy(null);
+    }
+  }
+
+  const visibleReactions = REACTION_CHOICES.filter((kind) => (
+    (lens.reactions?.[kind] ?? 0) > 0 || (lens.myReactions?.includes(kind) ?? false)
+  ));
+
+  const copyLabel = copyState === "copied"
+    ? "Copied"
+    : copyState === "failed"
+      ? "Copy failed"
+      : "Copy ref";
+
   return (
-    <section ref={sectionRef} className="card" style={{ top, left }} data-lumen-overlay="">
-      <button className="close" onClick={onClose} aria-label="Close">×</button>
+    <div className={depth === 0 ? "lens-panel" : "lens-panel ref-panel"}>
+      {depth > 0 && <div className="stack-label">Referenced lens</div>}
       <div className="meta">
         <span className="pill">{lens.type}</span>
         {(lens.tags ?? []).map((t) => (
           <span key={t} className="pill" style={{ background: "#f0f0f0", color: "#555" }}>{t}</span>
         ))}
         <span>@{lens.author?.handle ?? "unknown"}</span>
-        <button className="copy-ref" onClick={copyRef}>
-          {copyState === "copied" ? "Copied" : copyState === "failed" ? "Failed" : "Copy ref"}
-        </button>
+        <span className="card-actions">
+          {hasAnchor && (
+            <button
+              className="icon-action jump-anchor"
+              onClick={onJumpToAnchor}
+              aria-label="View anchor"
+              data-tooltip="View anchor"
+            >
+              <TargetIcon />
+            </button>
+          )}
+          <button
+            className={`icon-action copy-ref ${copyState}`}
+            onClick={copyRef}
+            aria-label={copyLabel}
+            data-tooltip={copyLabel}
+          >
+            {copyState === "copied" ? <CheckIcon /> : copyState === "failed" ? <AlertIcon /> : <CopyIcon />}
+          </button>
+        </span>
       </div>
       {quote && <div className="quote">"{quote.slice(0, 160)}"</div>}
       <div className="body">
         <RenderBody body={lens.body} knownLenses={knownLenses} onLensClick={onLensClick} />
       </div>
-    </section>
+      <div className="reaction-bar" aria-label="Reactions">
+        {visibleReactions.map((kind) => {
+          const count = lens.reactions?.[kind] ?? 0;
+          const selected = lens.myReactions?.includes(kind) ?? false;
+          return (
+            <button
+              key={kind}
+              className={`reaction-chip${selected ? " selected" : ""}`}
+              onClick={() => void toggleEmoji(kind)}
+              disabled={reactionBusy === kind}
+              aria-label={`${selected ? "Remove" : "Add"} ${kind} reaction`}
+            >
+              <span>{kind}</span>
+              {count > 0 && <span className="reaction-count">{count}</span>}
+            </button>
+          );
+        })}
+        <button
+          className="reaction-add"
+          onClick={() => setPickerOpen((v) => !v)}
+          aria-label="Add reaction"
+        >
+          +
+        </button>
+        {pickerOpen && (
+          <div className="reaction-picker">
+            {REACTION_CHOICES.map((kind) => (
+              <button
+                key={kind}
+                className="reaction-choice"
+                onClick={() => void toggleEmoji(kind)}
+                disabled={reactionBusy === kind}
+                aria-label={`Add ${kind} reaction`}
+              >
+                {kind}
+              </button>
+            ))}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+function TargetIcon() {
+  return (
+    <svg viewBox="0 0 16 16" aria-hidden="true">
+      <circle cx="8" cy="8" r="5" />
+      <circle cx="8" cy="8" r="1.5" />
+      <path d="M8 1.5v2M8 12.5v2M1.5 8h2M12.5 8h2" />
+    </svg>
+  );
+}
+
+function CopyIcon() {
+  return (
+    <svg viewBox="0 0 16 16" aria-hidden="true">
+      <rect x="5" y="5" width="8" height="8" rx="1.4" />
+      <path d="M3 10.5V3.8C3 3.4 3.4 3 3.8 3h6.7" />
+    </svg>
+  );
+}
+
+function CheckIcon() {
+  return (
+    <svg viewBox="0 0 16 16" aria-hidden="true">
+      <path d="M3 8.4 6.4 12 13 4" />
+    </svg>
+  );
+}
+
+function AlertIcon() {
+  return (
+    <svg viewBox="0 0 16 16" aria-hidden="true">
+      <path d="M8 2.5 14 13H2L8 2.5Z" />
+      <path d="M8 6v3M8 11.5h.01" />
+    </svg>
   );
 }
 
