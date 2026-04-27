@@ -50,6 +50,16 @@ const SCHEMA = `
     PRIMARY KEY (lens_id, user_id, kind)
   );
 
+  CREATE TABLE IF NOT EXISTS reports (
+    id TEXT PRIMARY KEY,
+    lens_id TEXT NOT NULL,
+    reporter_id TEXT NOT NULL,
+    reason TEXT NOT NULL DEFAULT 'user_report',
+    created_at INTEGER NOT NULL
+  );
+  CREATE INDEX IF NOT EXISTS idx_reports_lens ON reports(lens_id, created_at);
+  CREATE INDEX IF NOT EXISTS idx_reports_reporter ON reports(reporter_id, created_at);
+
   CREATE TABLE IF NOT EXISTS user_preferences (
     user_id TEXT PRIMARY KEY,
     reading_mode TEXT NOT NULL DEFAULT 'quiet',

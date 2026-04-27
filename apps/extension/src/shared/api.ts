@@ -84,3 +84,24 @@ export async function toggleReaction(
   }
   return (await res.json()) as ReactionResult;
 }
+
+export interface ReportResult {
+  reportId: string;
+  lensId: string;
+}
+
+export async function reportLens(lensId: string, token: string): Promise<ReportResult> {
+  const res = await fetch(`${API_BASE}/api/reports`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${token}`,
+    },
+    body: JSON.stringify({ lensId, reason: "user_report" }),
+  });
+  if (!res.ok) {
+    const txt = await res.text();
+    throw new Error(`reportLens ${res.status}: ${txt}`);
+  }
+  return (await res.json()) as ReportResult;
+}

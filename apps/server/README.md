@@ -20,6 +20,8 @@ bun run issue-invite -- --by founder    # mint an invite, copy the code
 | POST | `/api/redeem` | – | `{ code, handle }` | `{ userId, handle, token }` |
 | GET | `/api/lenses` | bearer | `?room=<sha256>` | `{ lenses: [...] }` |
 | POST | `/api/lenses` | bearer | `{ roomId, url, type, body, anchor, tags?, refs?, anonymous? }` | `{ lens }` |
+| POST | `/api/reactions` | bearer | `{ lensId, kind }` | `{ lensId, kind, selected, reactions, myReactions }` |
+| POST | `/api/reports` | bearer | `{ lensId, reason? }` | `{ reportId, lensId }` |
 
 ## WebSocket
 
@@ -58,7 +60,6 @@ Bearer tokens are JWT-shaped (`base64url(header).base64url(payload).base64url(si
 
 ## What this skeleton does NOT do yet
 
-- Reactions endpoint
 - Preferences endpoints (reading mode sync)
 - Companion mode (matching, emoji toss, chat layer)
 - Rate limiting

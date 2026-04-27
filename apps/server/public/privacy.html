@@ -1,0 +1,128 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Lumen Privacy Policy</title>
+<style>
+  :root {
+    --bg: #fafafa;
+    --card: #fff;
+    --border: #e8e2ef;
+    --fg: #1f1a24;
+    --muted: #6f6578;
+    --accent: #4a1a7a;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--fg);
+    font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+    line-height: 1.55;
+  }
+  main {
+    max-width: 760px;
+    margin: 0 auto;
+    padding: 36px 22px 64px;
+  }
+  h1 {
+    margin: 0 0 6px;
+    color: var(--accent);
+    font-size: 28px;
+    letter-spacing: -0.02em;
+  }
+  .updated {
+    margin: 0 0 24px;
+    color: var(--muted);
+    font-size: 13px;
+  }
+  section {
+    margin: 14px 0;
+    padding: 18px 20px;
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    background: var(--card);
+  }
+  h2 {
+    margin: 0 0 8px;
+    font-size: 15px;
+  }
+  p, ul {
+    margin: 8px 0 0;
+    font-size: 14px;
+  }
+  ul { padding-left: 20px; }
+  a { color: var(--accent); }
+  code {
+    padding: 1px 4px;
+    border-radius: 4px;
+    background: #f3edf9;
+    color: var(--accent);
+    font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+    font-size: 0.92em;
+  }
+</style>
+</head>
+<body>
+<main>
+  <h1>Lumen Privacy Policy</h1>
+  <p class="updated">Last updated: April 27, 2026. This policy is written for the invite-only Lumen v2 beta.</p>
+
+  <section>
+    <h2>Short Version</h2>
+    <p>Lumen stores the Lens cards you create, the page they belong to, your handle, reactions, reports, and basic room presence needed to make the extension work. Anonymous Lens are anonymous to other users, not to the server operator.</p>
+  </section>
+
+  <section>
+    <h2>What We Collect</h2>
+    <ul>
+      <li>Your invite redemption data: handle, user id, invite code usage, and bearer token metadata.</li>
+      <li>Lens data: body text, type, tags, references, anchor quote/position data, URL, room id, author id, anonymous flag, and creation time.</li>
+      <li>Reaction and report data: which user reacted to or reported which Lens, plus timestamps.</li>
+      <li>Presence data while a tab is connected by WebSocket, such as the room id and user id needed to show who is currently there.</li>
+    </ul>
+  </section>
+
+  <section>
+    <h2>URLs And Rooms</h2>
+    <p>When the extension runs on an allowed page, it canonicalizes the page URL and derives a room id from it. Lens creation sends the canonical URL and room id to the server so other invited users on the same page can see the same Lens layer.</p>
+  </section>
+
+  <section>
+    <h2>Anonymous Lens</h2>
+    <p>If you post with the anonymous toggle on, other users see the author as <code>Anonymous</code>. The server still records your real user id for moderation and abuse handling. This is not zero-knowledge or operator-blind anonymity.</p>
+  </section>
+
+  <section>
+    <h2>Reports</h2>
+    <p>When you report a Lens, the server stores the reported Lens id, your user id, a reason value, and the time of the report. Reports are used only to help the operator review beta content.</p>
+  </section>
+
+  <section>
+    <h2>Who Can See The Data</h2>
+    <p>Other invited users can see non-hidden Lens content, public handles, anonymous display names, tags, references, and reactions in the rooms they visit. The server operator can access stored records for development, debugging, moderation, and backup.</p>
+  </section>
+
+  <section>
+    <h2>What We Do Not Do</h2>
+    <ul>
+      <li>We do not sell beta data.</li>
+      <li>We do not use visible AI-authored Lens as fake user content.</li>
+      <li>We do not run a public signup flow in this beta.</li>
+      <li>We do not claim anonymous Lens are unlinkable from the operator.</li>
+    </ul>
+  </section>
+
+  <section>
+    <h2>Retention</h2>
+    <p>Lens are designed to persist on a page during the beta. Operational records may be kept as long as needed to run the beta, debug the system, moderate content, and evaluate whether Lumen should continue.</p>
+  </section>
+
+  <section>
+    <h2>Questions Or Removal</h2>
+    <p>If you are in the invite-only beta and want a Lens removed or have a privacy question, contact the project operator through the beta group channel.</p>
+  </section>
+</main>
+</body>
+</html>

@@ -264,3 +264,28 @@ export async function handleToggleReaction(
 
   return json({ lensId: body.lensId, kind: body.kind, selected, reactions, myReactions });
 }
+
+// --- POST /api/reports ------------------------------------------------------
+
+const findLens = db.query<{ id: string }, [string]>(
+  "SELECT id FROM lenses WHERE id = ?",
+);
+
+const insertReport = db.query<unknown, [string, string, string, string, number]>(
+  "INSERT INTO reports (id, lens_id, reporter_id, reason, created_at) VALUES (?, ?, ?, ?, ?)",
+);
+
+export async function handleCreateReport(req: Request, user: TokenPayload): Promise<Response> {
+  const body = (await req.json().catch(() => null)) as { lensId?: string; reason?: string } | null;
+  if (!body?.lensId) return json({ error: "lensId required" }, 400);
+
+  const lens = findLens.get(body.lensId);
+  if (!lens) return json({ error: "lens not found" }, 404);
+
+  const reason = (body.reason ?? "user_report").trim().slice(0, 120) || "user_report";
+  const id = ulid();
+  const now = Date.now();
+  insertReport.run(id, body.lensId, user.sub, reason, now);
+
+  return json({ reportId: id, lensId: body.lensId }, 201);
+}

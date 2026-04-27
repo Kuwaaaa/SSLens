@@ -15,8 +15,15 @@ import { WebSocket as ReconnectingWS } from "partysocket";
 import { REACTION_KINDS, type Lens, type LensType, type ReactionKind, type ReadingMode } from "@lumen/schema";
 
 import { canonicalizeUrl, roomIdFor } from "./shared/canonicalize";
-import { getReadingMode, getToken, KEY_READING_MODE } from "./shared/storage";
-import { fetchLensesForRoom, createLens, toggleReaction } from "./shared/api";
+import {
+  getReadingMode,
+  getSiteHidden,
+  getToken,
+  KEY_HIDDEN_SITES,
+  KEY_READING_MODE,
+  normalizeHost,
+} from "./shared/storage";
+import { fetchLensesForRoom, createLens, reportLens, toggleReaction } from "./shared/api";
 import { WS_BASE } from "./shared/config";
 import { createAnchor, restoreAnchor } from "@lumen/anchoring";
 import {
@@ -52,6 +59,14 @@ interface CardPosition {
 const CARD_WIDTH = 340;
 const CARD_HEIGHT_ESTIMATE = 280;
 const VIEWPORT_GUTTER = 8;
+
+function hostForUrl(input: string): string {
+  try {
+    return normalizeHost(new URL(input).hostname);
+  } catch {
+    return normalizeHost(window.location.hostname);
+  }
+}
 
 function clamp(n: number, min: number, max: number): number {
   return Math.max(min, Math.min(max, n));
@@ -90,6 +105,7 @@ function shouldShowInMode(lens: Lens, mode: ReadingMode): boolean {
 }
 
 function Overlay({ url, roomId, canonical }: { url: string; roomId: string; canonical: string }) {
+  const siteHost = useMemo(() => hostForUrl(canonical || url), [canonical, url]);
   const [lenses, setLenses] = useState<Lens[]>([]);
   // --- Orphan handling ---
   // When restoreAnchor() returns null (DOM has shifted too much for any of
@@ -115,6 +131,9 @@ function Overlay({ url, roomId, canonical }: { url: string; roomId: string; cano
   const [composerOpen, setComposerOpen] = useState(false);
   const [token, setToken] = useState<string | null>(null);
   const [readingMode, setReadingMode] = useState<ReadingMode>("quiet");
+  const [siteHidden, setSiteHiddenState] = useState(false);
+  const [tabHidden, setTabHidden] = useState(false);
+  const [settingsReady, setSettingsReady] = useState(false);
   const [wsConnected, setWsConnected] = useState(false);
   const [panelOpen, setPanelOpen] = useState(false);
 
@@ -135,25 +154,59 @@ function Overlay({ url, roomId, canonical }: { url: string; roomId: string; cano
     setBlooms((b) => b.filter((x) => x.id !== id));
   }, []);
 
-  // Load token + reading mode
-  useEffect(() => {
-    getToken().then(setToken);
-    getReadingMode().then(setReadingMode);
-  }, []);
+  const lumenHidden = siteHidden || tabHidden;
 
-  // Listen for mode changes from popup (or another tab)
+  // Load token + reading mode + site visibility.
+  useEffect(() => {
+    let cancelled = false;
+    Promise.all([getToken(), getReadingMode(), getSiteHidden(siteHost)])
+      .then(([nextToken, nextMode, hidden]) => {
+        if (cancelled) return;
+        setToken(nextToken);
+        setReadingMode(nextMode);
+        setSiteHiddenState(hidden);
+      })
+      .catch((err) => {
+        console.warn("[Lumen] settings load failed:", err);
+      })
+      .finally(() => {
+        if (!cancelled) setSettingsReady(true);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [siteHost]);
+
+  // Listen for popup changes.
   useEffect(() => {
     const handler = (changes: Record<string, chrome.storage.StorageChange>) => {
       const c = changes[KEY_READING_MODE];
       if (c) setReadingMode((c.newValue as ReadingMode | undefined) ?? "quiet");
+      const hidden = changes[KEY_HIDDEN_SITES];
+      if (hidden) {
+        const next = (hidden.newValue as Record<string, boolean> | undefined) ?? {};
+        setSiteHiddenState(next[siteHost] === true);
+      }
     };
     chrome.storage.onChanged.addListener(handler);
     return () => chrome.storage.onChanged.removeListener(handler);
-  }, []);
+  }, [siteHost]);
+
+  useEffect(() => {
+    if (!lumenHidden) return;
+    clearAllHighlights();
+    setPanelOpen(false);
+    setActiveLens(null);
+    setDraft(null);
+    setComposerOpen(false);
+    setPresence([]);
+    setWsConnected(false);
+    setBlooms([]);
+  }, [lumenHidden]);
 
   // Initial fetch: hydrate ranges + orphan set
   useEffect(() => {
-    if (!token) return;
+    if (!token || lumenHidden) return;
     let cancelled = false;
     fetchLensesForRoom(roomId, token)
       .then((ls) => {
@@ -174,11 +227,11 @@ function Overlay({ url, roomId, canonical }: { url: string; roomId: string; cano
       anchorRanges.current.clear();
       clearAllHighlights();
     };
-  }, [token, roomId]);
+  }, [token, roomId, lumenHidden]);
 
   // WebSocket
   useEffect(() => {
-    if (!token) return;
+    if (!token || lumenHidden) return;
     const ws = new ReconnectingWS(`${WS_BASE}/ws?token=${encodeURIComponent(token)}`);
 
     ws.addEventListener("open", () => {
@@ -234,13 +287,14 @@ function Overlay({ url, roomId, canonical }: { url: string; roomId: string; cano
 
     return () => {
       ws.close();
+      setWsConnected(false);
     };
-  }, [token, roomId]);
+  }, [token, roomId, lumenHidden]);
 
   // Visible lenses = not orphan + passes mode filter
   const visibleLenses = useMemo(
-    () => lenses.filter((l) => !orphanIds.has(l.id) && shouldShowInMode(l, readingMode)),
-    [lenses, orphanIds, readingMode],
+    () => lumenHidden ? [] : lenses.filter((l) => !orphanIds.has(l.id) && shouldShowInMode(l, readingMode)),
+    [lenses, lumenHidden, orphanIds, readingMode],
   );
 
   // Apply highlights for visible lenses, clear hidden ones
@@ -260,8 +314,19 @@ function Overlay({ url, roomId, canonical }: { url: string; roomId: string; cano
     }
   }, [activeLens, lenses]);
 
+  useEffect(() => {
+    function onKeyDown(e: KeyboardEvent) {
+      if (e.key === "Escape") {
+        setActiveLens(null);
+      }
+    }
+    document.addEventListener("keydown", onKeyDown);
+    return () => document.removeEventListener("keydown", onKeyDown);
+  }, []);
+
   // Capture text selection
   useEffect(() => {
+    if (lumenHidden) return;
     function onMouseUp(e: MouseEvent) {
       const target = e.target as Node | null;
       if (target && (target as Element).closest?.("#lumen-root, [data-lumen-overlay]")) return;
@@ -281,10 +346,11 @@ function Overlay({ url, roomId, canonical }: { url: string; roomId: string; cano
     }
     document.addEventListener("mouseup", onMouseUp);
     return () => document.removeEventListener("mouseup", onMouseUp);
-  }, []);
+  }, [lumenHidden]);
 
   // Click handler for highlights
   useEffect(() => {
+    if (lumenHidden) return;
     function onClick(e: MouseEvent) {
       const target = e.target as Node | null;
       if (target && (target as Element).closest?.("#lumen-root, [data-lumen-overlay]")) return;
@@ -292,11 +358,13 @@ function Overlay({ url, roomId, canonical }: { url: string; roomId: string; cano
       if (id) {
         setActiveLens({ rootId: id, childIds: [] });
         setDraft(null);
+      } else {
+        setActiveLens(null);
       }
     }
     document.addEventListener("click", onClick);
     return () => document.removeEventListener("click", onClick);
-  }, []);
+  }, [lumenHidden]);
 
   async function publish(input: { type: LensType; body: string; tags: string[]; anonymous: boolean }) {
     if (!token || !draft) return;
@@ -318,6 +386,9 @@ function Overlay({ url, roomId, canonical }: { url: string; roomId: string; cano
     window.getSelection()?.removeAllRanges();
   }
 
+  if (!settingsReady) return null;
+  if (tabHidden) return <RestoreTabButton onClick={() => setTabHidden(false)} />;
+  if (lumenHidden) return null;
   if (!token) return <NoTokenHint />;
 
   const activeLensStack = activeLens
@@ -370,6 +441,11 @@ function Overlay({ url, roomId, canonical }: { url: string; roomId: string; cano
     )));
   }
 
+  async function reportLensById(id: string) {
+    if (!token) return;
+    await reportLens(id, token);
+  }
+
   return (
     <>
       <Orb
@@ -385,7 +461,10 @@ function Overlay({ url, roomId, canonical }: { url: string; roomId: string; cano
           visible={visibleLenses.length}
           hidden={hiddenCount}
           orphanLenses={lenses.filter((l) => orphanIds.has(l.id))}
+          currentLens={activeLensStack[activeLensStack.length - 1] ?? null}
           onClose={() => setPanelOpen(false)}
+          onHideTab={() => setTabHidden(true)}
+          onReport={reportLensById}
         />
       )}
       {draft && !composerOpen && (
@@ -407,7 +486,6 @@ function Overlay({ url, roomId, canonical }: { url: string; roomId: string; cano
           lenses={activeLensStack}
           rootAnchorRange={activeLensRange}
           hasAnchor={(id) => anchorRanges.current.has(id)}
-          onClose={() => setActiveLens(null)}
           onJumpToAnchor={jumpToLensAnchor}
           knownLenses={lenses}
           onLensClick={openReferencedLens}
@@ -450,14 +528,72 @@ function InfoPanel({
   visible,
   hidden,
   orphanLenses,
+  currentLens,
   onClose,
+  onHideTab,
+  onReport,
 }: {
   mode: ReadingMode;
   visible: number;
   hidden: number;
   orphanLenses: Lens[];
+  currentLens: Lens | null;
   onClose: () => void;
+  onHideTab: () => void;
+  onReport: (id: string) => void | Promise<void>;
 }) {
+  const [copyState, setCopyState] = useState<"idle" | "copied" | "failed">("idle");
+  const [reportState, setReportState] = useState<"idle" | "reported" | "failed">("idle");
+  const copyResetTimer = useRef<number | null>(null);
+  const reportResetTimer = useRef<number | null>(null);
+
+  useEffect(() => {
+    setCopyState("idle");
+    setReportState("idle");
+  }, [currentLens?.id]);
+
+  useEffect(() => {
+    return () => {
+      if (copyResetTimer.current !== null) window.clearTimeout(copyResetTimer.current);
+      if (reportResetTimer.current !== null) window.clearTimeout(reportResetTimer.current);
+    };
+  }, []);
+
+  async function copyRef() {
+    if (!currentLens) return;
+    try {
+      await writeClipboardText(`[[lens:${currentLens.id}]]`);
+      setCopyState("copied");
+    } catch {
+      setCopyState("failed");
+    }
+    if (copyResetTimer.current !== null) window.clearTimeout(copyResetTimer.current);
+    copyResetTimer.current = window.setTimeout(() => setCopyState("idle"), 1400);
+  }
+
+  async function report() {
+    if (!currentLens) return;
+    try {
+      await onReport(currentLens.id);
+      setReportState("reported");
+    } catch {
+      setReportState("failed");
+    }
+    if (reportResetTimer.current !== null) window.clearTimeout(reportResetTimer.current);
+    reportResetTimer.current = window.setTimeout(() => setReportState("idle"), 1800);
+  }
+
+  const copyLabel = copyState === "copied"
+    ? "Copied"
+    : copyState === "failed"
+      ? "Copy failed"
+      : "Copy reference";
+  const reportLabel = reportState === "reported"
+    ? "Reported"
+    : reportState === "failed"
+      ? "Report failed"
+      : "Report";
+
   return (
     <section className="info-panel" data-lumen-overlay="">
       <div className="ip-header">
@@ -482,6 +618,36 @@ function InfoPanel({
           <div className="ip-row muted">{orphanLenses.length} lost their anchor</div>
         )}
       </div>
+
+      <div className="ip-section">
+        <button className="ip-action" onClick={onHideTab}>Hide on this tab</button>
+      </div>
+
+      {currentLens && (
+        <div className="ip-section">
+          <div className="ip-label">Current lens</div>
+          <div className="ip-row">
+            <span className="ip-current-meta">
+              <span className="pill">{currentLens.type}</span>
+              <span>@{currentLens.author?.handle ?? "unknown"}</span>
+            </span>
+          </div>
+          <div className="ip-actions">
+            <button
+              className={copyState === "copied" ? "success" : copyState === "failed" ? "danger" : ""}
+              onClick={() => void copyRef()}
+            >
+              {copyLabel}
+            </button>
+            <button
+              className={`report ${reportState === "reported" ? "success" : reportState === "failed" ? "danger" : ""}`}
+              onClick={() => void report()}
+            >
+              {reportLabel}
+            </button>
+          </div>
+        </div>
+      )}
 
       {orphanLenses.length > 0 && (
         <div className="ip-section">
@@ -514,6 +680,14 @@ function NoTokenHint() {
         Click the extension icon to redeem an invite, then reload this page.
       </div>
     </div>
+  );
+}
+
+function RestoreTabButton({ onClick }: { onClick: () => void }) {
+  return (
+    <button className="restore-tab" onClick={onClick} data-lumen-overlay="">
+      Show Lumen
+    </button>
   );
 }
 
@@ -627,7 +801,6 @@ function LensCard({
   lenses,
   rootAnchorRange,
   hasAnchor,
-  onClose,
   onJumpToAnchor,
   knownLenses,
   onLensClick,
@@ -637,7 +810,6 @@ function LensCard({
   lenses: Lens[];
   rootAnchorRange: Range | null;
   hasAnchor: (id: string) => boolean;
-  onClose: () => void;
   onJumpToAnchor: (id: string) => void;
   knownLenses?: Lens[];
   onLensClick?: (id: string) => void;
@@ -682,7 +854,6 @@ function LensCard({
 
   return (
     <section ref={sectionRef} className="card card-stack" style={position} data-lumen-overlay="">
-      <button className="close" onClick={onClose} aria-label="Close">×</button>
       {lenses.map((lens, index) => (
         <LensPanel
           key={`${lens.id}-${index}`}
@@ -716,28 +887,9 @@ function LensPanel({
   onReact: (id: string, kind: ReactionKind) => void | Promise<void>;
   onJumpToAnchor: () => void;
 }) {
-  const [copyState, setCopyState] = useState<"idle" | "copied" | "failed">("idle");
-  const copyResetTimer = useRef<number | null>(null);
   const quote = lens.anchor?.quote?.exact ?? "";
   const [reactionBusy, setReactionBusy] = useState<string | null>(null);
   const [pickerOpen, setPickerOpen] = useState(false);
-
-  useEffect(() => {
-    return () => {
-      if (copyResetTimer.current !== null) window.clearTimeout(copyResetTimer.current);
-    };
-  }, []);
-
-  async function copyRef() {
-    try {
-      await writeClipboardText(`[[lens:${lens.id}]]`);
-      setCopyState("copied");
-    } catch {
-      setCopyState("failed");
-    }
-    if (copyResetTimer.current !== null) window.clearTimeout(copyResetTimer.current);
-    copyResetTimer.current = window.setTimeout(() => setCopyState("idle"), 1400);
-  }
 
   async function toggleEmoji(kind: ReactionKind) {
     setReactionBusy(kind);
@@ -753,12 +905,6 @@ function LensPanel({
     (lens.reactions?.[kind] ?? 0) > 0 || (lens.myReactions?.includes(kind) ?? false)
   ));
 
-  const copyLabel = copyState === "copied"
-    ? "Copied"
-    : copyState === "failed"
-      ? "Copy failed"
-      : "Copy ref";
-
   return (
     <div className={depth === 0 ? "lens-panel" : "lens-panel ref-panel"}>
       {depth > 0 && <div className="stack-label">Referenced lens</div>}
@@ -768,8 +914,8 @@ function LensPanel({
           <span key={t} className="pill" style={{ background: "#f0f0f0", color: "#555" }}>{t}</span>
         ))}
         <span>@{lens.author?.handle ?? "unknown"}</span>
-        <span className="card-actions">
-          {hasAnchor && (
+        {depth > 0 && hasAnchor && (
+          <span className="card-actions">
             <button
               className="icon-action jump-anchor"
               onClick={onJumpToAnchor}
@@ -778,16 +924,8 @@ function LensPanel({
             >
               <TargetIcon />
             </button>
-          )}
-          <button
-            className={`icon-action copy-ref ${copyState}`}
-            onClick={copyRef}
-            aria-label={copyLabel}
-            data-tooltip={copyLabel}
-          >
-            {copyState === "copied" ? <CheckIcon /> : copyState === "failed" ? <AlertIcon /> : <CopyIcon />}
-          </button>
-        </span>
+          </span>
+        )}
       </div>
       {quote && <div className="quote">"{quote.slice(0, 160)}"</div>}
       <div className="body">
@@ -843,32 +981,6 @@ function TargetIcon() {
       <circle cx="8" cy="8" r="5" />
       <circle cx="8" cy="8" r="1.5" />
       <path d="M8 1.5v2M8 12.5v2M1.5 8h2M12.5 8h2" />
-    </svg>
-  );
-}
-
-function CopyIcon() {
-  return (
-    <svg viewBox="0 0 16 16" aria-hidden="true">
-      <rect x="5" y="5" width="8" height="8" rx="1.4" />
-      <path d="M3 10.5V3.8C3 3.4 3.4 3 3.8 3h6.7" />
-    </svg>
-  );
-}
-
-function CheckIcon() {
-  return (
-    <svg viewBox="0 0 16 16" aria-hidden="true">
-      <path d="M3 8.4 6.4 12 13 4" />
-    </svg>
-  );
-}
-
-function AlertIcon() {
-  return (
-    <svg viewBox="0 0 16 16" aria-hidden="true">
-      <path d="M8 2.5 14 13H2L8 2.5Z" />
-      <path d="M8 6v3M8 11.5h.01" />
     </svg>
   );
 }

@@ -77,6 +77,18 @@ body {
   font-size: 12px;
 }
 
+.popup .privacy-link {
+  color: #6f6578;
+  font-size: 11px;
+  text-decoration: underline;
+  text-decoration-color: rgba(74, 26, 122, 0.35);
+  text-underline-offset: 2px;
+}
+
+.popup .privacy-link:hover {
+  color: #4a1a7a;
+}
+
 /* --- Reading mode picker --- */
 
 .popup .mode-section {
@@ -122,4 +134,23 @@ body {
   font-size: 11px;
   color: #888;
   margin: 4px 0 0;
+}
+
+.popup .site-toggle {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 8px;
+  padding-top: 10px;
+  border-top: 1px solid #eee;
+  color: #4a1a7a;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.popup .site-toggle input {
+  width: 14px;
+  height: 14px;
+  margin: 0;
+  accent-color: #4a1a7a;
 }

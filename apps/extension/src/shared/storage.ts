@@ -7,6 +7,7 @@ import type { ReadingMode } from "@lumen/schema";
 const KEY_TOKEN = "lumen.token";
 const KEY_USER = "lumen.user";
 export const KEY_READING_MODE = "lumen.readingMode";
+export const KEY_HIDDEN_SITES = "lumen.hiddenSites";
 
 export interface StoredUser {
   userId: string;
@@ -42,4 +43,26 @@ export async function getReadingMode(): Promise<ReadingMode> {
 
 export async function setReadingMode(mode: ReadingMode): Promise<void> {
   await chrome.storage.local.set({ [KEY_READING_MODE]: mode });
+}
+
+export async function getSiteHidden(host: string): Promise<boolean> {
+  const key = normalizeHost(host);
+  if (!key) return false;
+  const r = await chrome.storage.local.get(KEY_HIDDEN_SITES);
+  const hidden = (r[KEY_HIDDEN_SITES] as Record<string, boolean> | undefined) ?? {};
+  return hidden[key] === true;
+}
+
+export async function setSiteHidden(host: string, value: boolean): Promise<void> {
+  const key = normalizeHost(host);
+  if (!key) return;
+  const r = await chrome.storage.local.get(KEY_HIDDEN_SITES);
+  const hidden = { ...((r[KEY_HIDDEN_SITES] as Record<string, boolean> | undefined) ?? {}) };
+  if (value) hidden[key] = true;
+  else delete hidden[key];
+  await chrome.storage.local.set({ [KEY_HIDDEN_SITES]: hidden });
+}
+
+export function normalizeHost(host: string): string {
+  return host.trim().toLowerCase().replace(/^www\./, "");
 }

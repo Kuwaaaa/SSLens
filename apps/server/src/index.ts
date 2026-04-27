@@ -5,6 +5,7 @@ import {
   handleListLenses,
   handleCreateLens,
   handleToggleReaction,
+  handleCreateReport,
 } from "./routes.ts";
 import { handleUpgrade, websocket, setServerRef } from "./ws.ts";
 import { verifyToken, type TokenPayload } from "./auth.ts";
@@ -40,6 +41,13 @@ const server = Bun.serve({
       return json({ ok: true });
     }
 
+    if (req.method === "GET" && url.pathname === "/privacy") {
+      const file = Bun.file("apps/server/public/privacy.html");
+      return new Response(file, {
+        headers: { "Content-Type": "text/html; charset=utf-8" },
+      });
+    }
+
     if (req.method === "GET" && (url.pathname === "/" || url.pathname === "/admin")) {
       const file = Bun.file("apps/server/public/index.html");
       return new Response(file, {
@@ -62,6 +70,10 @@ const server = Bun.serve({
 
       if (url.pathname === "/api/reactions" && req.method === "POST") {
         return await handleToggleReaction(req, user, srv);
+      }
+
+      if (url.pathname === "/api/reports" && req.method === "POST") {
+        return await handleCreateReport(req, user);
       }
 
       return json({ error: "not_found" }, 404);

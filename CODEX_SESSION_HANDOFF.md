@@ -2,132 +2,178 @@
 
 Date: 2026-04-27
 Branch: `codex`
+Last committed baseline: `6c88195 Stabilize Lens interactions and reactions`
 
 ## Read First
 
-Before changing code, read `AGENTS.md`, then the core docs listed there. The most important product constraint remains: Lumen v2 is a quiet, card-based UGC layer that makes webpages feel inhabited. Do not add AI-authored visible content, knowledge-graph UI, reputation, or default floating/danmaku UI.
+Before changing code, read `AGENTS.md`, then the core docs listed there. The product constraint remains: Lumen v2 is a quiet, card-based UGC layer that makes webpages feel inhabited. Do not add AI-authored visible content, knowledge-graph UI, reputation, or default floating/danmaku UI.
 
 Respond to the user in Chinese unless they switch language. Code and repo docs should stay English.
 
 ## Current Working Tree
 
-This session modified:
+This handoff describes the uncommitted work after `6c88195`.
 
+Modified files:
+
+- `apps/extension/README.md`
 - `apps/extension/src/content.tsx`
+- `apps/extension/src/popup.css`
+- `apps/extension/src/popup.tsx`
 - `apps/extension/src/shared/api.ts`
+- `apps/extension/src/shared/storage.ts`
 - `apps/extension/src/styles.css`
+- `apps/server/README.md`
+- `apps/server/public/index.html`
+- `apps/server/src/db.ts`
 - `apps/server/src/index.ts`
 - `apps/server/src/routes.ts`
-- `packages/schema/src/index.ts`
 
-No commit has been made.
+New file:
 
-## Features Implemented In This Session
+- `apps/server/public/privacy.html`
 
-### Composer anonymous toggle
+No commit has been made for these changes yet.
 
-Composer now has a `Post as Anonymous` checkbox. It sends `anonymous` in the create Lens payload. Server support already existed.
+## Implemented In This Uncommitted Work
 
-### Lens copy ref
+### Hide controls
 
-Lens cards now expose copy-ref behavior for `[[lens:id]]`. The UI later changed from text button to icon button with custom tooltip.
+Per-tab hide:
 
-### Reference card stack
+- InfoPanel has `Hide on this tab`.
+- This is local content-script state, not persisted.
+- It hides markers, card stack, composer/create button, orb/panel, presence, WS state, and blooms.
+- Because the popup cannot see tab-local state, tab hide now leaves a small `Show Lumen` restore pill in the page bottom-right.
 
-Previous behavior: clicking `[[lens:A]]` reused the anchor-based LensCard position, so if A was offscreen the user had to scroll manually.
+Per-site hide:
 
-Current behavior:
+- Popup has `Hide on <host>` checkbox.
+- Stored in `chrome.storage.local` under `lumen.hiddenSites`.
+- `normalizeHost()` strips `www.` and lowercases hosts.
+- Content script listens to storage changes and hides/shows without full extension reload.
 
-- Marker click opens a root Lens card anchored near the highlighted text.
-- Clicking an inline Lens reference expands a `Referenced lens` child panel inside the same card stack.
-- Child Lens panels do not use mouse position as their spatial anchor.
-- `View anchor` moves that Lens to root and scrolls the page to its original anchor.
-- The stack no longer remounts when child refs are added, preventing the "card disappears then reappears" flicker.
+Important caveat:
 
-Important implementation notes:
+- If the user says "popup says it is not hidden but page is blank", check tab-level hide first and look for the `Show Lumen` pill.
 
-- `activeLens` is now a stack shape: `{ rootId, childIds }`.
-- `LensCard` receives `lenses`, `rootAnchorRange`, `hasAnchor`, `onJumpToAnchor`, `onLensClick`, and `onReact`.
-- `RenderBody` lens ref callback is back to `(lensId) => void`, not `(lensId, rect) => void`.
-
-### Icon actions and tooltips
-
-`View anchor` and `Copy ref` are now icon-only actions.
-
-- Do not use native `title`, because it caused duplicate tooltips.
-- Custom tooltip uses `data-tooltip`.
-- Tooltip is positioned below the icon to avoid clipping at the top of the card.
-
-### Emoji reactions
-
-A Telegram-like reaction MVP has been implemented.
+### Report button stub
 
 Backend:
 
-- `POST /api/reactions` toggles a user's reaction for a Lens.
-- `GET /api/lenses` now includes:
-  - `reactions: Record<string, number>`
-  - `myReactions: string[]`
-  - placeholder `replyCount: 0`, `saveCount: 0`
-- Server broadcasts `reaction_updated` over the room topic with `{ lensId, reactions }`.
-- Reaction allowlist lives in `apps/server/src/routes.ts` as `EMOJI_REACTIONS`.
+- `reports` table added in `apps/server/src/db.ts`.
+- `POST /api/reports` added in `apps/server/src/routes.ts`.
+- Request body: `{ lensId, reason? }`.
+- Response: `{ reportId, lensId }`.
+- Server verifies the Lens exists and records reporter id, Lens id, reason, timestamp.
+- No moderation dashboard, automation, notification, or broadcast yet.
 
 Frontend:
 
-- `toggleReaction()` was added in `apps/extension/src/shared/api.ts`.
-- Content script listens for `reaction_updated` and updates local Lens counts.
-- Each Lens panel shows existing or self-selected reactions plus a `+` button.
-- `+` opens a fixed emoji picker.
-- The user manually adjusted picker width so all emoji can be viewed without horizontal scrolling. Preserve that if editing `styles.css`.
-- Reaction choices live in `apps/extension/src/content.tsx` as `REACTION_CHOICES`. Keep server and extension lists in sync.
+- `reportLens()` added in `apps/extension/src/shared/api.ts`.
+- Report is no longer a top-level LensCard action. The user pushed back on tool-like card chrome.
+- Current UX: InfoPanel shows a `Current lens` section when a Lens is open, with `Copy reference` and `Report`.
 
-## Known Verification State
+### LensCard interaction cleanup
 
-The user is manually running builds locally. Do not spend time fighting the Codex shell unless needed.
+The user strongly preferred reducing tool UI on cards. Current decisions:
 
-Codex-side issues observed:
+- LensCard has no `X` close button.
+- LensCard has no `...` menu.
+- LensCard has no right-click menu.
+- Clicking blank page area closes the active card.
+- `Escape` closes the active card.
+- `View anchor` only appears on child/reference cards (`depth > 0 && hasAnchor`), not on the root card.
+- `Copy reference` and `Report` live in InfoPanel's `Current lens` section.
 
-- `bun run build:extension` is blocked because Codex's background Windows PowerShell still reports `CurrentUser Undefined` and effective policy `Restricted`, even after the user set `RemoteSigned` in their own shell.
-- Direct `bun.exe` invocation bypasses PowerShell policy but Vite/esbuild child process spawn may hit `EPERM` in the sandbox.
-- `tsc -p apps/extension/tsconfig.json --noEmit` is not clean due to existing repo issues:
-  - package files outside `rootDir`
-  - `LensAuthor` schema missing `handle` while server payload and extension use `author.handle`
+Important bug fixed:
 
-Do not interpret those existing typecheck failures as necessarily caused by the current session's feature work.
+- A `useEffect` for Escape handling was accidentally placed after early returns (`settingsReady`, `tabHidden`, `lumenHidden`, `token`).
+- That changed React hook order between renders and made the whole overlay disappear.
+- The fix was to move the hook before all early returns. If the overlay disappears again, first check for hooks after early returns in `Overlay`.
+
+### Privacy policy
+
+Added `apps/server/public/privacy.html` and served it from:
+
+- `GET /privacy`
+
+Added links:
+
+- Admin console subtitle links to `/privacy`.
+- Popup shows `Privacy` link before and after login.
+
+Policy intentionally stays short and beta-focused. It covers:
+
+- Stored Lens data.
+- URL canonicalization and room ids.
+- Anonymous Lens caveat: anonymous to other users, not to server operator.
+- Reports.
+- Operator access.
+- Data retention.
+- Removal/privacy questions through beta group channel.
+
+## Verification State
+
+Passing after the latest changes:
+
+- `cmd /c node_modules\.bin\tsc -p apps\extension\tsconfig.json --noEmit`
+- `cmd /c node_modules\.bin\tsc -p apps\server\tsconfig.json --noEmit`
+- `cmd /c bun run build:extension`
+
+Note:
+
+- `bun run build:extension` may need escalation in Codex because Vite/esbuild child process spawn can hit sandbox `EPERM`.
+- Git still prints warnings about being unable to access `C:\Users\l7867/.config/git/ignore`; this has not affected commits.
 
 ## Current Product State
 
-Most small P0 items are now done or in progress:
+Done or effectively done:
 
-- Done: anonymous toggle
-- Done: copy ref
-- Done: improved inter-Lens reference UX
-- Done: emoji reactions MVP
-- Still needed: hide controls
-- Still needed: report button stub
-- Still needed: privacy policy
-- Still needed: orphan re-anchor flow
-- Still needed: composer insert-reference picker
-- Still needed: companion mode
+- Invite redemption and token flow.
+- Lens creation and realtime broadcast.
+- Anchoring and CSS Highlight markers.
+- Reading modes.
+- Anonymous composer toggle.
+- Inter-Lens refs and card stack.
+- Copy reference via InfoPanel current Lens actions.
+- Emoji reactions MVP.
+- Hide controls: per-tab and per-site.
+- Report stub.
+- Privacy policy.
+
+Still needed:
+
+- Orphan re-anchor flow.
+- Composer insert-reference picker.
+- Companion mode.
+- Manual UX pass on the latest LensCard/InfoPanel behavior.
 
 ## Recommended Next Step
 
-Return to the P0 plan and implement hide controls:
+First, ask the user to test the latest overlay fix if they have not already:
 
-1. Per-tab hide in InfoPanel:
-   - Hide markers, card stack, composer/create button, and orb for the current tab/session.
-   - This should be a local content-script state first.
+- Refresh a whitelisted page.
+- Confirm orb/markers return.
+- Confirm tab hide shows the `Show Lumen` restore pill.
+- Confirm clicking blank page closes LensCard.
+- Confirm InfoPanel's `Current lens` actions appear when a Lens is open.
 
-2. Per-site hide in popup:
-   - Store host-level preference in `chrome.storage.local`.
-   - Content script should listen for storage changes and hide/show without requiring full extension reload where possible.
+Then implement orphan re-anchor MVP:
 
-After hide controls, do report button stub, then privacy policy, then companion mode.
+1. Add a `PATCH /api/lenses/:id/anchor` or `PATCH /api/lenses` endpoint guarded by author/operator rules as appropriate for beta.
+2. In InfoPanel orphan rows, add a low-key `Re-anchor` action.
+3. User selects text, confirms re-anchor, client creates a new anchor and patches the Lens.
+4. On success, remove Lens id from `orphanIds`, restore range, and apply highlight.
 
-## Caution For Next Session
+Keep it simple. Do not build a full review workflow yet.
 
-- Preserve the card-stack model for references. Do not go back to mouse-position ref previews.
-- Preserve icon-only actions for dense Lens panels.
-- If editing reaction choices, keep `REACTION_CHOICES` and `EMOJI_REACTIONS` synchronized.
-- Avoid adding broad docs unless explicitly asked. This handoff file exists because the user explicitly requested a session archive.
+## Cautions For Next Session
+
+- Do not put `useEffect`, `useMemo`, `useState`, or other hooks after early returns in React components.
+- Preserve the card-stack model for references. Do not return to mouse-position ref previews.
+- Keep LensCard as content-first. Avoid reintroducing visible tool chrome (`X`, `...`, top-level copy/report).
+- `Copy reference` and `Report` are intentionally in InfoPanel, not on the card.
+- If editing reactions, `REACTION_KINDS` is shared from `@lumen/schema`; do not duplicate lists in server/extension.
+- Avoid broad docs unless the user asks. This handoff exists because the user explicitly requested session archival.
 - Do not commit unless the user asks.
