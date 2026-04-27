@@ -46,17 +46,23 @@ When to refactor back to SW-hosted WS: if N tabs per user routinely exceeds 5–
 - `manifest.json` — MV3 manifest
 - `popup.html` + `src/popup.tsx` — popup UI (redeem invite, show identity)
 - `src/content.tsx` — content script: overlay, WS, anchoring, marker rendering
-- `src/anchoring.ts` — text-quote anchor (TODO: vendor `hypothesis/client`)
+- `@lumen/anchoring` (workspace package) — W3C selectors + `approx-string-match` fuzzy fallback
 - `src/marker.ts` — CSS Custom Highlight API rendering
 - `src/service-worker.ts` — minimal SW (WS does not live here in MVP)
 - `src/shared/` — API client, storage, URL canonicalization, config
 
 ## What is NOT yet implemented
 
-- Reading mode picker (Quiet / Thinking / Full)
-- Tag input on creation
-- `[[lens:id]]` / `[[url:...]]` reference rendering
 - Companion mode (Find companion button, emoji toss, chat layer)
-- Hypothesis-grade multi-selector anchoring (current is exact-match TextQuoteSelector)
 - GitHub OAuth badge
-- Anonymous flag UI
+- Anonymous flag UI in composer
+- Hide controls (per-tab / per-site Lumen toggle)
+- Re-anchor flow for orphan Lens (orphans are surfaced but not yet repairable)
+- Composer UI for inserting `[[lens:id]]` references (user types syntax manually for now)
+- Cross-page Lens lookup (referencing a Lens not on the current page renders as a disabled chip)
+
+## Deferred verifications
+
+These code paths are implemented but not yet manually confirmed end-to-end:
+
+- **Orphan Lens UI**: when `restoreAnchor()` returns null, the Lens should appear in InfoPanel's "Orphan lens" section. See the comment block in `src/content.tsx` near `orphanIds` for test recipes (admin console with bad anchor, Chrome Sources Overrides, direct SQLite edit).

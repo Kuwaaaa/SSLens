@@ -74,7 +74,7 @@ Done when: a Lens created in Browser A appears in Browser B within ~1s, on the s
 **Anchoring**:
 
 - Set up `packages/anchoring` workspace
-- Vendor `hypothesis/client/src/annotator/anchoring/` (~6 files); preserve license + attribution
+- Implement W3C TextPosition / TextQuote selectors in `packages/anchoring/src/` (~250 LOC owned in-tree)
 - Add `approx-string-match` dependency
 - Shim layer: `createAnchor(range)`, `restoreAnchor(selectorJson, root)` returning ranges or null
 - Use it in extension: serialize on Lens creation, restore on page load
@@ -164,20 +164,31 @@ This is **not** a scheduled event. It's "the door is open, come read whenever." 
 
 ### P0 (must have before soak start)
 
-- Invite code → handle → bearer token flow
-- Whitelisted URL injection (start with 1–3 essays)
-- Quick Lens + Question Lens creation (Poll, Fun, Knowledge can come later)
-- Real-time Lens broadcast within a room
-- Presence (who's here now) — only shown when ≥1 other person present
-- **Tags on Lens** (free-form input + suggested common tags)
-- **Reading modes** (Quiet default / Thinking / Full)
-- **References** (`[[lens:id]]` and `[[url:...]]` in Markdown body)
-- **Companion mode** (button + emoji toss + chat layer toggle)
-- Anchoring with multi-selector + CSS Highlight API
-- Hide Lens on page (per-tab toggle)
-- Hide Lens on site (persistent setting)
-- Report button (server-side stub OK; no automation)
-- Privacy policy
+Done:
+
+- ✅ Invite code → handle → bearer token flow
+- ✅ Whitelisted URL injection (5 essays in current allowlist)
+- ✅ All 7 Lens types in composer (Quick / Fun / Question / Poll / Knowledge / Challenge / Spoiler)
+- ✅ Real-time Lens broadcast within a room
+- ✅ Presence (who's here now) via `chrome.runtime.connect` port lifecycle
+- ✅ Tags on Lens (free-form input)
+- ✅ Reading modes (Quiet default / Thinking / Full) — set in popup, applied client-side
+- ✅ References (`[[lens:id]]` and `[[url:...]]` parse + chip/link rendering in card body)
+- ✅ Anchoring via `@lumen/anchoring` (TextPosition → TextQuote+context → fuzzy)
+- ✅ CSS Custom Highlight API rendering (no `<mark>` wrap)
+- ✅ Visual identity (12-shape outline-emission blooms on card open; 4-shape marker blooms on new Lens; universal popover entrance; respects `prefers-reduced-motion`) — see ARCHITECTURE.md §13
+- ✅ Orphan tracking (failed-to-anchor Lens surface in InfoPanel; manual UX verification deferred — recipes in `apps/extension/src/content.tsx`)
+
+Still needed before soak:
+
+- ⏳ Anonymous toggle in composer (schema + server already record `lens.anonymous`)
+- ⏳ Hide Lens on page (per-tab toggle)
+- ⏳ Hide Lens on site (persistent setting)
+- ⏳ LensCard "copy ref" button (so users can grab `[[lens:id]]` syntax)
+- ⏳ Report button (server-side stub OK; no automation needed)
+- ⏳ Companion mode (button + emoji toss + chat layer toggle) — the largest remaining block
+- ⏳ Privacy policy (1 page, plain English)
+- ⏳ Orphan re-anchor flow (orphans are visible, not yet repairable)
 
 ### P1 (next, after soak validates the shape)
 

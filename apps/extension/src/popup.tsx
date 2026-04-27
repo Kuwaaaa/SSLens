@@ -1,12 +1,31 @@
 import { useEffect, useState } from "react";
 import { createRoot } from "react-dom/client";
+import type { ReadingMode } from "@lumen/schema";
 
 import { redeem } from "./shared/api";
-import { getToken, getUser, logout, setToken, setUser, type StoredUser } from "./shared/storage";
+import {
+  getReadingMode,
+  getToken,
+  getUser,
+  logout,
+  setReadingMode as saveReadingMode,
+  setToken,
+  setUser,
+  type StoredUser,
+} from "./shared/storage";
+
+const MODES: ReadingMode[] = ["quiet", "thinking", "full"];
+
+const MODE_DESCRIPTIONS: Record<ReadingMode, string> = {
+  quiet: "Minimal — knowledge & challenges only",
+  thinking: "Show questions, knowledge, challenges",
+  full: "Show everything — including jokes and polls",
+};
 
 function Popup() {
   const [token, setTok] = useState<string | null>(null);
   const [user, setU] = useState<StoredUser | null>(null);
+  const [mode, setMode] = useState<ReadingMode>("quiet");
   const [code, setCode] = useState("");
   const [handle, setHandle] = useState("");
   const [busy, setBusy] = useState(false);
@@ -15,6 +34,7 @@ function Popup() {
   useEffect(() => {
     getToken().then(setTok);
     getUser().then(setU);
+    getReadingMode().then(setMode);
   }, []);
 
   async function onRedeem() {
@@ -44,6 +64,11 @@ function Popup() {
     setU(null);
   }
 
+  async function onModeChange(m: ReadingMode) {
+    await saveReadingMode(m);
+    setMode(m);
+  }
+
   if (token && user) {
     return (
       <div className="popup">
@@ -51,8 +76,25 @@ function Popup() {
         <p>
           Logged in as <strong>{user.handle}</strong>
         </p>
+
+        <div className="mode-section">
+          <label>Reading mode</label>
+          <div className="mode-buttons">
+            {MODES.map((m) => (
+              <button
+                key={m}
+                className={`mode-btn ${mode === m ? "active" : ""}`}
+                onClick={() => onModeChange(m)}
+              >
+                {m}
+              </button>
+            ))}
+          </div>
+          <p className="mode-desc">{MODE_DESCRIPTIONS[mode]}</p>
+        </div>
+
         <p className="hint">
-          Open one of the whitelisted pages (e.g. paulgraham.com) to use the overlay.
+          Open one of the whitelisted pages to use the overlay.
         </p>
         <button className="secondary" onClick={onLogout}>Log out</button>
       </div>

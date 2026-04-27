@@ -32,7 +32,7 @@ Everything in this architecture exists to support that accumulation. Anything th
 | Backup | Litestream → R2 | Streaming SQLite replication |
 | Extension framework | Vite + MV3 + React + TypeScript | Carry over from v1 |
 | WS client (extension) | partysocket | ~3KB reconnecting WS, MV3-safe |
-| Anchoring | Vendored `hypothesis/client` anchoring + `approx-string-match` | Production-grade text anchoring without re-inventing |
+| Anchoring | `@lumen/anchoring` (W3C selectors + `approx-string-match`) | ~250 LOC owned in-tree, three-layer restore (position → quote → fuzzy) |
 | Highlight rendering | CSS Custom Highlight API | No DOM mutation, no React fights |
 
 Estimated monthly cost for 100 users: **~$8**.
@@ -206,9 +206,17 @@ If all three fail, the Lens enters `orphan` state and surfaces a "lost its ancho
 
 ### 6.2 Implementation
 
-Vendor `hypothesis/client/src/annotator/anchoring/` (~1500 LOC, BSD-2-Clause) into `packages/anchoring/vendor/hypothesis/`. Add a top-level shim in `packages/anchoring/src/` that exposes the API we actually use. Bring in `approx-string-match` for fuzzy fallback (Bitap algorithm, bounded edit distance).
+The `@lumen/anchoring` workspace package implements the W3C selectors in ~250 LOC of TypeScript we own, with `approx-string-match` (Bitap; the same primitive Hypothesis uses) as the only npm dep.
 
-Why vendor instead of `npm install`: the Hypothesis anchoring code is not separately published — it lives inside the client repo. Vendoring gives us the modification right we need for MV3-specific tweaks; the cost is tracking upstream bugfixes manually. License (BSD-2) and attribution preserved in the vendor directory.
+```ts
+import { createAnchor, restoreAnchor } from "@lumen/anchoring";
+const anchor = createAnchor(selectionRange);   // -> LensAnchor
+const range  = restoreAnchor(savedAnchor);     // -> Range | null
+```
+
+Restore order: TextPosition → TextQuote (prefix/suffix tie-breaking when multiple matches) → fuzzy (bounded edit distance) → orphan.
+
+This is a deliberate revision from the original "vendor `hypothesis/client/src/annotator/anchoring/`" proposal. On closer inspection that module pulls in hypothesis-internal utilities, type definitions, and PDF.js integration we don't need. A clean implementation following the same W3C model gives us the same algorithmic behavior (fuzzy matching uses the shared `approx-string-match` primitive) with code we own outright. Full rationale in `packages/anchoring/README.md`.
 
 ### 6.3 Highlight rendering
 
@@ -343,7 +351,7 @@ SStree/                            (currently SStree-v2, will be renamed)
 │   └── server/                    Bun backend
 ├── packages/
 │   ├── schema/                    shared types (Lens, User, Anchor, etc.)
-│   ├── anchoring/                 vendored Hypothesis + shim
+│   ├── anchoring/                 W3C selectors + `approx-string-match`
 │   └── lens-ui/                   shared React components (later, P1)
 ├── scripts/
 │   ├── issue-invite.ts            CLI to mint invite codes
@@ -360,8 +368,67 @@ SStree/                            (currently SStree-v2, will be renamed)
 |---|---|---|
 | Bun | https://bun.sh | 2026-Q1 |
 | partysocket | https://github.com/partykit/partykit/tree/main/packages/partysocket | 2026-Q1 |
-| hypothesis/client anchoring | https://github.com/hypothesis/client/tree/main/src/annotator/anchoring | 2026-02 |
 | approx-string-match | https://www.npmjs.com/package/approx-string-match | stable |
+| hypothesis/client anchoring (reference, not vendored) | https://github.com/hypothesis/client/tree/main/src/annotator/anchoring | inspiration for `@lumen/anchoring` |
+
+## 13. Visual identity (extension)
+
+The product is for young developers; the visual goal is **rich when engaged, invisible when not**. Animations and geometric flourishes appear on Lumen elements (cards, markers, popovers) — *never* on the article body itself.
+
+### 13.1 Palette
+
+| Color | Hex | Role |
+|---|---|---|
+| Deep purple | `#4a1a7a` | Primary chrome — borders, text, dotted underline marker |
+| Purple | `#8b5cf6` | Bloom primary (~45% of shapes) |
+| Deep purple variant | `#7c3aed` | Bloom secondary (~20%) |
+| Amber | `#f59e0b` | Live/active accent (~35%) |
+
+### 13.2 Forms (in increasing visual weight)
+
+| Element | Visual | Render path |
+|---|---|---|
+| Marker | Dotted underline + faint tint on selected text | CSS Custom Highlight API; no DOM mutation |
+| Orb | Bottom-right pill: lens count + presence dot + hidden/orphan badge | React, fixed position |
+| Popovers (Card, Composer, InfoPanel, CreateButton) | White cards with soft shadow | React, fixed position, `lumen-appear` entrance |
+| Bloom shapes | Small SVG primitives (circle, triangle, rotated square, plus, arc) | React, fixed position in viewport, `lumen-bloom` keyframe |
+
+### 13.3 Animation language
+
+- **Popover entrance**: `lumen-appear` — 4px slide-up + fade, 180ms, `cubic-bezier(0.2, 0.8, 0.2, 1)`
+- **Bloom**: `lumen-bloom` — 720ms, `cubic-bezier(0.16, 1, 0.3, 1)` (peak quickly, decay gently)
+- **All keyframe animations gated by** `@media (prefers-reduced-motion: reduce)` — non-negotiable
+- **Z-index discipline**: bloom layer sits one below popovers so shapes appear to "emerge from behind" cards
+
+### 13.4 Bloom triggers (the only places blooms fire)
+
+- **card-open**: `LensCard` mounts → `makeBloomSpec(rect, "card-open")` emits ~12 shapes from random points along the card outline. Stagger flows clockwise from the top edge: top → right → bottom → left over ~190ms. Each shape's kind, color, fill/outline, size, and rotation are randomized per emission so no two openings look identical.
+- **marker**: WebSocket `lens_created` arrives and `restoreAnchor` finds a Range → 4 small shapes pop along the marker's top edge, ~140ms stagger.
+
+Other triggers were considered and rejected for MVP:
+- *publish confirmation* — covered by the WS echo of one's own publish (which fires the marker bloom).
+- *scroll-into-view* — judged too noisy at 10–20 markers per page; could revisit with rate-limiting later.
+
+### 13.5 Tunable knobs
+
+In `apps/extension/src/shapes.tsx`:
+- `SPREAD` (default 55) — base pixels each shape travels from its emission point
+- `TOP_N` / `BOTTOM_N` / `SIDE_N` — emission counts per card edge
+- Delay constants inside `makeBloomSpec` — control stagger rhythm
+- `pickColor` / `pickOutlined` probabilities — color and fill mix
+
+In `apps/extension/src/styles.css`:
+- `lumen-bloom` duration (default 720ms)
+- `lumen-appear` duration (default 180ms)
+- Easing functions
+
+CSS is imported as `?inline` into the content script bundle — **changes require rebuild**, not just a stylesheet swap. The dev server (`bun run dev:extension`) auto-rebuilds; tab F5 picks up the new bundle.
+
+### 13.6 Future visual directions (not yet implemented)
+
+- **Outline trace** ("B option") — card border drawn via SVG `stroke-dashoffset` on open, ~450ms. More architectural, less particle motion.
+- **Continuous micro-motion** ("C option") — 2–3 shapes drift slowly near an open card (20s cycle); restricted to Full reading mode to stay within the "restraint" rule.
+- **Numeric typography** — swap `JetBrains Mono` (or similar) for the orb count, type pills, and ref-chip lens IDs. Body content stays sans (it's user-authored, not UI).
 | Caddy | https://caddyserver.com | 2026-Q1 |
 | Litestream | https://litestream.io | 2026-Q1 |
 | Paseto | https://paseto.io | spec stable |

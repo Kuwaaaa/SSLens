@@ -1,0 +1,11 @@
+{
+  "name": "@lumen/anchoring",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "main": "src/index.ts",
+  "dependencies": {
+    "@lumen/schema": "workspace:*",
+    "approx-string-match": "^2.0.0"
+  }
+}

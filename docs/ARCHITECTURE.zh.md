@@ -32,7 +32,7 @@ v2 MVP 成功的定义——邀请群体经过 ~4 周自由使用之后：
 | 备份 | Litestream → R2 | SQLite 流式复制 |
 | 扩展框架 | Vite + MV3 + React + TypeScript | 沿用 v1 |
 | 扩展 WS 客户端 | partysocket | ~3KB 的重连 WS 库，MV3 兼容 |
-| Anchoring | vendor `hypothesis/client` 的 anchoring 模块 + `approx-string-match` | 工业级文本锚定，不重写 |
+| Anchoring | `@lumen/anchoring`（W3C selectors + `approx-string-match`） | ~250 行自有代码，三层回退（position → quote → fuzzy） |
 | 高亮渲染 | CSS Custom Highlight API | 不动 DOM，不和 React 打架 |
 
 100 用户预估月成本：**~$8**。
@@ -205,9 +205,17 @@ content script 通过 `port = chrome.runtime.connect()` 接到 SW 的瞬间，SW
 
 ### 6.2 实现
 
-把 `hypothesis/client/src/annotator/anchoring/`（~1500 LOC，BSD-2-Clause）vendor 进 `packages/anchoring/vendor/hypothesis/`。在 `packages/anchoring/src/` 写一层薄壳暴露我们实际用的 API。引入 `approx-string-match` 做 fuzzy fallback（Bitap 算法，有界编辑距离）。
+`@lumen/anchoring` workspace 包用 ~250 行我们自有的 TypeScript 实现 W3C selector，唯一外部依赖是 `approx-string-match`（Bitap，Hypothesis 自己也用的同一原语）。
 
-为什么 vendor 不 npm install：Hypothesis 的 anchoring 模块**没有单独发包**——它在客户端仓库内部。vendor 给我们 MV3 相关微调的修改权，代价是手动跟 upstream 修 bug。许可（BSD-2）和归属在 vendor 目录里保留。
+```ts
+import { createAnchor, restoreAnchor } from "@lumen/anchoring";
+const anchor = createAnchor(selectionRange);   // -> LensAnchor
+const range  = restoreAnchor(savedAnchor);     // -> Range | null
+```
+
+恢复顺序：TextPosition → TextQuote（多候选时按 prefix/suffix 打分）→ fuzzy（有界编辑距离）→ orphan。
+
+这是对原"vendor `hypothesis/client/src/annotator/anchoring/`"方案的有意识修订。仔细看那个模块拖进了 hypothesis 内部工具模块、类型定义、PDF.js 集成——这些我们都不需要。按同样的 W3C 模型自己写一份，算法行为一致（fuzzy 共用 `approx-string-match` 原语），代码完全自有。详细理由见 `packages/anchoring/README.md`。
 
 ### 6.3 高亮渲染
 
@@ -342,7 +350,7 @@ SStree/                            （目前是 SStree-v2，等手动改名）
 │   └── server/                    Bun 后端
 ├── packages/
 │   ├── schema/                    共享类型（Lens、User 等）
-│   ├── anchoring/                 vendor 的 Hypothesis + 薄壳
+│   ├── anchoring/                 W3C selectors + `approx-string-match`
 │   └── lens-ui/                   共享 React 组件（P1 后期）
 ├── scripts/
 │   ├── issue-invite.ts            生成邀请码的 CLI
@@ -359,8 +367,67 @@ SStree/                            （目前是 SStree-v2，等手动改名）
 |---|---|---|
 | Bun | https://bun.sh | 2026-Q1 |
 | partysocket | https://github.com/partykit/partykit/tree/main/packages/partysocket | 2026-Q1 |
-| hypothesis/client anchoring | https://github.com/hypothesis/client/tree/main/src/annotator/anchoring | 2026-02 |
 | approx-string-match | https://www.npmjs.com/package/approx-string-match | stable |
+| hypothesis/client anchoring（参考，未 vendor） | https://github.com/hypothesis/client/tree/main/src/annotator/anchoring | `@lumen/anchoring` 的灵感来源 |
+
+## 13. 视觉识别（扩展）
+
+产品面向年轻开发者，视觉目标是 **被注视时丰富，未被注视时隐形**。动画和几何点缀只出现在 Lumen 自己的元素上（卡片、marker、浮层）——**绝不出现在文章正文里**。
+
+### 13.1 调色
+
+| 颜色 | Hex | 角色 |
+|---|---|---|
+| 深紫 | `#4a1a7a` | 主体 chrome——边框、文字、虚线下划线 marker |
+| 紫 | `#8b5cf6` | Bloom 主色（约 45% 的色块） |
+| 深紫变体 | `#7c3aed` | Bloom 次色（约 20%） |
+| 琥珀 | `#f59e0b` | live / active 重点色（约 35%） |
+
+### 13.2 形态（视觉重量从低到高）
+
+| 元素 | 视觉 | 实现 |
+|---|---|---|
+| Marker | 选中文字下方的虚线下划线 + 极淡背景 | CSS Custom Highlight API；不动 DOM |
+| Orb | 右下圆角 pill：lens 数 + presence dot + hidden/orphan 角标 | React，fixed 定位 |
+| Popovers（Card、Composer、InfoPanel、CreateButton） | 白色卡片 + 柔阴影 | React，fixed 定位，`lumen-appear` 入场 |
+| Bloom 色块 | SVG 原语（圆、三角、旋转方块、十字、弧） | React，fixed 在视口里，`lumen-bloom` 关键帧 |
+
+### 13.3 动画语言
+
+- **Popover 入场**：`lumen-appear` —— 4px 上滑 + 淡入，180ms，`cubic-bezier(0.2, 0.8, 0.2, 1)`
+- **Bloom**：`lumen-bloom` —— 720ms，`cubic-bezier(0.16, 1, 0.3, 1)`（先冲后缓）
+- **所有关键帧动画都被** `@media (prefers-reduced-motion: reduce)` **关闭**——不可妥协
+- **z-index 纪律**：bloom 层比 popover 低 1，让色块看起来"从卡片背面冒出来"
+
+### 13.4 Bloom 触发点（仅在以下两处）
+
+- **card-open**：`LensCard` mount 时 → `makeBloomSpec(rect, "card-open")` 从卡片轮廓的 ~12 个随机点位发射。从顶边开始、按 top → right → bottom → left 顺时针流过去，总跨度 ~190ms。每个色块的 kind / color / fill / size / rotation 都是 per-emission 随机的，每次打开视觉都不一样。
+- **marker**：WebSocket 的 `lens_created` 到达 + `restoreAnchor` 成功 → 4 个小色块从 marker 顶边弹出，~140ms 内完成。
+
+考虑过但 MVP 不做的触发点：
+- *publish 确认* —— 自己 publish 后的 WS 回声会触发 marker bloom，相当于已经覆盖。
+- *scroll-into-view* —— 一个页面 10–20 个 marker 时太吵；以后可以加 rate limit 重新考虑。
+
+### 13.5 可调旋钮
+
+在 `apps/extension/src/shapes.tsx`：
+- `SPREAD`（默认 55）—— 每个色块从发射点飞行的基础像素
+- `TOP_N` / `BOTTOM_N` / `SIDE_N` —— 各边发射点数量
+- `makeBloomSpec` 内的 delay 常量 —— 控制 stagger 节奏
+- `pickColor` / `pickOutlined` 概率 —— 色彩和实心/线框混合比例
+
+在 `apps/extension/src/styles.css`：
+- `lumen-bloom` 时长（默认 720ms）
+- `lumen-appear` 时长（默认 180ms）
+- 缓动函数
+
+CSS 通过 `?inline` 被打入 content script bundle —— **改 CSS 需要重新打包**，不是单纯刷样式表。开 dev server（`bun run dev:extension`）会自动重打，tab F5 即可生效。
+
+### 13.6 暂未实现的视觉方向
+
+- **边框描绘**（"B 方案"）—— 卡片打开时通过 SVG `stroke-dashoffset` 把边框画一遍，~450ms。更建筑感，粒子运动量更少。
+- **常态微动**（"C 方案"）—— 卡片打开后 2–3 个色块在卡片周围低频缓慢漂移（20s 周期）；限制在 Full 阅读模式以保持"克制"。
+- **等宽数字字体** —— orb 数字、type pill、ref chip 的 lens id 用 `JetBrains Mono` 之类。body 内容保持 sans（是用户写的话，不是 UI）。
 | Caddy | https://caddyserver.com | 2026-Q1 |
 | Litestream | https://litestream.io | 2026-Q1 |
 | Paseto | https://paseto.io | spec 稳定 |

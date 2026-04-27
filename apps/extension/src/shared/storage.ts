@@ -1,7 +1,12 @@
-// Typed wrappers over chrome.storage.local for token + user identity.
+// Typed wrappers over chrome.storage.local for token, identity, and
+// reading mode. Keys are exported so listeners (content scripts, popup)
+// can subscribe to changes via chrome.storage.onChanged.
+
+import type { ReadingMode } from "@lumen/schema";
 
 const KEY_TOKEN = "lumen.token";
 const KEY_USER = "lumen.user";
+export const KEY_READING_MODE = "lumen.readingMode";
 
 export interface StoredUser {
   userId: string;
@@ -28,4 +33,13 @@ export async function setUser(user: StoredUser): Promise<void> {
 
 export async function logout(): Promise<void> {
   await chrome.storage.local.remove([KEY_TOKEN, KEY_USER]);
+}
+
+export async function getReadingMode(): Promise<ReadingMode> {
+  const r = await chrome.storage.local.get(KEY_READING_MODE);
+  return (r[KEY_READING_MODE] as ReadingMode | undefined) ?? "quiet";
+}
+
+export async function setReadingMode(mode: ReadingMode): Promise<void> {
+  await chrome.storage.local.set({ [KEY_READING_MODE]: mode });
 }

@@ -68,7 +68,8 @@ export interface Lens {
   tags: LensTag[];
   refs?: LensRef[];
   anchor: LensAnchor;
-  content: LensContent;
+  body: string;                 // Markdown; supports [[lens:id]] / [[url:...]]
+  content?: LensContent;        // Reserved for richer content types (poll options, challenge prompts); currently unused
   author: LensAuthor;
   anonymous?: boolean;          // when true, UI displays author as "Anonymous"
   skillLinks?: SkillLink[];

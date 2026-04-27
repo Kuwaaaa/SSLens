@@ -1,0 +1,12 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "lib": ["ESNext", "DOM"],
+    "rootDir": "src",
+    "baseUrl": ".",
+    "paths": {
+      "@lumen/schema": ["../schema/src/index.ts"]
+    }
+  },
+  "include": ["src/**/*"]
+}

@@ -69,7 +69,7 @@ MVP 失败的判定：第 1 周后创建归零、Lens 间引用从未出现、
 **Anchoring**：
 
 - 建 `packages/anchoring` workspace
-- vendor `hypothesis/client/src/annotator/anchoring/`（~6 个文件），保留许可和归属
+- 在 `packages/anchoring/src/` 实现 W3C TextPosition / TextQuote selector（~250 行自有代码）
 - 引入 `approx-string-match` 依赖
 - 薄壳层：`createAnchor(range)`、`restoreAnchor(selectorJson, root)` 返回 ranges 或 null
 - 在扩展里用：创建 Lens 时序列化，页面载入时恢复
@@ -159,20 +159,31 @@ MVP 失败的判定：第 1 周后创建归零、Lens 间引用从未出现、
 
 ### P0（浸泡开始前必须有）
 
-- 邀请码 → handle → bearer token 流程
-- 白名单 URL 注入（先做 1–3 篇）
-- Quick Lens + Question Lens 创建（Poll、Fun、Knowledge 后面再说）
-- 房间内 Lens 实时广播
-- Presence（谁在这）—— **只在 ≥1 其他用户在场时显示**
-- **Lens tag**（free-form 输入 + 建议常用 tag）
-- **阅读模式**（安静默认 / 思考 / 火力全开）
-- **引用**（Markdown body 里的 `[[lens:id]]` 和 `[[url:...]]`）
-- **同伴模式**（按钮 + 表情扔 + 聊天层 toggle）
-- Anchoring 多 selector + CSS Highlight API
-- 隐藏当前页 Lens（per-tab 切换）
-- 隐藏当前站 Lens（持久设置）
-- 举报按钮（服务端先做 stub，无自动化）
-- 隐私政策
+已完成：
+
+- ✅ 邀请码 → handle → bearer token 流程
+- ✅ 白名单 URL 注入（当前 allowlist 5 篇文章）
+- ✅ 7 种 Lens 类型在 composer 里都有（Quick / Fun / Question / Poll / Knowledge / Challenge / Spoiler）
+- ✅ 房间内 Lens 实时广播
+- ✅ Presence（谁在这）—— 通过 `chrome.runtime.connect` port 生命周期判定
+- ✅ Lens tag（free-form 输入）
+- ✅ 阅读模式（安静默认 / 思考 / 火力全开）—— popup 设置，客户端过滤
+- ✅ 引用（`[[lens:id]]` / `[[url:...]]` 解析并在卡片 body 里渲染成 chip/link）
+- ✅ Anchoring 通过 `@lumen/anchoring`（TextPosition → TextQuote+context → fuzzy）
+- ✅ CSS Custom Highlight API 渲染（不 wrap `<mark>`）
+- ✅ 视觉识别（卡片打开时 12 个轮廓色块；新 lens 到达时 4 个 marker 色块；统一 popover 入场动画；尊重 `prefers-reduced-motion`）—— 见 ARCHITECTURE.md §13
+- ✅ Orphan 追踪（锚定失败的 lens 在 InfoPanel 里显示；手动 UX 验证延后——测试 recipe 在 `apps/extension/src/content.tsx`）
+
+浸泡前仍需：
+
+- ⏳ Composer 里的匿名 toggle（schema 和服务端已经记录 `lens.anonymous`）
+- ⏳ Hide Lens on page（per-tab 切换）
+- ⏳ Hide Lens on site（持久设置）
+- ⏳ LensCard 上的"copy ref"按钮（让用户能拿到 `[[lens:id]]` 语法粘贴）
+- ⏳ 举报按钮（服务端 stub 即可，无需自动化）
+- ⏳ 同伴模式（按钮 + 表情扔 + 聊天层 toggle）—— 剩余最大独立块
+- ⏳ 隐私政策（1 页，白话）
+- ⏳ Orphan 重新锚定流程（孤儿 lens 现在可见但还不能修复）
 
 ### P1（浸泡验证形态后才做）
 

@@ -8,6 +8,43 @@ Lumen lets a small invited group leave playful, contextual "Lens" cards on real 
 
 The product hypothesis: an entertainment-substrate UGC layer makes long-tail web pages feel inhabited; knowledge emerges from that participation rather than seeding it.
 
+## Current state
+
+Last verified working end-to-end on Paul Graham's *Do Things that Don't Scale*: two Chrome users in different windows, real-time presence, Lens creation, inter-Lens references rendered as chips, geometric outline-emission blooms on card open.
+
+**Backend** (`apps/server/`): complete skeleton, ready for invite-only beta.
+- Bun + WS + SQLite on `localhost:3000`
+- Routes: `POST /api/redeem`, `GET/POST /api/lenses`, `WS /ws`
+- Per-URL room presence + Lens broadcast verified
+- `/admin` operator console served at root for dev/testing
+
+**Extension** (`apps/extension/`): most of P0 done.
+- Anchoring via `@lumen/anchoring` (TextPosition → TextQuote+context → fuzzy → orphan); CSS Custom Highlight API, no `<mark>` wrapping
+- Reading modes (Quiet default / Thinking / Full) — set in popup, applied client-side
+- References: `[[lens:id]]` and `[[url:...]]` parse and render in card body
+- Visual identity (see "Visual identity" section below and `docs/ARCHITECTURE.md` §13): 12-shape outline-emission blooms on card open; 4-shape marker blooms on new Lens via WS; universal 4px slide-up popover entrance; respects `prefers-reduced-motion`
+- Orphan tracking: failed-to-anchor Lens surface in InfoPanel (manual UX verification deferred — recipes in `apps/extension/src/content.tsx`)
+
+**Not yet built (still in Task #6)**:
+- Anonymous toggle in composer (schema + server already record `lens.anonymous`)
+- Hide controls (per-tab / per-site)
+- LensCard "copy ref" button
+- Orphan re-anchor flow
+- Composer "insert reference" picker (users currently type `[[lens:id]]` syntax manually)
+- Companion mode — largest remaining block; spec in `docs/ARCHITECTURE.md` §7.2
+- Privacy policy
+- Report button (server-side stub is fine)
+
+### Where to start
+
+Smallest remaining P0 items (~half hour each, can be a single commit):
+
+1. **Anonymous toggle** in composer — checkbox sets `body.anonymous`. Server already returns the author as "Anonymous" when set.
+2. **Hide controls** — × button in InfoPanel hides on this tab; popup checkbox hides on this site.
+3. **LensCard "copy ref" button** — copies `[[lens:id]]` to clipboard so users can paste into their own Lens body.
+
+Then attack companion mode as its own arc — it's the largest remaining feature and touches both server and extension.
+
 ## Read in this order before contributing
 
 1. `docs/Chat.md` — the original conception (Chinese), the ecosystem vision Lumen sits inside
@@ -31,6 +68,18 @@ If a question is not answered by these, ask before building.
 9. **Default quiet markers.** Dotted underline + tiny dot. Never gradient text, never heavy backgrounds, never large icons. The original page is the artifact; Lumen is a quiet overlay.
 10. **The success metric is qualitative + accumulative**, defined in `docs/mvp/lumen-mvp-plan.md` §2. Total Lens count is an anti-metric. Do not optimize for it.
 
+## Visual identity (frozen)
+
+The product is for young developers; the visual goal is **rich when engaged, invisible when not**. Animations and geometric flourishes appear on Lumen elements (cards, markers, popovers) — *never* on the article body itself.
+
+- **Palette**: deep purple `#4a1a7a` (chrome — borders, text, dotted underline marker) · purple `#8b5cf6` (~45% of bloom shapes) · deep purple variant `#7c3aed` (~20%) · amber `#f59e0b` (~35%, live/active accent).
+- **Forms**: cards (primary, persistent) · markers (CSS Custom Highlight API dotted underline) · small popovers (orb, info panel, composer, lens card, create button) · bloom shapes. **No floating UI on the article body.**
+- **Animation language**: bloom shapes emit from card outline (12 shapes) on card open; from marker top edge (4 shapes) on new Lens arrival via WS. All popovers get a 4px slide-up + fade entrance (180ms). Bloom uses `cubic-bezier(0.16, 1, 0.3, 1)`; popover entrance uses `cubic-bezier(0.2, 0.8, 0.2, 1)`.
+- **Restraint rules**: animations only on Lumen elements, never on page content. All keyframe animations gated by `@media (prefers-reduced-motion: reduce)`. Bloom z-index sits below popovers so shapes "emerge from behind."
+- **Tunable knobs** in `apps/extension/src/shapes.tsx` (`SPREAD`, `TOP_N`/`BOTTOM_N`/`SIDE_N`, stagger delays, `pickColor`/`pickOutlined` probabilities) and `apps/extension/src/styles.css` (`lumen-bloom` / `lumen-appear` durations and easings).
+
+For full rationale and unimplemented future directions (B option: outline trace; C option: continuous micro-motion; numeric typography swap), see `docs/ARCHITECTURE.md` §13.
+
 ## Stack (frozen for v2)
 
 | Layer | Choice |
@@ -44,7 +93,7 @@ If a question is not answered by these, ask before building.
 | Auth | Paseto v4 bearer token from invite code |
 | Extension | Vite + MV3 + React + TypeScript |
 | Extension WS client | partysocket |
-| Anchoring | Vendored `hypothesis/client` anchoring + `approx-string-match` |
+| Anchoring | `@lumen/anchoring` (W3C selectors + `approx-string-match`) |
 | Highlight render | CSS Custom Highlight API (NOT `<mark>` wrapping) |
 
 Rationale for each choice is in `docs/ARCHITECTURE.md` §3 and §4–§6. Do not swap a component without reading why it was chosen.
@@ -60,7 +109,7 @@ SStree/                          (currently SStree-v2 pending a manual rename)
 │   └── server/                  Bun backend
 └── packages/
     ├── schema/                  shared types (Lens, User, ReadingMode, CompanionEvent, etc.)
-    ├── anchoring/               vendored Hypothesis + thin shim
+    ├── anchoring/               W3C selectors + `approx-string-match`
     └── lens-ui/                 (P1) shared React components
 ```
 
@@ -73,6 +122,7 @@ A sibling directory `e:/src/SStree-v1/` (after the manual rename) holds the v1 p
 - **No emojis in code or docs unless explicitly requested.** Emoji is allowed inside the product (companion mode emoji toss); never in source code, commit messages, or doc prose.
 - **Commit messages**: imperative, present tense, no AI co-author tags unless the user asks for them.
 - **When unsure**, ask. The cost of pausing to confirm is low; the cost of a wrong-shaped feature shipped is the success of the entire MVP.
+- **Dev workflow for the extension**: keep `bun run dev:extension` running (Vite + crxjs auto-rebuild). On each save, just F5 the test tab — the content script re-mounts. Reload the extension itself at `chrome://extensions` only when `manifest.json` or the service worker changes. CSS imported via `?inline` is baked into the JS bundle, so CSS changes also need rebuild (auto-handled by the dev server). Don't recommend `bun run build:extension` + manual reload as the default loop — it's slower than necessary.
 
 ## Critical context that is not in the docs
 
@@ -86,6 +136,12 @@ These are decisions / context from the conversations that produced v2. They live
 - **Anonymity is moderation-aware.** Per-Lens `anonymous` flag hides the author in the UI, but the server records the real author. The privacy policy must say so. Do not promote this as "anonymous" without that caveat.
 - **The user's habitual language is Chinese**, but documentation and code are in English. Match this when writing docs; respond to the user in Chinese unless they switch.
 - **Chinese mirror docs exist** at `docs/*.zh.md` and `CLAUDE.zh.md`. They are mirrors of the English versions; if you change content in one, update the mirror.
+- **Architecture deviations from initial spec, all documented in code / READMEs**:
+  - WebSocket lives in the **content script, not the service worker** (`apps/extension/README.md`). Each tab owns its own WS; presence is detected via WS connect/close, not via `chrome.runtime.connect` ports as ARCHITECTURE.md §5 originally proposed. The original SW-hosted design is the right long-term pattern; the deviation is an MVP shortcut documented for revisit.
+  - Anchoring is a **clean ~250-LOC implementation, not vendored hypothesis** (`packages/anchoring/README.md`). The W3C selector model and `approx-string-match` (the actual algorithmic value) are preserved; the surrounding hypothesis-internal scaffolding is not.
+  - `Lens.body` is **top-level on the schema** (was originally in `Lens.content.body`). `LensContent` remains as an optional reserved type for richer content (poll options, challenge prompts) but is currently unused. Server returns body at top level; extension reads it at top level. The schema now matches reality.
+- **Visual identity decisions came from a specific user note**: "色块从卡片背景中冒出来" (color blocks emerge from the card's background). The 12-shape outline-emission design is a direct interpretation of that. If asked to add more animation, **lean toward extending this language** (more triggers, finer micro-motion in Full mode) rather than introducing a new motion vocabulary.
+- **The user iterates with `bun run dev:extension` + tab F5**, not full extension reload. Don't recommend a slow workflow without checking.
 
 ## When something is missing
 
