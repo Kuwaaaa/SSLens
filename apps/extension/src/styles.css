@@ -60,6 +60,172 @@ button, input, textarea, select {
   font-weight: 700;
 }
 
+.cluster-heat-layer {
+  position: fixed;
+  inset: 0;
+  z-index: 2147483645;
+  pointer-events: none;
+}
+
+.cluster-heat {
+  position: fixed;
+  display: block;
+  overflow: hidden;
+  pointer-events: none;
+  mix-blend-mode: multiply;
+  filter: blur(0.25px);
+  transform-origin: center;
+}
+
+.cluster-heat::before,
+.cluster-heat::after {
+  position: absolute;
+  inset: -1px;
+  border-radius: inherit;
+  content: "";
+  pointer-events: none;
+}
+
+.cluster-heat::before {
+  opacity: 0.72;
+}
+
+.cluster-heat::after {
+  opacity: 0.38;
+}
+
+.cluster-heat.depth-1 {
+  background:
+    linear-gradient(
+      to bottom,
+      rgba(139, 92, 246, 0.018),
+      rgba(139, 92, 246, 0.09) 34%,
+      rgba(139, 92, 246, 0.07) 76%,
+      rgba(139, 92, 246, 0.01)
+    );
+  box-shadow: inset 0 0 0 1px rgba(107, 33, 168, 0.03);
+}
+
+.cluster-heat.depth-1::before {
+  background:
+    repeating-linear-gradient(
+      -9deg,
+      rgba(107, 33, 168, 0.03) 0 1px,
+      rgba(255, 255, 255, 0) 1px 4px
+    ),
+    radial-gradient(ellipse at 18% 55%, rgba(139, 92, 246, 0.045), transparent 48%),
+    radial-gradient(ellipse at 74% 40%, rgba(139, 92, 246, 0.035), transparent 42%);
+}
+
+.cluster-heat.depth-1::after {
+  background:
+    linear-gradient(to right, transparent, rgba(255, 255, 255, 0.14) 46%, transparent 82%),
+    repeating-linear-gradient(
+      4deg,
+      rgba(255, 255, 255, 0.11) 0 2px,
+      rgba(255, 255, 255, 0) 2px 7px
+    );
+}
+
+.cluster-heat.depth-2 {
+  background:
+    linear-gradient(
+      to bottom,
+      rgba(245, 158, 11, 0.035),
+      rgba(245, 158, 11, 0.18) 34%,
+      rgba(245, 158, 11, 0.14) 76%,
+      rgba(245, 158, 11, 0.02)
+    );
+  box-shadow: inset 0 0 0 1px rgba(245, 158, 11, 0.075);
+}
+
+.cluster-heat.depth-2::before {
+  background:
+    repeating-linear-gradient(
+      -9deg,
+      rgba(180, 83, 9, 0.035) 0 1px,
+      rgba(255, 255, 255, 0) 1px 4px
+    ),
+    radial-gradient(ellipse at 16% 54%, rgba(245, 158, 11, 0.07), transparent 48%),
+    radial-gradient(ellipse at 76% 38%, rgba(245, 158, 11, 0.055), transparent 42%);
+}
+
+.cluster-heat.depth-2::after {
+  background:
+    linear-gradient(to right, transparent, rgba(255, 255, 255, 0.15) 44%, transparent 82%),
+    repeating-linear-gradient(
+      4deg,
+      rgba(255, 255, 255, 0.1) 0 2px,
+      rgba(255, 255, 255, 0) 2px 7px
+    );
+}
+
+.cluster-heat.depth-3 {
+  background:
+    linear-gradient(
+      to bottom,
+      rgba(245, 158, 11, 0.045),
+      rgba(245, 158, 11, 0.25) 34%,
+      rgba(245, 158, 11, 0.19) 76%,
+      rgba(245, 158, 11, 0.025)
+    );
+  box-shadow: inset 0 0 0 1px rgba(245, 158, 11, 0.105);
+}
+
+.cluster-heat.depth-3::before {
+  background:
+    repeating-linear-gradient(
+      -9deg,
+      rgba(180, 83, 9, 0.045) 0 1px,
+      rgba(255, 255, 255, 0) 1px 4px
+    ),
+    radial-gradient(ellipse at 15% 55%, rgba(245, 158, 11, 0.09), transparent 48%),
+    radial-gradient(ellipse at 78% 38%, rgba(245, 158, 11, 0.07), transparent 42%);
+}
+
+.cluster-heat.depth-3::after {
+  background:
+    linear-gradient(to right, transparent, rgba(255, 255, 255, 0.13) 44%, transparent 82%),
+    repeating-linear-gradient(
+      4deg,
+      rgba(255, 255, 255, 0.085) 0 2px,
+      rgba(255, 255, 255, 0) 2px 7px
+    );
+}
+
+.cluster-heat.depth-4 {
+  background:
+    linear-gradient(
+      to bottom,
+      rgba(245, 158, 11, 0.055),
+      rgba(245, 158, 11, 0.34) 34%,
+      rgba(245, 158, 11, 0.26) 76%,
+      rgba(180, 83, 9, 0.035)
+    );
+  box-shadow: inset 0 0 0 1px rgba(180, 83, 9, 0.135);
+}
+
+.cluster-heat.depth-4::before {
+  background:
+    repeating-linear-gradient(
+      -9deg,
+      rgba(120, 53, 15, 0.052) 0 1px,
+      rgba(255, 255, 255, 0) 1px 4px
+    ),
+    radial-gradient(ellipse at 14% 55%, rgba(245, 158, 11, 0.12), transparent 48%),
+    radial-gradient(ellipse at 79% 38%, rgba(180, 83, 9, 0.09), transparent 42%);
+}
+
+.cluster-heat.depth-4::after {
+  background:
+    linear-gradient(to right, transparent, rgba(255, 255, 255, 0.105) 44%, transparent 82%),
+    repeating-linear-gradient(
+      4deg,
+      rgba(255, 255, 255, 0.07) 0 2px,
+      rgba(255, 255, 255, 0) 2px 7px
+    );
+}
+
 .create-button {
   position: fixed;
   z-index: 2147483647;
@@ -208,12 +374,25 @@ button, input, textarea, select {
 .card-stack {
   display: grid;
   gap: 10px;
-  max-height: min(680px, calc(100vh - 24px));
-  overflow-y: visible;
+  max-height: calc(100vh - 16px);
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  scrollbar-gutter: stable;
 }
 
 .card-stack .lens-panel {
   min-width: 0;
+}
+
+.card-stack .cluster-note {
+  margin: -2px 0 2px;
+  padding: 6px 8px;
+  border: 1px solid rgba(245, 158, 11, 0.28);
+  border-radius: 7px;
+  background: #fffbeb;
+  color: #92400e;
+  font-size: 11px;
+  font-weight: 700;
 }
 
 .card-stack .ref-panel {
@@ -229,6 +408,113 @@ button, input, textarea, select {
   font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 0.04em;
+}
+
+.card-stack .collapsed-cluster {
+  margin-left: 12px;
+  padding-left: 12px;
+  border-left: 2px solid rgba(245, 158, 11, 0.28);
+  display: grid;
+  gap: 6px;
+  overflow: hidden;
+  max-height: 240px;
+  opacity: 1;
+  transform: translateY(0);
+  transition:
+    max-height 280ms cubic-bezier(0.16, 1, 0.3, 1),
+    opacity 220ms ease,
+    transform 280ms cubic-bezier(0.16, 1, 0.3, 1),
+    margin 280ms cubic-bezier(0.16, 1, 0.3, 1),
+    padding 280ms cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.card-stack .collapsed-cluster.hidden {
+  max-height: 0;
+  margin-top: -10px;
+  padding-top: 0;
+  padding-bottom: 0;
+  opacity: 0;
+  transform: translateY(-4px);
+  pointer-events: none;
+}
+
+.card-stack .collapsed-lens {
+  display: grid;
+  grid-template-columns: auto auto 1fr;
+  align-items: center;
+  gap: 6px;
+  width: 100%;
+  min-width: 0;
+  padding: 7px 8px;
+  border: 1px solid rgba(245, 158, 11, 0.18);
+  border-radius: 7px;
+  background: rgba(255, 251, 235, 0.7);
+  color: #555;
+  cursor: pointer;
+  font-size: 11px;
+  text-align: left;
+}
+
+.card-stack .collapsed-lens:hover {
+  background: #fffbeb;
+  border-color: rgba(245, 158, 11, 0.32);
+}
+
+.card-stack .collapsed-body {
+  overflow: hidden;
+  min-width: 0;
+  color: #444;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.card-stack .show-more-lens {
+  width: 100%;
+  padding: 7px 8px;
+  border: 1px dashed rgba(146, 64, 14, 0.28);
+  border-radius: 7px;
+  background: #fff;
+  color: #92400e;
+  cursor: pointer;
+  font: inherit;
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.card-stack .show-more-lens:hover {
+  background: #fffbeb;
+}
+
+.card-stack .show-more-lens.collapse {
+  margin-left: 12px;
+  width: calc(100% - 12px);
+}
+
+.card-stack .expandable-cluster {
+  overflow: hidden;
+  opacity: 0;
+  transform: translateY(-4px);
+  transition:
+    max-height 340ms cubic-bezier(0.16, 1, 0.3, 1),
+    opacity 260ms ease,
+    transform 340ms cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.card-stack .expandable-cluster.expanded {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+.card-stack .expandable-cluster-inner {
+  display: grid;
+  gap: 10px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .card-stack .collapsed-cluster,
+  .card-stack .expandable-cluster {
+    transition: none;
+  }
 }
 
 .card .card-actions {
@@ -313,7 +599,8 @@ button, input, textarea, select {
   font-weight: 600;
 }
 
-.composer {
+.composer,
+.reanchor-confirm {
   position: fixed;
   z-index: 2147483647;
   width: min(360px, calc(100vw - 32px));
@@ -326,7 +613,12 @@ button, input, textarea, select {
   gap: 8px;
 }
 
-.composer .quote-preview {
+.reanchor-confirm {
+  width: min(280px, calc(100vw - 32px));
+}
+
+.composer .quote-preview,
+.reanchor-confirm .quote-preview {
   font-style: italic;
   color: #666;
   font-size: 12px;
@@ -359,7 +651,88 @@ button, input, textarea, select {
   font-size: 12px;
 }
 
-.composer .row {
+.composer .overlap-hint {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 7px 9px;
+  border: 1px solid rgba(245, 158, 11, 0.28);
+  border-radius: 7px;
+  background: #fffbeb;
+  color: #92400e;
+  font-size: 11px;
+  font-weight: 650;
+}
+
+.composer .overlap-hint button {
+  border: 0;
+  background: transparent;
+  color: #4a1a7a;
+  cursor: pointer;
+  font: inherit;
+  font-size: 11px;
+  font-weight: 800;
+  padding: 0;
+}
+
+.composer .ref-insert {
+  position: relative;
+}
+
+.composer .ref-insert-toggle {
+  width: 100%;
+  background: white;
+  color: #4a1a7a;
+}
+
+.composer .ref-insert-list {
+  display: grid;
+  gap: 5px;
+  max-height: 170px;
+  overflow-y: auto;
+  margin-top: 6px;
+  padding: 6px;
+  border: 1px solid rgba(107, 33, 168, 0.14);
+  border-radius: 8px;
+  background: #fff;
+}
+
+.composer .ref-insert-item {
+  display: grid;
+  gap: 4px;
+  width: 100%;
+  padding: 7px 8px;
+  border: 1px solid rgba(107, 33, 168, 0.14);
+  border-radius: 6px;
+  background: #fff;
+  color: #333;
+  text-align: left;
+}
+
+.composer .ref-insert-item:hover {
+  background: #faf6ff;
+}
+
+.composer .ref-insert-meta {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 10px;
+  color: #777;
+}
+
+.composer .ref-insert-body {
+  overflow: hidden;
+  color: #555;
+  font-size: 11px;
+  line-height: 1.35;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.composer .row,
+.reanchor-confirm .row {
   display: flex;
   gap: 8px;
   justify-content: flex-end;
@@ -380,7 +753,8 @@ button, input, textarea, select {
   accent-color: #4a1a7a;
 }
 
-.composer button {
+.composer button,
+.reanchor-confirm button {
   padding: 6px 14px;
   border: 1px solid #4a1a7a;
   border-radius: 6px;
@@ -390,12 +764,25 @@ button, input, textarea, select {
   font-weight: 500;
 }
 
-.composer button.cancel {
+.composer button.cancel,
+.reanchor-confirm button.cancel {
   background: white;
   color: #4a1a7a;
 }
 
-.composer .err {
+.composer .ref-insert-toggle,
+.composer .ref-insert-item {
+  background: #fff;
+  color: #4a1a7a;
+}
+
+.composer .ref-insert-item {
+  color: #333;
+  font-weight: 500;
+}
+
+.composer .err,
+.reanchor-confirm .err {
   color: #b91c1c;
   font-size: 11px;
 }
@@ -506,6 +893,26 @@ button, input, textarea, select {
   margin-top: 4px;
 }
 
+.info-panel .reanchor-hint {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  align-items: center;
+  margin: -2px 0 8px;
+  color: #92400e;
+}
+
+.info-panel .reanchor-hint button {
+  border: 0;
+  background: transparent;
+  color: #4a1a7a;
+  cursor: pointer;
+  font: inherit;
+  font-size: 11px;
+  font-weight: 700;
+  padding: 0;
+}
+
 .info-panel .ip-action {
   width: 100%;
   border: 1px solid rgba(107, 33, 168, 0.22);
@@ -598,6 +1005,36 @@ button, input, textarea, select {
   line-height: 1.4;
 }
 
+.info-panel .orphan-action {
+  width: 100%;
+  margin-top: 7px;
+  border: 1px solid rgba(245, 158, 11, 0.45);
+  border-radius: 6px;
+  background: #fff;
+  color: #92400e;
+  cursor: pointer;
+  font: inherit;
+  font-size: 11px;
+  font-weight: 650;
+  padding: 6px 8px;
+}
+
+.info-panel .orphan-action:hover:not(:disabled) {
+  background: #fffbeb;
+}
+
+.info-panel .orphan-action:disabled {
+  cursor: default;
+  opacity: 0.65;
+}
+
+.info-panel .orphan-note {
+  margin-top: 7px;
+  color: #92400e;
+  font-size: 11px;
+  line-height: 1.35;
+}
+
 /* --- Reference chips and links inside Lens body --- */
 
 .ref-lens {
@@ -655,6 +1092,7 @@ button, input, textarea, select {
 
 .card,
 .composer,
+.reanchor-confirm,
 .info-panel,
 .create-button {
   animation: lumen-appear 180ms cubic-bezier(0.2, 0.8, 0.2, 1) both;

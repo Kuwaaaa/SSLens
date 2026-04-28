@@ -57,6 +57,27 @@ export async function createLens(input: CreateLensInput, token: string): Promise
   return data.lens;
 }
 
+export async function updateLensAnchor(
+  lensId: string,
+  anchor: LensAnchor,
+  token: string,
+): Promise<Lens> {
+  const res = await fetch(`${API_BASE}/api/lenses/${encodeURIComponent(lensId)}/anchor`, {
+    method: "PATCH",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${token}`,
+    },
+    body: JSON.stringify({ anchor }),
+  });
+  if (!res.ok) {
+    const txt = await res.text();
+    throw new Error(`updateLensAnchor ${res.status}: ${txt}`);
+  }
+  const data = (await res.json()) as { lens: Lens };
+  return data.lens;
+}
+
 export interface ReactionResult {
   lensId: string;
   kind: ReactionKind;

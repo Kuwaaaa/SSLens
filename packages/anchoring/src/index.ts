@@ -12,6 +12,8 @@ import { buildQuoteSelector, findByQuote } from "./quote";
 import { fuzzyFind } from "./match";
 
 export type { LensAnchor };
+export { buildTextIndex, flatOffsetsToRange, rangeToFlatOffsets };
+export type { TextIndex };
 
 const DEFAULT_CONTEXT = 32;
 

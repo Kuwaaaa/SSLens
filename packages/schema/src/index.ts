@@ -91,6 +91,8 @@ export interface Lens {
   saveCount: number;
   createdAt: number;
   featured?: boolean;
+  viewerIsAuthor?: boolean;     // true for the current viewer, even when anonymous display is used
+  canEditAnchor?: boolean;      // viewer may repair this Lens anchor
 }
 
 export interface UserPreferences {

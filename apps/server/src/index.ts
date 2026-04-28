@@ -4,6 +4,7 @@ import {
   handleRedeem,
   handleListLenses,
   handleCreateLens,
+  handleUpdateLensAnchor,
   handleToggleReaction,
   handleCreateReport,
 } from "./routes.ts";
@@ -66,6 +67,11 @@ const server = Bun.serve({
       if (url.pathname === "/api/lenses") {
         if (req.method === "GET") return handleListLenses(req, user);
         if (req.method === "POST") return await handleCreateLens(req, user, srv);
+      }
+
+      const anchorMatch = url.pathname.match(/^\/api\/lenses\/([^/]+)\/anchor$/);
+      if (anchorMatch && req.method === "PATCH") {
+        return await handleUpdateLensAnchor(req, user, srv, decodeURIComponent(anchorMatch[1]));
       }
 
       if (url.pathname === "/api/reactions" && req.method === "POST") {

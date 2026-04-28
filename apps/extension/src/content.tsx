@@ -23,16 +23,18 @@ import {
   KEY_READING_MODE,
   normalizeHost,
 } from "./shared/storage";
-import { fetchLensesForRoom, createLens, reportLens, toggleReaction } from "./shared/api";
+import { fetchLensesForRoom, createLens, reportLens, toggleReaction, updateLensAnchor } from "./shared/api";
 import { WS_BASE } from "./shared/config";
-import { createAnchor, restoreAnchor } from "@lumen/anchoring";
+import { buildTextIndex, createAnchor, flatOffsetsToRange, rangeToFlatOffsets, restoreAnchor } from "@lumen/anchoring";
 import {
+  applyClusterHighlight,
   applyHighlight,
+  clearAllClusterHighlights,
   clearAllHighlights,
   injectMarkerStyles,
-  lensAtPoint,
+  lensIdsAtPoint,
 } from "./marker";
-import { RenderBody } from "./refs";
+import { parseBody, RenderBody } from "./refs";
 import { BloomLayer, makeBloomSpec, type BloomIntent, type BloomSpec } from "./shapes";
 
 import overlayCss from "./styles.css?inline";
@@ -48,6 +50,7 @@ interface SelectionDraft {
 
 interface ActiveLensStack {
   rootId: string;
+  clusterIds: string[];
   childIds: string[];
 }
 
@@ -56,8 +59,26 @@ interface CardPosition {
   left: number;
 }
 
+interface ClusterHeatSegment {
+  key: string;
+  range: Range;
+  depth: number;
+}
+
+interface ClusterHeatRect {
+  key: string;
+  depth: number;
+  top: number;
+  left: number;
+  width: number;
+  height: number;
+  rotate: number;
+  radius: number;
+}
+
 const CARD_WIDTH = 340;
 const CARD_HEIGHT_ESTIMATE = 280;
+const DEFAULT_CLUSTER_SIBLINGS = 2;
 const VIEWPORT_GUTTER = 8;
 
 function hostForUrl(input: string): string {
@@ -72,20 +93,27 @@ function clamp(n: number, min: number, max: number): number {
   return Math.max(min, Math.min(max, n));
 }
 
-function positionCardNear(rect: DOMRect | null | undefined): CardPosition {
-  if (!rect) return { top: 96, left: 24 };
+function positionCardNear(
+  anchorRect: DOMRect | null | undefined,
+  cardRect?: DOMRect | null,
+): CardPosition {
+  if (!anchorRect) return { top: 96, left: 24 };
 
   const cardWidth = Math.min(CARD_WIDTH, Math.max(160, window.innerWidth - 32));
+  const cardHeight = Math.min(
+    cardRect?.height ?? CARD_HEIGHT_ESTIMATE,
+    Math.max(80, window.innerHeight - VIEWPORT_GUTTER * 2),
+  );
   const maxLeft = Math.max(VIEWPORT_GUTTER, window.innerWidth - cardWidth - VIEWPORT_GUTTER);
-  const below = rect.bottom + 8;
-  const above = rect.top - CARD_HEIGHT_ESTIMATE - 8;
-  const hasRoomBelow = below + CARD_HEIGHT_ESTIMATE <= window.innerHeight - VIEWPORT_GUTTER;
+  const below = anchorRect.bottom + 8;
+  const above = anchorRect.top - cardHeight - 8;
+  const hasRoomBelow = below + cardHeight <= window.innerHeight - VIEWPORT_GUTTER;
   const preferredTop = hasRoomBelow || above < VIEWPORT_GUTTER ? below : above;
-  const maxTop = Math.max(VIEWPORT_GUTTER, window.innerHeight - 80);
+  const maxTop = Math.max(VIEWPORT_GUTTER, window.innerHeight - cardHeight - VIEWPORT_GUTTER);
 
   return {
     top: clamp(preferredTop, VIEWPORT_GUTTER, maxTop),
-    left: clamp(rect.left, VIEWPORT_GUTTER, maxLeft),
+    left: clamp(anchorRect.left, VIEWPORT_GUTTER, maxLeft),
   };
 }
 
@@ -95,6 +123,7 @@ function positionCardNear(rect: DOMRect | null | undefined): CardPosition {
 // TODO: when featured/saved/friends signals exist, Quiet should restrict
 // to those instead of relying on type alone.
 function shouldShowInMode(lens: Lens, mode: ReadingMode): boolean {
+  if (lens.viewerIsAuthor) return true;
   if (mode === "full") return true;
   if (lens.featured) return true;
   if (mode === "thinking") {
@@ -102,6 +131,45 @@ function shouldShowInMode(lens: Lens, mode: ReadingMode): boolean {
   }
   // quiet
   return ["knowledge", "challenge"].includes(lens.type);
+}
+
+function refsFromBody(body: string) {
+  return parseBody(body)
+    .filter((token) => token.kind === "lens" || token.kind === "url")
+    .map((token) => ({
+      kind: token.kind,
+      target: token.value,
+      ...(token.label ? { label: token.label } : {}),
+    }));
+}
+
+function rangesOverlap(a: Range, b: Range): boolean {
+  // START_TO_END: compares a.end vs b.start → >0 means a.end is after b.start
+  // END_TO_START: compares a.start vs b.end → <0 means a.start is before b.end
+  return (
+    a.compareBoundaryPoints(Range.START_TO_END, b) > 0 &&
+    a.compareBoundaryPoints(Range.END_TO_START, b) < 0
+  );
+}
+
+function rangesEqual(a: Range, b: Range): boolean {
+  return (
+    a.compareBoundaryPoints(Range.START_TO_START, b) === 0 &&
+    a.compareBoundaryPoints(Range.END_TO_END, b) === 0
+  );
+}
+
+function rangeTextLength(range: Range): number {
+  return range.toString().length;
+}
+
+function stableJitter(input: string, salt: number): number {
+  let hash = 2166136261 ^ salt;
+  for (let i = 0; i < input.length; i++) {
+    hash ^= input.charCodeAt(i);
+    hash = Math.imul(hash, 16777619);
+  }
+  return ((hash >>> 0) / 4294967295) * 2 - 1;
 }
 
 function Overlay({ url, roomId, canonical }: { url: string; roomId: string; canonical: string }) {
@@ -122,13 +190,16 @@ function Overlay({ url, roomId, canonical }: { url: string; roomId: string; cano
   //   3. Direct SQLite: UPDATE lenses SET anchor='{"quote":{"exact":"NX"}}'
   //      WHERE id='...';
   //
-  // TODO: also build a re-anchor flow (user re-selects text -> rebind ->
-  // PATCH server). Currently orphan Lens are visible but not repairable.
+  // Re-anchor flow: user starts from an orphan row, selects replacement
+  // text, confirms, then the client patches the Lens anchor on the server.
   const [orphanIds, setOrphanIds] = useState<Set<string>>(new Set());
   const [presence, setPresence] = useState<string[]>([]);
   const [activeLens, setActiveLens] = useState<ActiveLensStack | null>(null);
   const [draft, setDraft] = useState<SelectionDraft | null>(null);
   const [composerOpen, setComposerOpen] = useState(false);
+  const [reanchorTargetId, setReanchorTargetId] = useState<string | null>(null);
+  const [reanchorBusy, setReanchorBusy] = useState(false);
+  const [reanchorError, setReanchorError] = useState<string | null>(null);
   const [token, setToken] = useState<string | null>(null);
   const [readingMode, setReadingMode] = useState<ReadingMode>("quiet");
   const [siteHidden, setSiteHiddenState] = useState(false);
@@ -136,6 +207,7 @@ function Overlay({ url, roomId, canonical }: { url: string; roomId: string; cano
   const [settingsReady, setSettingsReady] = useState(false);
   const [wsConnected, setWsConnected] = useState(false);
   const [panelOpen, setPanelOpen] = useState(false);
+  const [layoutTick, setLayoutTick] = useState(0);
 
   const anchorRanges = useRef<Map<string, Range>>(new Map());
 
@@ -195,13 +267,35 @@ function Overlay({ url, roomId, canonical }: { url: string; roomId: string; cano
   useEffect(() => {
     if (!lumenHidden) return;
     clearAllHighlights();
+    clearAllClusterHighlights();
     setPanelOpen(false);
     setActiveLens(null);
     setDraft(null);
     setComposerOpen(false);
+    setReanchorTargetId(null);
+    setReanchorError(null);
     setPresence([]);
     setWsConnected(false);
     setBlooms([]);
+  }, [lumenHidden]);
+
+  useEffect(() => {
+    if (lumenHidden) return;
+    let frame: number | null = null;
+    const schedule = () => {
+      if (frame !== null) return;
+      frame = window.requestAnimationFrame(() => {
+        frame = null;
+        setLayoutTick((n) => n + 1);
+      });
+    };
+    window.addEventListener("resize", schedule);
+    window.addEventListener("scroll", schedule, true);
+    return () => {
+      if (frame !== null) window.cancelAnimationFrame(frame);
+      window.removeEventListener("resize", schedule);
+      window.removeEventListener("scroll", schedule, true);
+    };
   }, [lumenHidden]);
 
   // Initial fetch: hydrate ranges + orphan set
@@ -276,6 +370,31 @@ function Overlay({ url, roomId, canonical }: { url: string; roomId: string; cano
           }
         }
         setLenses((prev) => (prev.some((l) => l.id === lens.id) ? prev : [...prev, lens]));
+      } else if (msg.type === "lens_anchor_updated") {
+        const lens = msg.lens as Lens;
+        const range = restoreAnchor(lens.anchor);
+        if (range) {
+          anchorRanges.current.set(lens.id, range);
+          setOrphanIds((s) => {
+            if (!s.has(lens.id)) return s;
+            const next = new Set(s);
+            next.delete(lens.id);
+            return next;
+          });
+        } else {
+          anchorRanges.current.delete(lens.id);
+          setOrphanIds((s) => {
+            if (s.has(lens.id)) return s;
+            const next = new Set(s);
+            next.add(lens.id);
+            return next;
+          });
+        }
+        setLenses((prev) => (
+          prev.some((l) => l.id === lens.id)
+            ? prev.map((l) => (l.id === lens.id ? { ...lens, myReactions: l.myReactions } : l))
+            : [...prev, lens]
+        ));
       } else if (msg.type === "reaction_updated") {
         const lensId = msg.lensId as string;
         const reactions = msg.reactions as Partial<Record<ReactionKind, number>>;
@@ -297,6 +416,35 @@ function Overlay({ url, roomId, canonical }: { url: string; roomId: string; cano
     [lenses, lumenHidden, orphanIds, readingMode],
   );
 
+  const clusterableLenses = useMemo(
+    () => lumenHidden ? [] : lenses.filter((l) => !orphanIds.has(l.id)),
+    [lenses, lumenHidden, orphanIds],
+  );
+
+  const visibleLensIds = useMemo(
+    () => new Set(visibleLenses.map((lens) => lens.id)),
+    [visibleLenses],
+  );
+
+  const draftOverlapLenses = useMemo(() => {
+    if (!draft) return [];
+    return lenses.filter((lens) => {
+      if (orphanIds.has(lens.id)) return false;
+      const range = anchorRanges.current.get(lens.id);
+      return range ? rangesOverlap(draft.range, range) : false;
+    });
+  }, [draft, lenses, orphanIds]);
+
+  const clusterHeatSegments = useMemo(
+    () => buildClusterHeatSegments(clusterableLenses, visibleLensIds),
+    [clusterableLenses, visibleLensIds],
+  );
+
+  const clusterHeatRects = useMemo(
+    () => buildClusterHeatRects(clusterHeatSegments, layoutTick),
+    [clusterHeatSegments, layoutTick],
+  );
+
   // Apply highlights for visible lenses, clear hidden ones
   useEffect(() => {
     clearAllHighlights();
@@ -305,6 +453,19 @@ function Overlay({ url, roomId, canonical }: { url: string; roomId: string; cano
       if (range) applyHighlight(lens.id, range);
     }
   }, [visibleLenses]);
+
+  // The rounded overlay paints every visible marker segment. Single-covered
+  // spans stay very quiet; overlaps get progressively warmer and denser.
+  // CSS Highlights still provide the dotted underline and click hit testing.
+  useEffect(() => {
+    clearAllClusterHighlights();
+    for (const segment of clusterHeatSegments) {
+      if (segment.depth >= 2) {
+        applyClusterHighlight(segment.key, segment.range, segment.depth);
+      }
+    }
+    return () => clearAllClusterHighlights();
+  }, [clusterHeatSegments]);
 
   // Auto-close only if the root Lens disappears. Ref children may be hidden
   // by the current reading mode and should stay readable inside the stack.
@@ -354,9 +515,14 @@ function Overlay({ url, roomId, canonical }: { url: string; roomId: string; cano
     function onClick(e: MouseEvent) {
       const target = e.target as Node | null;
       if (target && (target as Element).closest?.("#lumen-root, [data-lumen-overlay]")) return;
-      const id = lensAtPoint(e.clientX, e.clientY);
+      const sel = window.getSelection();
+      if (sel && !sel.isCollapsed && sel.toString().trim().length >= 3) {
+        return;
+      }
+      const pointIds = lensIdsAtPoint(e.clientX, e.clientY);
+      const id = preferredLensIdAtPoint(pointIds);
       if (id) {
-        setActiveLens({ rootId: id, childIds: [] });
+        setActiveLens(activeStackForLens(id));
         setDraft(null);
       } else {
         setActiveLens(null);
@@ -364,7 +530,7 @@ function Overlay({ url, roomId, canonical }: { url: string; roomId: string; cano
     }
     document.addEventListener("click", onClick);
     return () => document.removeEventListener("click", onClick);
-  }, [lumenHidden]);
+  }, [lumenHidden, clusterableLenses]);
 
   async function publish(input: { type: LensType; body: string; tags: string[]; anonymous: boolean }) {
     if (!token || !draft) return;
@@ -377,6 +543,7 @@ function Overlay({ url, roomId, canonical }: { url: string; roomId: string; cano
         body: input.body,
         anchor,
         tags: input.tags,
+        refs: refsFromBody(input.body),
         anonymous: input.anonymous,
       },
       token,
@@ -386,19 +553,183 @@ function Overlay({ url, roomId, canonical }: { url: string; roomId: string; cano
     window.getSelection()?.removeAllRanges();
   }
 
+  async function confirmReanchor() {
+    if (!token || !draft || !reanchorTargetId) return;
+    setReanchorBusy(true);
+    setReanchorError(null);
+    try {
+      const anchor = createAnchor(draft.range);
+      const lens = await updateLensAnchor(reanchorTargetId, anchor, token);
+      const restored = restoreAnchor(lens.anchor) ?? draft.range.cloneRange();
+      anchorRanges.current.set(lens.id, restored);
+      setLenses((prev) => prev.map((l) => (l.id === lens.id ? lens : l)));
+      setOrphanIds((s) => {
+        const next = new Set(s);
+        next.delete(lens.id);
+        return next;
+      });
+      setReanchorTargetId(null);
+      setDraft(null);
+      window.getSelection()?.removeAllRanges();
+    } catch (e) {
+      const message = e instanceof Error ? e.message : String(e);
+      setReanchorError(
+        message.includes("403")
+          ? "Only the original author or an operator can re-anchor this Lens."
+          : message,
+      );
+    } finally {
+      setReanchorBusy(false);
+    }
+  }
+
   if (!settingsReady) return null;
   if (tabHidden) return <RestoreTabButton onClick={() => setTabHidden(false)} />;
   if (lumenHidden) return null;
   if (!token) return <NoTokenHint />;
 
   const activeLensStack = activeLens
-    ? [activeLens.rootId, ...activeLens.childIds]
+    ? [activeLens.rootId, ...activeLens.clusterIds, ...activeLens.childIds]
         .map((id) => lenses.find((l) => l.id === id) ?? null)
         .filter((l): l is Lens => !!l)
     : [];
   const activeLensRange = activeLens ? anchorRanges.current.get(activeLens.rootId) ?? null : null;
+  const activeLensClusterCount = activeLens ? activeLens.clusterIds.length + 1 : 0;
   const others = presence.length;
   const hiddenCount = lenses.length - visibleLenses.length - orphanIds.size;
+
+  function clusterIdsForLens(id: string, pool: Lens[]): string[] {
+    const rootRange = anchorRanges.current.get(id);
+    if (!rootRange) return [];
+    const siblings = pool
+      .filter((lens) => {
+        if (lens.id === id) return false;
+        const range = anchorRanges.current.get(lens.id);
+        return range ? rangesOverlap(rootRange, range) : false;
+      })
+      .sort((a, b) => {
+        const aRange = anchorRanges.current.get(a.id);
+        const bRange = anchorRanges.current.get(b.id);
+        const aExact = aRange ? rangesEqual(rootRange, aRange) : false;
+        const bExact = bRange ? rangesEqual(rootRange, bRange) : false;
+        if (aExact !== bExact) return aExact ? -1 : 1;
+        return a.createdAt - b.createdAt;
+      });
+    return siblings.map((lens) => lens.id);
+  }
+
+  function sortClusterLensIds(ids: string[]): string[] {
+    return [...ids].sort((a, b) => {
+      const aRange = anchorRanges.current.get(a);
+      const bRange = anchorRanges.current.get(b);
+      const aLength = aRange ? rangeTextLength(aRange) : Number.MAX_SAFE_INTEGER;
+      const bLength = bRange ? rangeTextLength(bRange) : Number.MAX_SAFE_INTEGER;
+      if (aLength !== bLength) return aLength - bLength;
+      const aLens = lenses.find((lens) => lens.id === a);
+      const bLens = lenses.find((lens) => lens.id === b);
+      return (aLens?.createdAt ?? 0) - (bLens?.createdAt ?? 0);
+    });
+  }
+
+  function activeStackForLensIds(ids: string[]): ActiveLensStack | null {
+    const sorted = sortClusterLensIds([...new Set(ids)]);
+    const rootId = sorted[0];
+    if (!rootId) return null;
+    return {
+      rootId,
+      clusterIds: sorted.slice(1),
+      childIds: [],
+    };
+  }
+
+  function activeStackForLens(id: string): ActiveLensStack {
+    if (!lenses.find((lens) => lens.id === id)) {
+      return {
+        rootId: id,
+        clusterIds: [],
+        childIds: [],
+      };
+    }
+    return {
+      rootId: id,
+      clusterIds: sortClusterLensIds(clusterIdsForLens(id, clusterableLenses)),
+      childIds: [],
+    };
+  }
+
+  function preferredLensIdAtPoint(ids: string[]): string | null {
+    return sortClusterLensIds([...new Set(ids)])[0] ?? null;
+  }
+
+  function buildClusterHeatSegments(pool: Lens[], visibleIds: Set<string>): ClusterHeatSegment[] {
+    const index = buildTextIndex(document.body);
+    const spans = pool
+      .map((lens) => {
+        const range = anchorRanges.current.get(lens.id);
+        const offsets = range ? rangeToFlatOffsets(range, index) : null;
+        if (!offsets || offsets.end <= offsets.start) return null;
+        return {
+          id: lens.id,
+          start: offsets.start,
+          end: offsets.end,
+          visible: visibleIds.has(lens.id),
+        };
+      })
+      .filter((span): span is { id: string; start: number; end: number; visible: boolean } => !!span);
+
+    if (spans.length === 0) return [];
+
+    const boundaries = [...new Set(spans.flatMap((span) => [span.start, span.end]))]
+      .sort((a, b) => a - b);
+    const segments: ClusterHeatSegment[] = [];
+
+    for (let i = 0; i < boundaries.length - 1; i++) {
+      const start = boundaries[i];
+      const end = boundaries[i + 1];
+      if (end <= start) continue;
+
+      const covering = spans.filter((span) => span.start < end && span.end > start);
+      if (covering.length === 0 || !covering.some((span) => span.visible)) continue;
+
+      const range = flatOffsetsToRange(start, end, index);
+      if (!range) continue;
+      segments.push({
+        key: `${start}:${end}`,
+        range,
+        depth: covering.length,
+      });
+    }
+
+    return segments;
+  }
+
+  function buildClusterHeatRects(segments: ClusterHeatSegment[], tick: number): ClusterHeatRect[] {
+    void tick;
+    return segments.flatMap((segment) => (
+      Array.from(segment.range.getClientRects())
+        .filter((rect) => (
+          rect.width > 0 &&
+          rect.height > 0 &&
+          rect.bottom >= 0 &&
+          rect.top <= window.innerHeight &&
+          rect.right >= 0 &&
+          rect.left <= window.innerWidth
+        ))
+        .map((rect, index) => {
+          const key = `${segment.key}:${index}`;
+          return {
+            key,
+            depth: segment.depth,
+            top: rect.top + 1 + stableJitter(key, 1) * 0.8,
+            left: rect.left - 1 + stableJitter(key, 2) * 0.9,
+            width: rect.width + 2 + stableJitter(key, 3) * 1.8,
+            height: Math.max(4, rect.height - 1 + stableJitter(key, 4) * 1.4),
+            rotate: stableJitter(key, 5) * 0.45,
+            radius: 4.5 + stableJitter(key, 6) * 1.4,
+          };
+        })
+    ));
+  }
 
   function jumpToLensAnchor(id: string) {
     const range = anchorRanges.current.get(id);
@@ -416,14 +747,17 @@ function Overlay({ url, roomId, canonical }: { url: string; roomId: string; cano
         : node.parentElement;
       el?.scrollIntoView({ block: "center", behavior: "smooth" });
     }
-    setActiveLens({ rootId: id, childIds: [] });
+    setActiveLens(activeStackForLens(id));
   }
 
   function openReferencedLens(id: string) {
     setActiveLens((current) => {
-      if (!current) return { rootId: id, childIds: [] };
+      if (!current) return activeStackForLens(id);
       const existingIndex = current.childIds.indexOf(id);
       if (current.rootId === id) return { ...current, childIds: [] };
+      if (current.clusterIds.includes(id)) {
+        return activeStackForLens(id);
+      }
       if (existingIndex >= 0) {
         return { ...current, childIds: current.childIds.slice(0, existingIndex + 1) };
       }
@@ -446,6 +780,14 @@ function Overlay({ url, roomId, canonical }: { url: string; roomId: string; cano
     await reportLens(id, token);
   }
 
+  function startReanchor(id: string) {
+    setReanchorTargetId(id);
+    setReanchorError(null);
+    setComposerOpen(false);
+    setDraft(null);
+    setActiveLens(null);
+  }
+
   return (
     <>
       <Orb
@@ -455,6 +797,7 @@ function Overlay({ url, roomId, canonical }: { url: string; roomId: string; cano
         extraCount={hiddenCount + orphanIds.size}
         onToggle={() => setPanelOpen((v) => !v)}
       />
+      <ClusterHeatOverlay rects={clusterHeatRects} />
       {panelOpen && (
         <InfoPanel
           mode={readingMode}
@@ -462,17 +805,38 @@ function Overlay({ url, roomId, canonical }: { url: string; roomId: string; cano
           hidden={hiddenCount}
           orphanLenses={lenses.filter((l) => orphanIds.has(l.id))}
           currentLens={activeLensStack[activeLensStack.length - 1] ?? null}
+          reanchorTargetId={reanchorTargetId}
           onClose={() => setPanelOpen(false)}
           onHideTab={() => setTabHidden(true)}
           onReport={reportLensById}
+          onReanchor={startReanchor}
+          onCancelReanchor={() => {
+            setReanchorTargetId(null);
+            setReanchorError(null);
+          }}
         />
       )}
-      {draft && !composerOpen && (
+      {draft && !composerOpen && !reanchorTargetId && (
         <CreateButton draft={draft} onClick={() => setComposerOpen(true)} />
       )}
-      {composerOpen && draft && (
+      {reanchorTargetId && draft && (
+        <ReanchorConfirm
+          draft={draft}
+          busy={reanchorBusy}
+          error={reanchorError}
+          onCancel={() => {
+            setReanchorTargetId(null);
+            setReanchorError(null);
+            setDraft(null);
+          }}
+          onConfirm={() => void confirmReanchor()}
+        />
+      )}
+      {composerOpen && draft && !reanchorTargetId && (
         <Composer
           draft={draft}
+          referenceLenses={lenses}
+          overlapLenses={draftOverlapLenses}
           onCancel={() => {
             setComposerOpen(false);
             setDraft(null);
@@ -484,6 +848,7 @@ function Overlay({ url, roomId, canonical }: { url: string; roomId: string; cano
         <LensCard
           key={activeLens.rootId}
           lenses={activeLensStack}
+          clusterCount={activeLensClusterCount}
           rootAnchorRange={activeLensRange}
           hasAnchor={(id) => anchorRanges.current.has(id)}
           onJumpToAnchor={jumpToLensAnchor}
@@ -523,24 +888,51 @@ function Orb({
   );
 }
 
+function ClusterHeatOverlay({ rects }: { rects: ClusterHeatRect[] }) {
+  return (
+    <div className="cluster-heat-layer" data-lumen-overlay="" aria-hidden="true">
+      {rects.map((rect) => (
+        <span
+          key={rect.key}
+          className={`cluster-heat depth-${Math.min(rect.depth, 4)}`}
+          style={{
+            top: rect.top,
+            left: rect.left,
+            width: rect.width,
+            height: rect.height,
+            borderRadius: rect.radius,
+            transform: `rotate(${rect.rotate}deg)`,
+          }}
+        />
+      ))}
+    </div>
+  );
+}
+
 function InfoPanel({
   mode,
   visible,
   hidden,
   orphanLenses,
   currentLens,
+  reanchorTargetId,
   onClose,
   onHideTab,
   onReport,
+  onReanchor,
+  onCancelReanchor,
 }: {
   mode: ReadingMode;
   visible: number;
   hidden: number;
   orphanLenses: Lens[];
   currentLens: Lens | null;
+  reanchorTargetId: string | null;
   onClose: () => void;
   onHideTab: () => void;
   onReport: (id: string) => void | Promise<void>;
+  onReanchor: (id: string) => void;
+  onCancelReanchor: () => void;
 }) {
   const [copyState, setCopyState] = useState<"idle" | "copied" | "failed">("idle");
   const [reportState, setReportState] = useState<"idle" | "reported" | "failed">("idle");
@@ -652,6 +1044,12 @@ function InfoPanel({
       {orphanLenses.length > 0 && (
         <div className="ip-section">
           <div className="ip-label">Orphan lens</div>
+          {reanchorTargetId && (
+            <div className="ip-hint reanchor-hint">
+              <span>Select the new text anchor on the page.</span>
+              <button onClick={onCancelReanchor}>Cancel</button>
+            </div>
+          )}
           {orphanLenses.map((l) => (
             <div key={l.id} className="orphan-row">
               <div className="orphan-meta">
@@ -664,6 +1062,17 @@ function InfoPanel({
               <div className="orphan-body">
                 {l.body.slice(0, 100)}{l.body.length > 100 ? "…" : ""}
               </div>
+              {l.canEditAnchor ? (
+                <button
+                  className="orphan-action"
+                  onClick={() => onReanchor(l.id)}
+                  disabled={reanchorTargetId === l.id}
+                >
+                  {reanchorTargetId === l.id ? "Selecting..." : "Re-anchor"}
+                </button>
+              ) : (
+                <div className="orphan-note">Only the author or an operator can re-anchor this Lens.</div>
+              )}
             </div>
           ))}
         </div>
@@ -706,12 +1115,44 @@ function CreateButton({ draft, onClick }: { draft: SelectionDraft; onClick: () =
   );
 }
 
+function ReanchorConfirm({
+  draft,
+  busy,
+  error,
+  onCancel,
+  onConfirm,
+}: {
+  draft: SelectionDraft;
+  busy: boolean;
+  error: string | null;
+  onCancel: () => void;
+  onConfirm: () => void;
+}) {
+  const top = Math.min(window.innerHeight - 150, draft.rect.bottom + 8);
+  const left = Math.max(8, Math.min(window.innerWidth - 300, draft.rect.left));
+
+  return (
+    <div className="reanchor-confirm" style={{ top, left }} data-lumen-overlay="">
+      <div className="quote-preview">"{draft.text.slice(0, 140)}"</div>
+      {error && <div className="err">{error}</div>}
+      <div className="row">
+        <button className="cancel" onClick={onCancel} disabled={busy}>Cancel</button>
+        <button onClick={onConfirm} disabled={busy}>{busy ? "Saving..." : "Use as anchor"}</button>
+      </div>
+    </div>
+  );
+}
+
 function Composer({
   draft,
+  referenceLenses,
+  overlapLenses,
   onCancel,
   onSubmit,
 }: {
   draft: SelectionDraft;
+  referenceLenses: Lens[];
+  overlapLenses: Lens[];
   onCancel: () => void;
   onSubmit: (input: { type: LensType; body: string; tags: string[]; anonymous: boolean }) => void | Promise<void>;
 }) {
@@ -719,8 +1160,10 @@ function Composer({
   const [body, setBody] = useState("");
   const [tagsRaw, setTagsRaw] = useState("");
   const [anonymous, setAnonymous] = useState(false);
+  const [refPickerOpen, setRefPickerOpen] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
 
   const top = Math.min(window.innerHeight - 320, draft.rect.bottom + 12);
   const left = Math.max(8, Math.min(window.innerWidth - 380, draft.rect.left));
@@ -742,9 +1185,35 @@ function Composer({
     }
   }
 
+  function insertLensRef(lensId: string) {
+    const snippet = `[[lens:${lensId}]]`;
+    const el = textareaRef.current;
+    const start = el?.selectionStart ?? body.length;
+    const end = el?.selectionEnd ?? body.length;
+    const prefix = body.slice(0, start);
+    const suffix = body.slice(end);
+    const spacerBefore = prefix.length > 0 && !/\s$/.test(prefix) ? " " : "";
+    const spacerAfter = suffix.length > 0 && !/^\s/.test(suffix) ? " " : "";
+    const inserted = `${spacerBefore}${snippet}${spacerAfter}`;
+    const next = `${prefix}${inserted}${suffix}`;
+    setBody(next);
+    setRefPickerOpen(false);
+    window.setTimeout(() => {
+      textareaRef.current?.focus();
+      const pos = start + inserted.length;
+      textareaRef.current?.setSelectionRange(pos, pos);
+    }, 0);
+  }
+
   return (
     <div className="composer" style={{ top, left }} data-lumen-overlay="">
       <div className="quote-preview">"{draft.text.slice(0, 200)}"</div>
+      {overlapLenses.length > 0 && (
+        <div className="overlap-hint">
+          <span>{overlapLenses.length} Lens already here</span>
+          <button type="button" onClick={() => setRefPickerOpen(true)}>Reference one</button>
+        </div>
+      )}
       <div>
         <label>Type</label>
         <select value={type} onChange={(e) => setType(e.target.value as LensType)}>
@@ -753,8 +1222,33 @@ function Composer({
       </div>
       <div>
         <label>Body</label>
-        <textarea value={body} onChange={(e) => setBody(e.target.value)} autoFocus />
+        <textarea ref={textareaRef} value={body} onChange={(e) => setBody(e.target.value)} autoFocus />
       </div>
+      {referenceLenses.length > 0 && (
+        <div className="ref-insert">
+          <button type="button" className="ref-insert-toggle" onClick={() => setRefPickerOpen((v) => !v)}>
+            Insert reference
+          </button>
+          {refPickerOpen && (
+            <div className="ref-insert-list">
+              {referenceLenses.map((lens) => (
+                <button
+                  key={lens.id}
+                  type="button"
+                  className="ref-insert-item"
+                  onClick={() => insertLensRef(lens.id)}
+                >
+                  <span className="ref-insert-meta">
+                    <span className="pill">{lens.type}</span>
+                    <span>@{lens.author?.handle ?? "unknown"}</span>
+                  </span>
+                  <span className="ref-insert-body">{lens.body.slice(0, 72)}</span>
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
       <div>
         <label>Tags (comma-separated)</label>
         <input type="text" value={tagsRaw} onChange={(e) => setTagsRaw(e.target.value)} />
@@ -799,6 +1293,7 @@ async function writeClipboardText(text: string): Promise<void> {
 
 function LensCard({
   lenses,
+  clusterCount,
   rootAnchorRange,
   hasAnchor,
   onJumpToAnchor,
@@ -808,6 +1303,7 @@ function LensCard({
   onMount,
 }: {
   lenses: Lens[];
+  clusterCount: number;
   rootAnchorRange: Range | null;
   hasAnchor: (id: string) => boolean;
   onJumpToAnchor: (id: string) => void;
@@ -817,9 +1313,21 @@ function LensCard({
   onMount?: (rect: DOMRect) => void;
 }) {
   const sectionRef = useRef<HTMLElement>(null);
+  const expandableRef = useRef<HTMLDivElement>(null);
+  const [clusterExpanded, setClusterExpanded] = useState(false);
+  const [expandableHeight, setExpandableHeight] = useState(0);
   const [position, setPosition] = useState<CardPosition>(() =>
     positionCardNear(rootAnchorRange?.getBoundingClientRect()),
   );
+  const rootLens = lenses[0] ?? null;
+  const clusterSiblings = lenses.slice(1, clusterCount);
+  const referencedLenses = lenses.slice(clusterCount);
+  const visibleClusterSiblings = clusterSiblings.slice(0, DEFAULT_CLUSTER_SIBLINGS);
+  const expandableClusterSiblings = clusterSiblings.slice(DEFAULT_CLUSTER_SIBLINGS);
+  const primaryLenses = [
+    ...(rootLens ? [rootLens] : []),
+    ...visibleClusterSiblings,
+  ];
 
   useEffect(() => {
     if (sectionRef.current && onMount) {
@@ -829,10 +1337,27 @@ function LensCard({
   }, []);
 
   useEffect(() => {
+    const el = expandableRef.current;
+    if (!el) {
+      setExpandableHeight(0);
+      return;
+    }
+    const measure = () => setExpandableHeight(el.scrollHeight);
+    measure();
+    if (typeof ResizeObserver === "undefined") return;
+    const observer = new ResizeObserver(measure);
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, [expandableClusterSiblings.length, clusterExpanded]);
+
+  useEffect(() => {
     let frame: number | null = null;
     const update = () => {
       frame = null;
-      const next = positionCardNear(rootAnchorRange?.getBoundingClientRect());
+      const next = positionCardNear(
+        rootAnchorRange?.getBoundingClientRect(),
+        sectionRef.current?.getBoundingClientRect(),
+      );
       setPosition((prev) => (
         prev.top === next.top && prev.left === next.left ? prev : next
       ));
@@ -850,15 +1375,80 @@ function LensCard({
       window.removeEventListener("resize", schedule);
       window.removeEventListener("scroll", schedule, true);
     };
-  }, [rootAnchorRange]);
+  }, [rootAnchorRange, lenses.length, clusterCount, clusterExpanded]);
 
   return (
     <section ref={sectionRef} className="card card-stack" style={position} data-lumen-overlay="">
-      {lenses.map((lens, index) => (
+      {clusterCount > 1 && (
+        <div className="cluster-note">{clusterCount} Lens on this passage</div>
+      )}
+      {primaryLenses.map((lens, index) => (
         <LensPanel
-          key={`${lens.id}-${index}`}
+          key={lens.id}
           lens={lens}
           depth={index}
+          stackLabel={index > 0 && index <= visibleClusterSiblings.length ? "Same passage" : "Referenced lens"}
+          hasAnchor={hasAnchor(lens.id)}
+          knownLenses={knownLenses}
+          onLensClick={onLensClick}
+          onReact={onReact}
+          onJumpToAnchor={() => onJumpToAnchor(lens.id)}
+        />
+      ))}
+      {expandableClusterSiblings.length > 0 && (
+        <div className={`collapsed-cluster ${clusterExpanded ? "hidden" : ""}`}>
+          <div className="stack-label">Same passage</div>
+          {expandableClusterSiblings.slice(0, 3).map((lens) => (
+            <button
+              key={lens.id}
+              type="button"
+              className="collapsed-lens"
+              onClick={() => setClusterExpanded(true)}
+            >
+              <span className="pill">{lens.type}</span>
+              <span>@{lens.author?.handle ?? "unknown"}</span>
+              <span className="collapsed-body">{lens.body.slice(0, 72)}</span>
+            </button>
+          ))}
+          <button className="show-more-lens" onClick={() => setClusterExpanded(true)}>
+            Show {expandableClusterSiblings.length} more
+          </button>
+        </div>
+      )}
+      {expandableClusterSiblings.length > 0 && (
+        <div
+          className={`expandable-cluster ${clusterExpanded ? "expanded" : ""}`}
+          style={{ maxHeight: clusterExpanded ? expandableHeight : 0 }}
+          aria-hidden={!clusterExpanded}
+        >
+          <div ref={expandableRef} className="expandable-cluster-inner">
+            {expandableClusterSiblings.map((lens, index) => (
+              <LensPanel
+                key={lens.id}
+                lens={lens}
+                depth={visibleClusterSiblings.length + index + 1}
+                stackLabel="Same passage"
+                hasAnchor={hasAnchor(lens.id)}
+                knownLenses={knownLenses}
+                onLensClick={onLensClick}
+                onReact={onReact}
+                onJumpToAnchor={() => onJumpToAnchor(lens.id)}
+              />
+            ))}
+          </div>
+        </div>
+      )}
+      {clusterExpanded && expandableClusterSiblings.length > 0 && (
+        <button className="show-more-lens collapse" onClick={() => setClusterExpanded(false)}>
+          Collapse same-passage Lens
+        </button>
+      )}
+      {referencedLenses.map((lens, index) => (
+        <LensPanel
+          key={lens.id}
+          lens={lens}
+          depth={primaryLenses.length + expandableClusterSiblings.length + index}
+          stackLabel="Referenced lens"
           hasAnchor={hasAnchor(lens.id)}
           knownLenses={knownLenses}
           onLensClick={onLensClick}
@@ -873,6 +1463,7 @@ function LensCard({
 function LensPanel({
   lens,
   depth,
+  stackLabel,
   hasAnchor,
   knownLenses,
   onLensClick,
@@ -881,6 +1472,7 @@ function LensPanel({
 }: {
   lens: Lens;
   depth: number;
+  stackLabel: string;
   hasAnchor: boolean;
   knownLenses?: Lens[];
   onLensClick?: (id: string) => void;
@@ -907,7 +1499,7 @@ function LensPanel({
 
   return (
     <div className={depth === 0 ? "lens-panel" : "lens-panel ref-panel"}>
-      {depth > 0 && <div className="stack-label">Referenced lens</div>}
+      {depth > 0 && <div className="stack-label">{stackLabel}</div>}
       <div className="meta">
         <span className="pill">{lens.type}</span>
         {(lens.tags ?? []).map((t) => (

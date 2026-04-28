@@ -20,8 +20,11 @@ bun run issue-invite -- --by founder    # mint an invite, copy the code
 | POST | `/api/redeem` | – | `{ code, handle }` | `{ userId, handle, token }` |
 | GET | `/api/lenses` | bearer | `?room=<sha256>` | `{ lenses: [...] }` |
 | POST | `/api/lenses` | bearer | `{ roomId, url, type, body, anchor, tags?, refs?, anonymous? }` | `{ lens }` |
+| PATCH | `/api/lenses/:id/anchor` | bearer | `{ anchor }` | `{ lens }` |
 | POST | `/api/reactions` | bearer | `{ lensId, kind }` | `{ lensId, kind, selected, reactions, myReactions }` |
 | POST | `/api/reports` | bearer | `{ lensId, reason? }` | `{ reportId, lensId }` |
+
+`PATCH /api/lenses/:id/anchor` is limited to the original Lens author or an operator. Configure operators with comma-separated `LUMEN_OPERATOR_USER_IDS` or `LUMEN_OPERATOR_HANDLES`.
 
 ## WebSocket
 
@@ -36,6 +39,7 @@ Server → client messages:
 - `{ type: "presence_join", userId }`
 - `{ type: "presence_leave", userId }`
 - `{ type: "lens_created", lens }`
+- `{ type: "lens_anchor_updated", lens }`
 - `{ type: "pong", at }`
 
 ## Files

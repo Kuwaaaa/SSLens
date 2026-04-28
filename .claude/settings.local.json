@@ -1,0 +1,12 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(cmd /c \"node_modules\\\\.bin\\\\tsc -p apps\\\\extension\\\\tsconfig.json --noEmit\")",
+      "Bash(cmd /c \"bun run build:extension\")",
+      "Bash(dir E:\\\\src\\\\SStree-v2\\\\apps\\\\extension\\\\dist\\\\assets *)",
+      "Bash(bun run *)",
+      "Bash(echo \"EXIT_CODE:$?\")",
+      "Bash(echo \"EXIT:$?\")"
+    ]
+  }
+}

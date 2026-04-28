@@ -35,6 +35,10 @@ const findUserByHandle = db.query<{ id: string }, [string]>(
   "SELECT id FROM users WHERE handle = ?",
 );
 
+const findUserById = db.query<{ id: string; handle: string }, [string]>(
+  "SELECT id, handle FROM users WHERE id = ?",
+);
+
 export async function handleRedeem(req: Request): Promise<Response> {
   const body = (await req.json().catch(() => null)) as { code?: string; handle?: string } | null;
   if (!body?.code || !body?.handle) return json({ error: "code and handle required" }, 400);
@@ -114,6 +118,32 @@ function reactionsForLens(lensId: string): Record<string, number> {
   return out;
 }
 
+function isOperatorUser(userId: string): boolean {
+  const ids = new Set(
+    (process.env.LUMEN_OPERATOR_USER_IDS ?? "")
+      .split(",")
+      .map((s) => s.trim())
+      .filter(Boolean),
+  );
+  if (ids.has(userId)) return true;
+
+  const handles = new Set(
+    (process.env.LUMEN_OPERATOR_HANDLES ?? "")
+      .split(",")
+      .map((s) => s.trim().toLowerCase())
+      .filter(Boolean),
+  );
+  if (handles.size === 0) return false;
+
+  const user = findUserById.get(userId);
+  return user ? handles.has(user.handle.toLowerCase()) : false;
+}
+
+function canEditLensAnchor(r: LensRow, viewerId?: string): boolean {
+  if (!viewerId) return false;
+  return r.author_id === viewerId || isOperatorUser(viewerId);
+}
+
 function rowToLens(r: LensRow, viewerId?: string) {
   const isAnon = r.anonymous === 1;
   return {
@@ -134,6 +164,8 @@ function rowToLens(r: LensRow, viewerId?: string) {
     myReactions: viewerId ? myReactionsForLens(r.id, viewerId) : [],
     replyCount: 0,
     saveCount: 0,
+    viewerIsAuthor: viewerId ? r.author_id === viewerId : false,
+    canEditAnchor: canEditLensAnchor(r, viewerId),
   };
 }
 
@@ -205,6 +237,36 @@ export async function handleCreateLens(
   server.publish(body.roomId, JSON.stringify({ type: "lens_created", lens }));
 
   return json({ lens }, 201);
+}
+
+// --- PATCH /api/lenses/:id/anchor ------------------------------------------
+
+const updateLensAnchor = db.query<unknown, [string, string]>(
+  "UPDATE lenses SET anchor = ? WHERE id = ?",
+);
+
+export async function handleUpdateLensAnchor(
+  req: Request,
+  user: TokenPayload,
+  server: Server<unknown>,
+  lensId: string,
+): Promise<Response> {
+  const body = (await req.json().catch(() => null)) as { anchor?: unknown } | null;
+  if (!body?.anchor) return json({ error: "anchor required" }, 400);
+
+  const row = fetchLensById.get(lensId);
+  if (!row) return json({ error: "lens not found" }, 404);
+  if (!canEditLensAnchor(row, user.sub)) return json({ error: "forbidden" }, 403);
+
+  updateLensAnchor.run(JSON.stringify(body.anchor), lensId);
+
+  const updated = fetchLensById.get(lensId);
+  if (!updated) return json({ error: "internal" }, 500);
+  const lens = rowToLens(updated, user.sub);
+
+  server.publish(updated.room_id, JSON.stringify({ type: "lens_anchor_updated", lens }));
+
+  return json({ lens });
 }
 
 // --- POST /api/reactions ----------------------------------------------------

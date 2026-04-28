@@ -34,13 +34,56 @@ export function removeHighlight(lensId: string): void {
 }
 
 export function clearAllHighlights(): void {
-  if (!highlight) return;
-  highlight.clear();
+  if (highlight) highlight.clear();
   lensRanges.clear();
 }
 
 export function getRangeForLens(lensId: string): Range | null {
   return lensRanges.get(lensId) ?? null;
+}
+
+// --- Cluster heat highlights (amber gets denser as more Lens overlap) ---
+
+const CLUSTER_HEAT_LEVELS = [2, 3, 4] as const;
+type ClusterHeatLevel = (typeof CLUSTER_HEAT_LEVELS)[number];
+
+const clusterHeatRanges = new Map<string, { range: Range; level: ClusterHeatLevel }>();
+const clusterHeatHighlights = new Map<ClusterHeatLevel, Highlight>();
+
+function heatLevelForDepth(depth: number): ClusterHeatLevel {
+  if (depth >= 4) return 4;
+  if (depth >= 3) return 3;
+  return 2;
+}
+
+function clusterHeatName(level: ClusterHeatLevel): string {
+  return `lumen-cluster-${level}`;
+}
+
+function ensureClusterHeatHighlight(level: ClusterHeatLevel): Highlight {
+  const existing = clusterHeatHighlights.get(level);
+  if (existing) return existing;
+  if (typeof Highlight === "undefined" || typeof CSS === "undefined" || !CSS.highlights) {
+    throw new Error("CSS Custom Highlight API not supported");
+  }
+  const highlight = new Highlight();
+  clusterHeatHighlights.set(level, highlight);
+  CSS.highlights.set(clusterHeatName(level), highlight);
+  return highlight;
+}
+
+export function applyClusterHighlight(key: string, range: Range, depth: number): void {
+  const level = heatLevelForDepth(depth);
+  const h = ensureClusterHeatHighlight(level);
+  const old = clusterHeatRanges.get(key);
+  if (old) ensureClusterHeatHighlight(old.level).delete(old.range);
+  clusterHeatRanges.set(key, { range, level });
+  h.add(range);
+}
+
+export function clearAllClusterHighlights(): void {
+  for (const h of clusterHeatHighlights.values()) h.clear();
+  clusterHeatRanges.clear();
 }
 
 // Inject the global stylesheet that draws the dotted-underline on highlights.
@@ -54,15 +97,29 @@ export function injectMarkerStyles(): void {
       text-decoration: underline dotted #6b21a8;
       text-decoration-thickness: 2px;
       text-underline-offset: 3px;
-      background-color: rgba(168, 85, 247, 0.06);
+    }
+    ::highlight(${clusterHeatName(2)}) {
+      text-decoration: underline dotted #b45309;
+      text-decoration-thickness: 2px;
+      text-underline-offset: 3px;
+    }
+    ::highlight(${clusterHeatName(3)}) {
+      text-decoration: underline dotted #b45309;
+      text-decoration-thickness: 2px;
+      text-underline-offset: 3px;
+    }
+    ::highlight(${clusterHeatName(4)}) {
+      text-decoration: underline dotted #92400e;
+      text-decoration-thickness: 2px;
+      text-underline-offset: 3px;
     }
   `;
   document.head.appendChild(style);
 }
 
-// Find which lens (if any) covers the given client-coord point. Used to
+// Find which lenses (if any) cover the given client-coord point. Used to
 // detect clicks on highlights without mutating the DOM.
-export function lensAtPoint(x: number, y: number): string | null {
+export function lensIdsAtPoint(x: number, y: number): string[] {
   type CaretPositionFn = (x: number, y: number) => { offsetNode: Node; offset: number } | null;
   const docAny = document as Document & {
     caretRangeFromPoint?: (x: number, y: number) => Range | null;
@@ -80,12 +137,17 @@ export function lensAtPoint(x: number, y: number): string | null {
       pointRange.collapse(true);
     }
   }
-  if (!pointRange) return null;
+  if (!pointRange) return [];
 
+  const ids: string[] = [];
   for (const [id, r] of lensRanges) {
-    if (rangeContainsPoint(r, pointRange)) return id;
+    if (rangeContainsPoint(r, pointRange)) ids.push(id);
   }
-  return null;
+  return ids;
+}
+
+export function lensAtPoint(x: number, y: number): string | null {
+  return lensIdsAtPoint(x, y)[0] ?? null;
 }
 
 function rangeContainsPoint(range: Range, point: Range): boolean {

@@ -55,8 +55,6 @@ When to refactor back to SW-hosted WS: if N tabs per user routinely exceeds 5–
 
 - Companion mode (Find companion button, emoji toss, chat layer)
 - GitHub OAuth badge
-- Re-anchor flow for orphan Lens (orphans are surfaced but not yet repairable)
-- Composer UI for inserting `[[lens:id]]` references (user types syntax manually for now)
 - Cross-page Lens lookup (referencing a Lens not on the current page renders as a disabled chip)
 
 ## Recently implemented
@@ -67,9 +65,12 @@ When to refactor back to SW-hosted WS: if N tabs per user routinely exceeds 5–
 - Reaction MVP with shared reaction kinds in `@lumen/schema`
 - Hide controls: per-tab from the InfoPanel, per-site from the popup
 - Lens card report action backed by `POST /api/reports`
+- Orphan Lens re-anchor flow from the InfoPanel
+- Composer insert-reference picker for current-page Lens
+- Client-side overlap clustering for Lens on the same passage, with amber heat on the exact overlapping text segments
 
 ## Deferred verifications
 
 These code paths are implemented but not yet manually confirmed end-to-end:
 
-- **Orphan Lens UI**: when `restoreAnchor()` returns null, the Lens should appear in InfoPanel's "Orphan lens" section. See the comment block in `src/content.tsx` near `orphanIds` for test recipes (admin console with bad anchor, Chrome Sources Overrides, direct SQLite edit).
+- **Orphan Lens UI**: when `restoreAnchor()` returns null, the Lens should appear in InfoPanel's "Orphan lens" section. Use `Re-anchor`, select replacement text on the page, then confirm the new anchor. See the comment block in `src/content.tsx` near `orphanIds` for test recipes (admin console with bad anchor, Chrome Sources Overrides, direct SQLite edit).

@@ -1,178 +1,283 @@
 # Codex Session Handoff
 
-Date: 2026-04-27
+Date: 2026-04-29
 Branch: `codex`
-Last committed baseline: `6c88195 Stabilize Lens interactions and reactions`
+Last committed baseline: `4abee31 Add privacy, hide controls, and report flow`
 
 ## Read First
 
-Before changing code, read `AGENTS.md`, then the core docs listed there. The product constraint remains: Lumen v2 is a quiet, card-based UGC layer that makes webpages feel inhabited. Do not add AI-authored visible content, knowledge-graph UI, reputation, or default floating/danmaku UI.
+Before changing code, read `AGENTS.md`, then the core docs listed there. Product constraint remains: Lumen v2 is a quiet, card-based UGC layer that makes webpages feel inhabited. Do not add AI-authored visible content, knowledge-graph UI, reputation, or default floating/danmaku UI.
 
 Respond to the user in Chinese unless they switch language. Code and repo docs should stay English.
 
+Do not commit unless the user explicitly asks.
+
 ## Current Working Tree
 
-This handoff describes the uncommitted work after `6c88195`.
+This handoff describes the uncommitted work after `4abee31`.
 
 Modified files:
 
+- `CODEX_SESSION_HANDOFF.md`
 - `apps/extension/README.md`
 - `apps/extension/src/content.tsx`
-- `apps/extension/src/popup.css`
-- `apps/extension/src/popup.tsx`
+- `apps/extension/src/marker.ts`
 - `apps/extension/src/shared/api.ts`
-- `apps/extension/src/shared/storage.ts`
 - `apps/extension/src/styles.css`
 - `apps/server/README.md`
-- `apps/server/public/index.html`
-- `apps/server/src/db.ts`
 - `apps/server/src/index.ts`
 - `apps/server/src/routes.ts`
+- `packages/anchoring/src/index.ts`
+- `packages/schema/src/index.ts`
 
-New file:
+New files:
 
-- `apps/server/public/privacy.html`
+- `docs/technical/overlap-lens-ux-archive.md`
 
-No commit has been made for these changes yet.
+Untracked but not part of the main implementation:
 
-## Implemented In This Uncommitted Work
+- `.claude/`
 
-### Hide controls
+Git still prints warnings about being unable to access `C:\Users\l7867/.config/git/ignore`; this has not affected checks.
 
-Per-tab hide:
-
-- InfoPanel has `Hide on this tab`.
-- This is local content-script state, not persisted.
-- It hides markers, card stack, composer/create button, orb/panel, presence, WS state, and blooms.
-- Because the popup cannot see tab-local state, tab hide now leaves a small `Show Lumen` restore pill in the page bottom-right.
-
-Per-site hide:
-
-- Popup has `Hide on <host>` checkbox.
-- Stored in `chrome.storage.local` under `lumen.hiddenSites`.
-- `normalizeHost()` strips `www.` and lowercases hosts.
-- Content script listens to storage changes and hides/shows without full extension reload.
-
-Important caveat:
-
-- If the user says "popup says it is not hidden but page is blank", check tab-level hide first and look for the `Show Lumen` pill.
-
-### Report button stub
-
-Backend:
-
-- `reports` table added in `apps/server/src/db.ts`.
-- `POST /api/reports` added in `apps/server/src/routes.ts`.
-- Request body: `{ lensId, reason? }`.
-- Response: `{ reportId, lensId }`.
-- Server verifies the Lens exists and records reporter id, Lens id, reason, timestamp.
-- No moderation dashboard, automation, notification, or broadcast yet.
-
-Frontend:
-
-- `reportLens()` added in `apps/extension/src/shared/api.ts`.
-- Report is no longer a top-level LensCard action. The user pushed back on tool-like card chrome.
-- Current UX: InfoPanel shows a `Current lens` section when a Lens is open, with `Copy reference` and `Report`.
-
-### LensCard interaction cleanup
-
-The user strongly preferred reducing tool UI on cards. Current decisions:
-
-- LensCard has no `X` close button.
-- LensCard has no `...` menu.
-- LensCard has no right-click menu.
-- Clicking blank page area closes the active card.
-- `Escape` closes the active card.
-- `View anchor` only appears on child/reference cards (`depth > 0 && hasAnchor`), not on the root card.
-- `Copy reference` and `Report` live in InfoPanel's `Current lens` section.
-
-Important bug fixed:
-
-- A `useEffect` for Escape handling was accidentally placed after early returns (`settingsReady`, `tabHidden`, `lumenHidden`, `token`).
-- That changed React hook order between renders and made the whole overlay disappear.
-- The fix was to move the hook before all early returns. If the overlay disappears again, first check for hooks after early returns in `Overlay`.
-
-### Privacy policy
-
-Added `apps/server/public/privacy.html` and served it from:
-
-- `GET /privacy`
-
-Added links:
-
-- Admin console subtitle links to `/privacy`.
-- Popup shows `Privacy` link before and after login.
-
-Policy intentionally stays short and beta-focused. It covers:
-
-- Stored Lens data.
-- URL canonicalization and room ids.
-- Anonymous Lens caveat: anonymous to other users, not to server operator.
-- Reports.
-- Operator access.
-- Data retention.
-- Removal/privacy questions through beta group channel.
-
-## Verification State
-
-Passing after the latest changes:
-
-- `cmd /c node_modules\.bin\tsc -p apps\extension\tsconfig.json --noEmit`
-- `cmd /c node_modules\.bin\tsc -p apps\server\tsconfig.json --noEmit`
-- `cmd /c bun run build:extension`
-
-Note:
-
-- `bun run build:extension` may need escalation in Codex because Vite/esbuild child process spawn can hit sandbox `EPERM`.
-- Git still prints warnings about being unable to access `C:\Users\l7867/.config/git/ignore`; this has not affected commits.
-
-## Current Product State
+## High-Level Project State
 
 Done or effectively done:
 
 - Invite redemption and token flow.
 - Lens creation and realtime broadcast.
-- Anchoring and CSS Highlight markers.
+- Anchoring and CSS Highlight marker rendering.
 - Reading modes.
 - Anonymous composer toggle.
 - Inter-Lens refs and card stack.
-- Copy reference via InfoPanel current Lens actions.
+- Copy reference through InfoPanel current Lens actions.
 - Emoji reactions MVP.
 - Hide controls: per-tab and per-site.
-- Report stub.
-- Privacy policy.
+- Report stub and privacy policy.
+- Orphan re-anchor flow.
+- Composer insert-reference picker.
+- Client-side overlap / nested Lens UX with heat markers, click-priority, and progressive stack collapse.
 
 Still needed:
 
-- Orphan re-anchor flow.
-- Composer insert-reference picker.
-- Companion mode.
-- Manual UX pass on the latest LensCard/InfoPanel behavior.
+- Manual UX pass on the latest overlap stack behavior after each build.
+- Companion mode. This is the next major P0 arc.
+- Final soak-readiness pass across extension + server before inviting users.
 
-## Recommended Next Step
+## Implemented In This Session
 
-First, ask the user to test the latest overlay fix if they have not already:
+### Orphan Re-anchor MVP
 
-- Refresh a whitelisted page.
-- Confirm orb/markers return.
-- Confirm tab hide shows the `Show Lumen` restore pill.
-- Confirm clicking blank page closes LensCard.
-- Confirm InfoPanel's `Current lens` actions appear when a Lens is open.
+Backend:
 
-Then implement orphan re-anchor MVP:
+- Added `PATCH /api/lenses/:id/anchor` in `apps/server/src/routes.ts`.
+- Wired route in `apps/server/src/index.ts`.
+- Only the original Lens author or an operator may update an anchor.
+- Operators can be configured with comma-separated:
+  - `LUMEN_OPERATOR_USER_IDS`
+  - `LUMEN_OPERATOR_HANDLES`
+- On success, the server broadcasts `{ type: "lens_anchor_updated", lens }`.
 
-1. Add a `PATCH /api/lenses/:id/anchor` or `PATCH /api/lenses` endpoint guarded by author/operator rules as appropriate for beta.
-2. In InfoPanel orphan rows, add a low-key `Re-anchor` action.
-3. User selects text, confirms re-anchor, client creates a new anchor and patches the Lens.
-4. On success, remove Lens id from `orphanIds`, restore range, and apply highlight.
+Schema / response:
 
-Keep it simple. Do not build a full review workflow yet.
+- Added `Lens.canEditAnchor?: boolean` so the client can avoid showing a misleading re-anchor action.
+- Added `Lens.viewerIsAuthor?: boolean` so the client can show the current user's own Lens even when reading mode would otherwise filter it out.
+
+Frontend:
+
+- Added `updateLensAnchor()` in `apps/extension/src/shared/api.ts`.
+- InfoPanel orphan rows show `Re-anchor` only when `canEditAnchor` is true.
+- If the user starts re-anchor, selects replacement text, and confirms `Use as anchor`, the client creates a new anchor and patches the Lens.
+- 403 now shows a clear message: only original author/operator can re-anchor.
+
+Important UX note: if testing with admin-console-created Lens, use the same user or configure the extension user as operator. Otherwise re-anchor is intentionally forbidden.
+
+### Composer Insert-reference Picker
+
+- Composer now has `Insert reference` when the current page has Lens.
+- It inserts `[[lens:id]]` into the body at the cursor position.
+- Publishing now extracts refs from body with `parseBody()` and sends `refs` to the server.
+- Composer also shows `N Lens already here` when the draft selection overlaps existing Lens and offers `Reference one`.
+
+### Selection vs Marker Click Conflict
+
+Bug fixed:
+
+- Selecting text inside an existing marker used to trigger the document `click` handler after `mouseup`, opening the LensCard and clearing the `Create Lens` draft.
+- Now if there is an active text selection of length >= 3, marker click handling yields, so `Create Lens` remains available.
+
+### Overlap / Nested Lens UX
+
+This replaced the earlier amber numeric cluster-handle experiment. Do not reintroduce floating count handles as the primary UI without product review.
+
+Current implementation:
+
+- `apps/extension/src/marker.ts` exposes `lensIdsAtPoint(x, y)` for multi-hit marker clicks.
+- `content.tsx` builds overlap heat segments from restored ranges.
+- CSS Custom Highlight remains responsible for dotted underline and hit testing.
+- A Shadow DOM overlay (`ClusterHeatOverlay`) draws rounded fixed-position heat rects.
+- The overlay paints every visible marker segment:
+  - depth 1: quiet purple fill,
+  - depth 2: light amber,
+  - depth 3: stronger amber,
+  - depth 4+: deepest amber.
+- Heat depth is calculated from flat text offsets, so only the exact overlapping phrase becomes deeper.
+- Heat rects have an experimental soft-marker / light-crayon visual style with stable micro-jitter.
+- Click priority now keeps the clicked Lens as the root:
+  - If multiple Lens cover the click point, the shortest anchor range wins.
+  - If ranges are identical, creation time is the fallback.
+  - Clicking a large-only region opens the larger Lens first.
+- Same-passage Lens stack now uses progressive collapse:
+  - root Lens always full,
+  - up to two same-passage siblings full,
+  - remaining same-passage Lens as compact preview rows,
+  - `Show N more` expands,
+  - `Collapse same-passage Lens` collapses.
+- Expand/collapse has measured max-height transitions and respects `prefers-reduced-motion`.
+- Long stacks are clamped to the viewport and scroll internally rather than being clipped.
+
+Supporting package change:
+
+- `packages/anchoring/src/index.ts` now exports:
+  - `buildTextIndex`
+  - `rangeToFlatOffsets`
+  - `flatOffsetsToRange`
+
+These are used by the extension to compute exact overlap heat segments using the same text-index model as anchoring.
+
+Detailed archive:
+
+- Read `docs/technical/overlap-lens-ux-archive.md` before changing overlap marker/stack behavior.
+
+## Important Current Behavior
+
+On Paul Graham's "Do Things that Don't Scale", nested Lens around `going out` should behave like this:
+
+- The large passage Lens has a subtle purple fill outside overlap.
+- The exact nested overlap phrase gets deeper amber heat.
+- Clicking the small `going out` region opens a `going out` Lens first.
+- Clicking a larger-only region opens the larger Lens first.
+- A 4-Lens stack shows root + up to two same-passage siblings + compact previews.
+- Long stacks do not clip out of the viewport; they scroll internally.
+
+Known database facts from earlier local verification:
+
+Room id:
+
+```text
+7030ae9cff7dc62076a2efde04bab68b5ada358ccffbaad48d9663ba0ca37529
+```
+
+Relevant Lens rows in `data/lumen.db`:
+
+```text
+01KQ5DZ58SVY338J8JR63HXW6F | quick | daze | quote: the spot.There are two reasons founders resist going out and recruiting users | position 1784-1861
+01KQ77B7FGHFSAQ6NSDFZ7QXWE | quick | daze | quote: resist going | position 1824-1836
+01KQ7D8A2STYGG2T0ENM2A9Y80 | quick | daze | quote: going out | position 1831-1840
+01KQ7YPVJ5AT46VTW0K73GB1CZ | quick | daze | quote: going out | position 1831-1840
+```
+
+## Verification State
+
+Passing after latest changes:
+
+- `cmd /c node_modules\.bin\tsc -p apps\extension\tsconfig.json --noEmit`
+
+Previously passing in this work sequence:
+
+- `cmd /c node_modules\.bin\tsc -p apps\server\tsconfig.json --noEmit`
+- `cmd /c bun run build:extension`
+
+Notes:
+
+- `bun run build:extension` often fails inside Codex sandbox with Vite/esbuild `spawn EPERM`; rerun with escalation when needed.
+- The user has been manually building/reloading the extension while testing. After future code changes, rebuild `apps/extension/dist` or run `bun run dev:extension` depending on the user's current loop.
+- The newest overlap UX changes after the last user build still need a fresh build before browser testing.
+
+## Companion Mode Discussion State
+
+No companion mode code has been implemented yet in this session. The current product direction is:
+
+- Reading is solo by default.
+- Companion mode is opt-in only.
+- Do not show "X people are reading" unless the user has entered companion mode.
+- Do not build default danmaku/floating text.
+- Default companion interaction should be edge emoji toss; tiny chat is a togglable upgrade.
+
+Suggested MVP scope:
+
+1. Add a `Find companion` entry in InfoPanel or the orb panel.
+2. On opt-in, join a companion presence layer for the current room.
+3. Show `N here now` only while companion mode is active.
+4. Add ephemeral edge emoji toss over WS.
+5. Add tiny chat toggle with ephemeral WS messages.
+6. Add a clear `Leave` action.
+
+Suggested WS events:
+
+Client to server:
+
+```ts
+{ type: "companion_join", roomId }
+{ type: "companion_leave", roomId }
+{ type: "companion_emoji", roomId, emoji, edge, y }
+{ type: "companion_chat", roomId, body }
+```
+
+Server to clients:
+
+```ts
+{ type: "companion_presence", users: [...] }
+{ type: "companion_joined", user }
+{ type: "companion_left", userId }
+{ type: "companion_emoji", userId, handle, emoji, edge, y, at }
+{ type: "companion_chat", userId, handle, body, at }
+```
+
+Implementation recommendation:
+
+1. Add schema/shared types for companion events.
+2. Extend server WS state with companion presence separate from normal room subscription.
+3. Extend content script state:
+   - `companionActive`
+   - `companionUsers`
+   - `emojiBursts`
+   - `chatOpen`
+   - `companionMessages`
+4. Add InfoPanel controls.
+5. Add edge emoji animation layer.
+6. Add tiny chat panel.
+7. Test with two Chrome windows on the same URL.
+
+## Open Issues / Watch Items
+
+- The soft marker / crayon heat texture is experimental. If it feels too decorative, tune CSS before changing behavior.
+- Expand/collapse animation should be manually checked after each build for flicker, excessive repositioning, or awkward scroll jumps.
+- `DEFAULT_CLUSTER_SIBLINGS` is currently `2`. If stack cards are still too tall, reduce to `1`.
+- Exact same-range Lens remain ambiguous; click cannot distinguish them, so ordering falls back to creation time.
+- Overlay heat rects are fixed-position and refresh on scroll/resize. Watch unusual pages with transforms, heavy layout shifts, zoom, or non-standard writing modes.
+- Do not optimize away repeated Lens content. Repetition/overlap is a social signal.
+
+## Recommended Next Session Plan
+
+1. Read `AGENTS.md`.
+2. Read this handoff.
+3. Read `docs/technical/overlap-lens-ux-archive.md`.
+4. Run or request a fresh extension build if browser testing is needed.
+5. Do a quick smoke test on the PG page if the user asks about overlap UX.
+6. Start companion mode as its own arc.
+
+Suggested first companion mode implementation slice:
+
+- Server: add ephemeral companion presence and `companion_join` / `companion_leave`.
+- Extension: add `Find companion` / `Leave` UI in InfoPanel and display companion-only online count.
+- Do not start with chat. Get explicit opt-in presence correct first.
 
 ## Cautions For Next Session
 
 - Do not put `useEffect`, `useMemo`, `useState`, or other hooks after early returns in React components.
 - Preserve the card-stack model for references. Do not return to mouse-position ref previews.
-- Keep LensCard as content-first. Avoid reintroducing visible tool chrome (`X`, `...`, top-level copy/report).
+- Keep LensCard as content-first. Avoid reintroducing visible tool chrome (`X`, `...`, top-level copy/report`).
 - `Copy reference` and `Report` are intentionally in InfoPanel, not on the card.
 - If editing reactions, `REACTION_KINDS` is shared from `@lumen/schema`; do not duplicate lists in server/extension.
 - Avoid broad docs unless the user asks. This handoff exists because the user explicitly requested session archival.
