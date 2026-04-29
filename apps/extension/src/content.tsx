@@ -3,13 +3,13 @@
 // Responsibilities:
 //   - render existing Lens as CSS Highlight markers (filtered by reading mode)
 //   - capture user text selection -> show "Create Lens" button -> composer
-//   - WebSocket subscription to the page's room (lens_created, presence_*)
+//   - WebSocket subscription to the page's room (lens_created, companion_*)
 //   - mount React overlay inside Shadow DOM so page CSS doesn't leak in
 //   - track anchor recovery; surface orphan Lens through info panel
 //
 // MVP NOTE: WebSocket is owned here, not the service worker. See README.md.
 
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, type FormEvent, type ReactNode } from "react";
 import { createRoot } from "react-dom/client";
 import { WebSocket as ReconnectingWS } from "partysocket";
 import { REACTION_KINDS, type Lens, type LensType, type ReactionKind, type ReadingMode } from "@lumen/schema";
@@ -19,9 +19,11 @@ import {
   getReadingMode,
   getSiteHidden,
   getToken,
+  getUser,
   KEY_HIDDEN_SITES,
   KEY_READING_MODE,
   normalizeHost,
+  type StoredUser,
 } from "./shared/storage";
 import { fetchLensesForRoom, createLens, reportLens, toggleReaction, updateLensAnchor } from "./shared/api";
 import { WS_BASE } from "./shared/config";
@@ -76,10 +78,33 @@ interface ClusterHeatRect {
   radius: number;
 }
 
+interface CompanionEmojiBurst {
+  id: string;
+  emoji: string;
+  edge: "left" | "right";
+  y: number;
+}
+
+interface CompanionChatMessage {
+  id: string;
+  userId: string;
+  handle: string;
+  body: string;
+  at: number;
+}
+
 const CARD_WIDTH = 340;
 const CARD_HEIGHT_ESTIMATE = 280;
 const DEFAULT_CLUSTER_SIBLINGS = 2;
 const VIEWPORT_GUTTER = 8;
+const COMPANION_EMOJI_CHOICES = [
+  "\u{1F44B}",
+  "\u{1F440}",
+  "\u{1F602}",
+  "\u{1F525}",
+  "\u{1F914}",
+  "\u{1F4AF}",
+] as const;
 
 function hostForUrl(input: string): string {
   try {
@@ -172,6 +197,30 @@ function stableJitter(input: string, salt: number): number {
   return ((hash >>> 0) / 4294967295) * 2 - 1;
 }
 
+function isCompanionChatMessage(input: unknown): input is CompanionChatMessage {
+  if (!input || typeof input !== "object") return false;
+  const message = input as Partial<CompanionChatMessage>;
+  return (
+    typeof message.id === "string" &&
+    typeof message.userId === "string" &&
+    typeof message.handle === "string" &&
+    typeof message.body === "string" &&
+    typeof message.at === "number"
+  );
+}
+
+function mergeCompanionMessages(
+  current: CompanionChatMessage[],
+  incoming: CompanionChatMessage[],
+): CompanionChatMessage[] {
+  const byId = new Map<string, CompanionChatMessage>();
+  for (const message of current) byId.set(message.id, message);
+  for (const message of incoming) byId.set(message.id, message);
+  return [...byId.values()]
+    .sort((a, b) => a.at - b.at)
+    .slice(-40);
+}
+
 function Overlay({ url, roomId, canonical }: { url: string; roomId: string; canonical: string }) {
   const siteHost = useMemo(() => hostForUrl(canonical || url), [canonical, url]);
   const [lenses, setLenses] = useState<Lens[]>([]);
@@ -193,7 +242,6 @@ function Overlay({ url, roomId, canonical }: { url: string; roomId: string; cano
   // Re-anchor flow: user starts from an orphan row, selects replacement
   // text, confirms, then the client patches the Lens anchor on the server.
   const [orphanIds, setOrphanIds] = useState<Set<string>>(new Set());
-  const [presence, setPresence] = useState<string[]>([]);
   const [activeLens, setActiveLens] = useState<ActiveLensStack | null>(null);
   const [draft, setDraft] = useState<SelectionDraft | null>(null);
   const [composerOpen, setComposerOpen] = useState(false);
@@ -201,15 +249,23 @@ function Overlay({ url, roomId, canonical }: { url: string; roomId: string; cano
   const [reanchorBusy, setReanchorBusy] = useState(false);
   const [reanchorError, setReanchorError] = useState<string | null>(null);
   const [token, setToken] = useState<string | null>(null);
+  const [currentUser, setCurrentUser] = useState<StoredUser | null>(null);
   const [readingMode, setReadingMode] = useState<ReadingMode>("quiet");
   const [siteHidden, setSiteHiddenState] = useState(false);
   const [tabHidden, setTabHidden] = useState(false);
   const [settingsReady, setSettingsReady] = useState(false);
   const [wsConnected, setWsConnected] = useState(false);
+  const [companionActive, setCompanionActive] = useState(false);
+  const [companionUsers, setCompanionUsers] = useState<string[]>([]);
+  const [emojiBursts, setEmojiBursts] = useState<CompanionEmojiBurst[]>([]);
+  const [chatOpen, setChatOpen] = useState(false);
+  const [companionMessages, setCompanionMessages] = useState<CompanionChatMessage[]>([]);
   const [panelOpen, setPanelOpen] = useState(false);
   const [layoutTick, setLayoutTick] = useState(0);
 
   const anchorRanges = useRef<Map<string, Range>>(new Map());
+  const wsRef = useRef<ReconnectingWS | null>(null);
+  const companionActiveRef = useRef(false);
 
   // --- Geometric shape blooms ---
   // Small SVG primitives that emerge from behind a card (or beside a new
@@ -225,16 +281,41 @@ function Overlay({ url, roomId, canonical }: { url: string; roomId: string; cano
   const removeBloom = useCallback((id: string) => {
     setBlooms((b) => b.filter((x) => x.id !== id));
   }, []);
+  const addEmojiBurst = useCallback((input: Omit<CompanionEmojiBurst, "id">) => {
+    const id = `ce-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+    setEmojiBursts((bursts) => [
+      ...bursts.slice(-10),
+      {
+        ...input,
+        id,
+        y: clamp(input.y, 0.12, 0.88),
+      },
+    ]);
+    window.setTimeout(() => {
+      setEmojiBursts((bursts) => bursts.filter((burst) => burst.id !== id));
+    }, 1250);
+  }, []);
+  const addCompanionMessage = useCallback((message: CompanionChatMessage) => {
+    setCompanionMessages((messages) => mergeCompanionMessages(messages, [message]));
+  }, []);
+  const mergeCompanionHistory = useCallback((messages: CompanionChatMessage[]) => {
+    setCompanionMessages((current) => mergeCompanionMessages(current, messages));
+  }, []);
 
   const lumenHidden = siteHidden || tabHidden;
+
+  useEffect(() => {
+    companionActiveRef.current = companionActive;
+  }, [companionActive]);
 
   // Load token + reading mode + site visibility.
   useEffect(() => {
     let cancelled = false;
-    Promise.all([getToken(), getReadingMode(), getSiteHidden(siteHost)])
-      .then(([nextToken, nextMode, hidden]) => {
+    Promise.all([getToken(), getUser(), getReadingMode(), getSiteHidden(siteHost)])
+      .then(([nextToken, nextUser, nextMode, hidden]) => {
         if (cancelled) return;
         setToken(nextToken);
+        setCurrentUser(nextUser);
         setReadingMode(nextMode);
         setSiteHiddenState(hidden);
       })
@@ -274,8 +355,12 @@ function Overlay({ url, roomId, canonical }: { url: string; roomId: string; cano
     setComposerOpen(false);
     setReanchorTargetId(null);
     setReanchorError(null);
-    setPresence([]);
     setWsConnected(false);
+    setCompanionActive(false);
+    setCompanionUsers([]);
+    setEmojiBursts([]);
+    setChatOpen(false);
+    setCompanionMessages([]);
     setBlooms([]);
   }, [lumenHidden]);
 
@@ -327,12 +412,19 @@ function Overlay({ url, roomId, canonical }: { url: string; roomId: string; cano
   useEffect(() => {
     if (!token || lumenHidden) return;
     const ws = new ReconnectingWS(`${WS_BASE}/ws?token=${encodeURIComponent(token)}`);
+    wsRef.current = ws;
 
     ws.addEventListener("open", () => {
       setWsConnected(true);
       ws.send(JSON.stringify({ type: "subscribe", roomId }));
+      if (companionActiveRef.current) {
+        ws.send(JSON.stringify({ type: "companion_join" }));
+      }
     });
-    ws.addEventListener("close", () => setWsConnected(false));
+    ws.addEventListener("close", () => {
+      setWsConnected(false);
+      setCompanionUsers([]);
+    });
     ws.addEventListener("message", (e: MessageEvent) => {
       let msg: { type: string; [k: string]: unknown };
       try {
@@ -341,11 +433,37 @@ function Overlay({ url, roomId, canonical }: { url: string; roomId: string; cano
         return;
       }
       if (msg.type === "subscribed") {
-        setPresence((msg.presence as string[]) ?? []);
-      } else if (msg.type === "presence_join") {
-        setPresence((p) => [...new Set([...p, msg.userId as string])]);
-      } else if (msg.type === "presence_leave") {
-        setPresence((p) => p.filter((u) => u !== (msg.userId as string)));
+        return;
+      } else if (msg.type === "companion_presence") {
+        setCompanionUsers((msg.users as string[] | undefined) ?? []);
+      } else if (msg.type === "companion_joined") {
+        const users = msg.users as string[] | undefined;
+        if (users) setCompanionUsers(users);
+        else setCompanionUsers((p) => [...new Set([...p, msg.userId as string])]);
+      } else if (msg.type === "companion_left") {
+        const users = msg.users as string[] | undefined;
+        if (users) setCompanionUsers(users);
+        else setCompanionUsers((p) => p.filter((u) => u !== (msg.userId as string)));
+      } else if (msg.type === "companion_emoji") {
+        if (!companionActiveRef.current) return;
+        const emoji = typeof msg.emoji === "string" ? msg.emoji : null;
+        const edge = msg.edge === "left" || msg.edge === "right" ? msg.edge : null;
+        const y = typeof msg.y === "number" ? msg.y : 0.5;
+        if (emoji && edge) addEmojiBurst({ emoji, edge, y });
+      } else if (msg.type === "companion_chat_history") {
+        if (!companionActiveRef.current) return;
+        const messages = Array.isArray(msg.messages)
+          ? msg.messages.filter(isCompanionChatMessage)
+          : [];
+        mergeCompanionHistory(messages);
+      } else if (msg.type === "companion_chat") {
+        if (!companionActiveRef.current) return;
+        const id = typeof msg.id === "string" ? msg.id : null;
+        const userId = typeof msg.userId === "string" ? msg.userId : "unknown";
+        const handle = typeof msg.handle === "string" ? msg.handle : "unknown";
+        const body = typeof msg.body === "string" ? msg.body : "";
+        const at = typeof msg.at === "number" ? msg.at : Date.now();
+        if (id && body.trim()) addCompanionMessage({ id, userId, handle, body, at });
       } else if (msg.type === "lens_created") {
         const lens = msg.lens as Lens;
         // Dedup against the always-current ref Map
@@ -405,10 +523,18 @@ function Overlay({ url, roomId, canonical }: { url: string; roomId: string; cano
     });
 
     return () => {
+      if (companionActiveRef.current) {
+        try {
+          ws.send(JSON.stringify({ type: "companion_leave" }));
+        } catch {
+          // Socket is already gone; server close handling clears presence.
+        }
+      }
       ws.close();
+      if (wsRef.current === ws) wsRef.current = null;
       setWsConnected(false);
     };
-  }, [token, roomId, lumenHidden]);
+  }, [token, roomId, lumenHidden, addEmojiBurst, addCompanionMessage, mergeCompanionHistory]);
 
   // Visible lenses = not orphan + passes mode filter
   const visibleLenses = useMemo(
@@ -595,7 +721,7 @@ function Overlay({ url, roomId, canonical }: { url: string; roomId: string; cano
     : [];
   const activeLensRange = activeLens ? anchorRanges.current.get(activeLens.rootId) ?? null : null;
   const activeLensClusterCount = activeLens ? activeLens.clusterIds.length + 1 : 0;
-  const others = presence.length;
+  const companionCount = companionUsers.length;
   const hiddenCount = lenses.length - visibleLenses.length - orphanIds.size;
 
   function clusterIdsForLens(id: string, pool: Lens[]): string[] {
@@ -788,12 +914,49 @@ function Overlay({ url, roomId, canonical }: { url: string; roomId: string; cano
     setActiveLens(null);
   }
 
+  function findCompanion() {
+    setCompanionActive(true);
+    try {
+      wsRef.current?.send(JSON.stringify({ type: "companion_join" }));
+    } catch {
+      // ReconnectingWS will join on the next open event while companionActive is true.
+    }
+  }
+
+  function leaveCompanionMode() {
+    setCompanionActive(false);
+    setCompanionUsers([]);
+    setEmojiBursts([]);
+    setChatOpen(false);
+    setCompanionMessages([]);
+    try {
+      wsRef.current?.send(JSON.stringify({ type: "companion_leave" }));
+    } catch {
+      // Socket close handling on the server also clears companion presence.
+    }
+  }
+
+  function tossCompanionEmoji(emoji: string) {
+    if (!companionActive || !wsConnected) return;
+    const edge = Math.random() > 0.5 ? "right" : "left";
+    const y = 0.18 + Math.random() * 0.64;
+    wsRef.current?.send(JSON.stringify({ type: "companion_emoji", emoji, edge, y }));
+  }
+
+  function sendCompanionChat(body: string) {
+    if (!companionActive || !wsConnected) return;
+    const trimmed = body.trim().slice(0, 280);
+    if (!trimmed) return;
+    wsRef.current?.send(JSON.stringify({ type: "companion_chat", body: trimmed }));
+  }
+
   return (
     <>
       <Orb
         count={visibleLenses.length}
         live={wsConnected}
-        others={others}
+        companionActive={companionActive}
+        companionCount={companionCount}
         extraCount={hiddenCount + orphanIds.size}
         onToggle={() => setPanelOpen((v) => !v)}
       />
@@ -806,8 +969,20 @@ function Overlay({ url, roomId, canonical }: { url: string; roomId: string; cano
           orphanLenses={lenses.filter((l) => orphanIds.has(l.id))}
           currentLens={activeLensStack[activeLensStack.length - 1] ?? null}
           reanchorTargetId={reanchorTargetId}
+          companionActive={companionActive}
+          companionCount={companionCount}
+          companionConnected={wsConnected}
+          companionEmojiChoices={COMPANION_EMOJI_CHOICES}
+          chatOpen={chatOpen}
+          companionMessages={companionMessages}
+          currentUserId={currentUser?.userId ?? null}
           onClose={() => setPanelOpen(false)}
           onHideTab={() => setTabHidden(true)}
+          onFindCompanion={findCompanion}
+          onLeaveCompanion={leaveCompanionMode}
+          onTossCompanionEmoji={tossCompanionEmoji}
+          onToggleChat={() => setChatOpen((open) => !open)}
+          onSendCompanionChat={sendCompanionChat}
           onReport={reportLensById}
           onReanchor={startReanchor}
           onCancelReanchor={() => {
@@ -861,6 +1036,7 @@ function Overlay({ url, roomId, canonical }: { url: string; roomId: string; cano
       {blooms.map((b) => (
         <BloomLayer key={b.id} spec={b.spec} onComplete={() => removeBloom(b.id)} />
       ))}
+      <CompanionEmojiLayer bursts={emojiBursts} />
     </>
   );
 }
@@ -868,13 +1044,15 @@ function Overlay({ url, roomId, canonical }: { url: string; roomId: string; cano
 function Orb({
   count,
   live,
-  others = 0,
+  companionActive,
+  companionCount,
   extraCount = 0,
   onToggle,
 }: {
   count: number;
   live: boolean;
-  others?: number;
+  companionActive: boolean;
+  companionCount: number;
   extraCount?: number;
   onToggle: () => void;
 }) {
@@ -882,9 +1060,28 @@ function Orb({
     <button className="orb" onClick={onToggle}>
       <span className={`dot ${live ? "" : "idle"}`} />
       <span>{count} lens</span>
-      {others > 0 && <span className="orb-meta">· {others} here</span>}
+      {companionActive && (
+        <span className="orb-meta">{companionCount > 0 ? `Companion ${companionCount}` : "Companion"}</span>
+      )}
       {extraCount > 0 && <span className="orb-badge">+{extraCount}</span>}
     </button>
+  );
+}
+
+function CompanionEmojiLayer({ bursts }: { bursts: CompanionEmojiBurst[] }) {
+  if (bursts.length === 0) return null;
+  return (
+    <div className="companion-emoji-layer" data-lumen-overlay="" aria-hidden="true">
+      {bursts.map((burst) => (
+        <span
+          key={burst.id}
+          className={`companion-emoji-burst ${burst.edge}`}
+          style={{ top: `${burst.y * 100}%` }}
+        >
+          {burst.emoji}
+        </span>
+      ))}
+    </div>
   );
 }
 
@@ -916,8 +1113,20 @@ function InfoPanel({
   orphanLenses,
   currentLens,
   reanchorTargetId,
+  companionActive,
+  companionCount,
+  companionConnected,
+  companionEmojiChoices,
+  chatOpen,
+  companionMessages,
+  currentUserId,
   onClose,
   onHideTab,
+  onFindCompanion,
+  onLeaveCompanion,
+  onTossCompanionEmoji,
+  onToggleChat,
+  onSendCompanionChat,
   onReport,
   onReanchor,
   onCancelReanchor,
@@ -928,8 +1137,20 @@ function InfoPanel({
   orphanLenses: Lens[];
   currentLens: Lens | null;
   reanchorTargetId: string | null;
+  companionActive: boolean;
+  companionCount: number;
+  companionConnected: boolean;
+  companionEmojiChoices: readonly string[];
+  chatOpen: boolean;
+  companionMessages: CompanionChatMessage[];
+  currentUserId: string | null;
   onClose: () => void;
   onHideTab: () => void;
+  onFindCompanion: () => void;
+  onLeaveCompanion: () => void;
+  onTossCompanionEmoji: (emoji: string) => void;
+  onToggleChat: () => void;
+  onSendCompanionChat: (body: string) => void;
   onReport: (id: string) => void | Promise<void>;
   onReanchor: (id: string) => void;
   onCancelReanchor: () => void;
@@ -985,99 +1206,223 @@ function InfoPanel({
     : reportState === "failed"
       ? "Report failed"
       : "Report";
+  const chatFocused = companionActive && chatOpen;
 
   return (
-    <section className="info-panel" data-lumen-overlay="">
+    <section className={`info-panel ${chatFocused ? "chat-focus" : ""}`} data-lumen-overlay="">
       <div className="ip-header">
         <strong>Lumen</strong>
         <button className="close" onClick={onClose} aria-label="Close">×</button>
       </div>
 
-      <div className="ip-section">
+      <PanelCollapse collapsed={chatFocused}>
+        <div className="ip-section">
         <div className="ip-row">
           <span>Reading mode</span>
           <span className="pill">{mode}</span>
         </div>
         <div className="ip-hint">Switch in the extension popup.</div>
-      </div>
-
-      <div className="ip-section">
-        <div className="ip-row"><span>{visible} visible on this page</span></div>
-        {hidden > 0 && (
-          <div className="ip-row muted">{hidden} hidden by {mode} mode</div>
-        )}
-        {orphanLenses.length > 0 && (
-          <div className="ip-row muted">{orphanLenses.length} lost their anchor</div>
-        )}
-      </div>
-
-      <div className="ip-section">
-        <button className="ip-action" onClick={onHideTab}>Hide on this tab</button>
-      </div>
-
-      {currentLens && (
-        <div className="ip-section">
-          <div className="ip-label">Current lens</div>
-          <div className="ip-row">
-            <span className="ip-current-meta">
-              <span className="pill">{currentLens.type}</span>
-              <span>@{currentLens.author?.handle ?? "unknown"}</span>
-            </span>
-          </div>
-          <div className="ip-actions">
-            <button
-              className={copyState === "copied" ? "success" : copyState === "failed" ? "danger" : ""}
-              onClick={() => void copyRef()}
-            >
-              {copyLabel}
-            </button>
-            <button
-              className={`report ${reportState === "reported" ? "success" : reportState === "failed" ? "danger" : ""}`}
-              onClick={() => void report()}
-            >
-              {reportLabel}
-            </button>
-          </div>
         </div>
-      )}
+      </PanelCollapse>
 
-      {orphanLenses.length > 0 && (
+      <PanelCollapse collapsed={chatFocused}>
         <div className="ip-section">
-          <div className="ip-label">Orphan lens</div>
-          {reanchorTargetId && (
-            <div className="ip-hint reanchor-hint">
-              <span>Select the new text anchor on the page.</span>
-              <button onClick={onCancelReanchor}>Cancel</button>
-            </div>
+          <div className="ip-row"><span>{visible} visible on this page</span></div>
+          {hidden > 0 && (
+            <div className="ip-row muted">{hidden} hidden by {mode} mode</div>
           )}
-          {orphanLenses.map((l) => (
-            <div key={l.id} className="orphan-row">
-              <div className="orphan-meta">
-                <span className="pill">{l.type}</span>
-                <span>@{l.author?.handle ?? "unknown"}</span>
-              </div>
-              {l.anchor?.quote?.exact && (
-                <div className="orphan-quote">"{l.anchor.quote.exact.slice(0, 80)}"</div>
-              )}
-              <div className="orphan-body">
-                {l.body.slice(0, 100)}{l.body.length > 100 ? "…" : ""}
-              </div>
-              {l.canEditAnchor ? (
-                <button
-                  className="orphan-action"
-                  onClick={() => onReanchor(l.id)}
-                  disabled={reanchorTargetId === l.id}
-                >
-                  {reanchorTargetId === l.id ? "Selecting..." : "Re-anchor"}
-                </button>
-              ) : (
-                <div className="orphan-note">Only the author or an operator can re-anchor this Lens.</div>
-              )}
-            </div>
-          ))}
+          {orphanLenses.length > 0 && (
+            <div className="ip-row muted">{orphanLenses.length} lost their anchor</div>
+          )}
         </div>
-      )}
+      </PanelCollapse>
+
+      <PanelCollapse collapsed={chatFocused}>
+        <div className="ip-section">
+          <button className="ip-action" onClick={onHideTab}>Hide on this tab</button>
+        </div>
+      </PanelCollapse>
+
+      <div className="ip-section">
+        <div className="ip-label">Companion mode</div>
+        {companionActive ? (
+          <>
+            <div className="ip-row">
+              <span>{companionCount <= 1 ? "Only you here now" : `${companionCount} here now`}</span>
+              <span className={`pill ${companionConnected ? "" : "muted"}`}>
+                {companionConnected ? "live" : "offline"}
+              </span>
+            </div>
+            <div className="companion-toss-row" aria-label="Toss emoji">
+              {companionEmojiChoices.map((emoji) => (
+                <button
+                  key={emoji}
+                  className="companion-emoji-button"
+                  onClick={() => onTossCompanionEmoji(emoji)}
+                  disabled={!companionConnected}
+                  aria-label="Toss emoji"
+                >
+                  {emoji}
+                </button>
+              ))}
+            </div>
+            <button className="ip-action companion-chat-toggle" onClick={onToggleChat}>
+              {chatOpen ? "Close chat" : "Open chat"}
+            </button>
+            {chatOpen && (
+              <CompanionChat
+                messages={companionMessages}
+                currentUserId={currentUserId}
+                disabled={!companionConnected}
+                onSend={onSendCompanionChat}
+              />
+            )}
+            <button className="ip-action companion leave" onClick={onLeaveCompanion}>
+              Leave companion
+            </button>
+          </>
+        ) : (
+          <>
+            <div className="ip-hint">Opt in when you want company on this page.</div>
+            <button className="ip-action companion" onClick={onFindCompanion} disabled={!companionConnected}>
+              {companionConnected ? "Find companion" : "Connecting..."}
+            </button>
+          </>
+        )}
+      </div>
+
+      <PanelCollapse collapsed={chatFocused}>
+        {currentLens && (
+          <div className="ip-section">
+            <div className="ip-label">Current lens</div>
+            <div className="ip-row">
+              <span className="ip-current-meta">
+                <span className="pill">{currentLens.type}</span>
+                <span>@{currentLens.author?.handle ?? "unknown"}</span>
+              </span>
+            </div>
+            <div className="ip-actions">
+              <button
+                className={copyState === "copied" ? "success" : copyState === "failed" ? "danger" : ""}
+                onClick={() => void copyRef()}
+              >
+                {copyLabel}
+              </button>
+              <button
+                className={`report ${reportState === "reported" ? "success" : reportState === "failed" ? "danger" : ""}`}
+                onClick={() => void report()}
+              >
+                {reportLabel}
+              </button>
+            </div>
+          </div>
+        )}
+      </PanelCollapse>
+
+      <PanelCollapse collapsed={chatFocused}>
+        {orphanLenses.length > 0 && (
+          <div className="ip-section">
+            <div className="ip-label">Orphan lens</div>
+            {reanchorTargetId && (
+              <div className="ip-hint reanchor-hint">
+                <span>Select the new text anchor on the page.</span>
+                <button onClick={onCancelReanchor}>Cancel</button>
+              </div>
+            )}
+            {orphanLenses.map((l) => (
+              <div key={l.id} className="orphan-row">
+                <div className="orphan-meta">
+                  <span className="pill">{l.type}</span>
+                  <span>@{l.author?.handle ?? "unknown"}</span>
+                </div>
+                {l.anchor?.quote?.exact && (
+                  <div className="orphan-quote">"{l.anchor.quote.exact.slice(0, 80)}"</div>
+                )}
+                <div className="orphan-body">
+                  {l.body.slice(0, 100)}{l.body.length > 100 ? "…" : ""}
+                </div>
+                {l.canEditAnchor ? (
+                  <button
+                    className="orphan-action"
+                    onClick={() => onReanchor(l.id)}
+                    disabled={reanchorTargetId === l.id}
+                  >
+                    {reanchorTargetId === l.id ? "Selecting..." : "Re-anchor"}
+                  </button>
+                ) : (
+                  <div className="orphan-note">Only the author or an operator can re-anchor this Lens.</div>
+                )}
+              </div>
+            ))}
+          </div>
+        )}
+      </PanelCollapse>
     </section>
+  );
+}
+
+function PanelCollapse({ collapsed, children }: { collapsed: boolean; children: ReactNode }) {
+  return (
+    <div className={`panel-collapse ${collapsed ? "collapsed" : ""}`} aria-hidden={collapsed}>
+      <div className="panel-collapse-inner">{children}</div>
+    </div>
+  );
+}
+
+function CompanionChat({
+  messages,
+  currentUserId,
+  disabled,
+  onSend,
+}: {
+  messages: CompanionChatMessage[];
+  currentUserId: string | null;
+  disabled: boolean;
+  onSend: (body: string) => void;
+}) {
+  const [body, setBody] = useState("");
+  const listRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const el = listRef.current;
+    if (!el) return;
+    el.scrollTop = el.scrollHeight;
+  }, [messages.length]);
+
+  function submit(e: FormEvent) {
+    e.preventDefault();
+    const trimmed = body.trim();
+    if (!trimmed || disabled) return;
+    onSend(trimmed);
+    setBody("");
+  }
+
+  return (
+    <div className="companion-chat">
+      <div ref={listRef} className="companion-chat-messages">
+        {messages.length === 0 ? (
+          <div className="companion-chat-empty">Tiny chat starts here.</div>
+        ) : messages.map((message) => {
+          const mine = currentUserId !== null && message.userId === currentUserId;
+          return (
+            <div key={message.id} className={`companion-chat-message ${mine ? "mine" : ""}`}>
+              <div className="companion-chat-meta">{mine ? "You" : `@${message.handle}`}</div>
+              <div className="companion-chat-body">{message.body}</div>
+            </div>
+          );
+        })}
+      </div>
+      <form className="companion-chat-form" onSubmit={submit}>
+        <input
+          value={body}
+          onChange={(e) => setBody(e.currentTarget.value.slice(0, 280))}
+          placeholder={disabled ? "Reconnecting..." : "Say something small"}
+          disabled={disabled}
+          maxLength={280}
+        />
+        <button disabled={disabled || !body.trim()}>Send</button>
+      </form>
+    </div>
   );
 }
 

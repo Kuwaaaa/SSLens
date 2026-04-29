@@ -124,6 +124,20 @@ export interface CompanionSession {
   endedAt?: string;
 }
 
+export type CompanionClientMessage =
+  | { type: "companion_join" }
+  | { type: "companion_leave" }
+  | { type: "companion_emoji"; emoji: string; edge: "left" | "right"; y: number }
+  | { type: "companion_chat"; body: string };
+
+export type CompanionServerMessage =
+  | { type: "companion_presence"; users: string[] }
+  | { type: "companion_joined"; userId: string; users: string[] }
+  | { type: "companion_left"; userId: string; users: string[] }
+  | { type: "companion_emoji"; userId: string; emoji: string; edge: "left" | "right"; y: number; at: number }
+  | { type: "companion_chat"; id: string; userId: string; handle: string; body: string; at: number }
+  | { type: "companion_chat_history"; messages: Array<{ id: string; userId: string; handle: string; body: string; at: number }> };
+
 export interface LiveMessage {
   id: string;
   author: LensAuthor;

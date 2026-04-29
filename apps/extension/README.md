@@ -53,7 +53,6 @@ When to refactor back to SW-hosted WS: if N tabs per user routinely exceeds 5–
 
 ## What is NOT yet implemented
 
-- Companion mode (Find companion button, emoji toss, chat layer)
 - GitHub OAuth badge
 - Cross-page Lens lookup (referencing a Lens not on the current page renders as a disabled chip)
 
@@ -68,6 +67,9 @@ When to refactor back to SW-hosted WS: if N tabs per user routinely exceeds 5–
 - Orphan Lens re-anchor flow from the InfoPanel
 - Composer insert-reference picker for current-page Lens
 - Client-side overlap clustering for Lens on the same passage, with amber heat on the exact overlapping text segments
+- Companion mode opt-in presence with `Find companion` / `Leave companion`
+- Companion mode edge emoji toss over WebSocket
+- Companion mode tiny ephemeral chat with short in-memory room history for late joiners
 
 ## Deferred verifications
 

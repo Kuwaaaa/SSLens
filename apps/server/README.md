@@ -32,12 +32,22 @@ bun run issue-invite -- --by founder    # mint an invite, copy the code
 
 Client → server messages:
 - `{ type: "subscribe", roomId }` — join a room
+- `{ type: "companion_join" }` - opt into companion presence for the subscribed room
+- `{ type: "companion_leave" }` - leave companion presence
+- `{ type: "companion_emoji", emoji, edge, y }` - toss an ephemeral emoji from the left or right edge
+- `{ type: "companion_chat", body }` - send an ephemeral tiny-chat message
 - `{ type: "ping" }` — keep-alive
 
 Server → client messages:
 - `{ type: "subscribed", roomId, presence: [userId...] }`
 - `{ type: "presence_join", userId }`
 - `{ type: "presence_leave", userId }`
+- `{ type: "companion_presence", users: [userId...] }`
+- `{ type: "companion_joined", userId, users: [userId...] }`
+- `{ type: "companion_left", userId, users: [userId...] }`
+- `{ type: "companion_emoji", userId, emoji, edge, y, at }`
+- `{ type: "companion_chat", userId, handle, body, at }`
+- `{ type: "companion_chat_history", messages: [...] }`
 - `{ type: "lens_created", lens }`
 - `{ type: "lens_anchor_updated", lens }`
 - `{ type: "pong", at }`
@@ -65,7 +75,6 @@ Bearer tokens are JWT-shaped (`base64url(header).base64url(payload).base64url(si
 ## What this skeleton does NOT do yet
 
 - Preferences endpoints (reading mode sync)
-- Companion mode (matching, emoji toss, chat layer)
 - Rate limiting
 - Litestream backup config
 - Caddy / systemd configs

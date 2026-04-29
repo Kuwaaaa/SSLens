@@ -2,7 +2,7 @@
 
 Date: 2026-04-29
 Branch: `codex`
-Last committed baseline: `4abee31 Add privacy, hide controls, and report flow`
+Last committed baseline: `93c6a5d Refine overlap Lens UX and archive handoff`
 
 ## Read First
 
@@ -14,29 +14,26 @@ Do not commit unless the user explicitly asks.
 
 ## Current Working Tree
 
-This handoff describes the uncommitted work after `4abee31`.
+This handoff describes the uncommitted work after `93c6a5d`.
 
 Modified files:
 
 - `CODEX_SESSION_HANDOFF.md`
 - `apps/extension/README.md`
 - `apps/extension/src/content.tsx`
-- `apps/extension/src/marker.ts`
-- `apps/extension/src/shared/api.ts`
 - `apps/extension/src/styles.css`
 - `apps/server/README.md`
-- `apps/server/src/index.ts`
-- `apps/server/src/routes.ts`
-- `packages/anchoring/src/index.ts`
+- `apps/server/src/ws.ts`
 - `packages/schema/src/index.ts`
 
 New files:
 
-- `docs/technical/overlap-lens-ux-archive.md`
+- `docs/technical/companion-mode-mvp.md`
 
 Untracked but not part of the main implementation:
 
-- `.claude/`
+- `apps/extension/dist.crx`
+- `apps/extension/dist.pem`
 
 Git still prints warnings about being unable to access `C:\Users\l7867/.config/git/ignore`; this has not affected checks.
 
@@ -57,11 +54,12 @@ Done or effectively done:
 - Orphan re-anchor flow.
 - Composer insert-reference picker.
 - Client-side overlap / nested Lens UX with heat markers, click-priority, and progressive stack collapse.
+- Companion mode MVP: opt-in presence, companion-only count, edge emoji toss, tiny chat, short in-memory chat history for late joiners, and chat-focus InfoPanel collapse.
 
 Still needed:
 
 - Manual UX pass on the latest overlap stack behavior after each build.
-- Companion mode. This is the next major P0 arc.
+- Manual UX pass on companion mode with two Chrome windows after each build.
 - Final soak-readiness pass across extension + server before inviting users.
 
 ## Implemented In This Session
@@ -149,6 +147,58 @@ Detailed archive:
 
 - Read `docs/technical/overlap-lens-ux-archive.md` before changing overlap marker/stack behavior.
 
+### Companion Mode MVP
+
+Detailed archive:
+
+- Read `docs/technical/companion-mode-mvp.md` before changing companion mode behavior.
+
+Product constraints preserved:
+
+- Reading is solo by default.
+- Companion mode is opt-in only.
+- No default "X people are reading" surface.
+- No default danmaku / floating text layer.
+- Companion exchanges are ephemeral and separate from durable Lens cards.
+
+Backend:
+
+- `apps/server/src/ws.ts` maintains companion presence separately from normal room subscription presence.
+- Client messages:
+  - `{ type: "companion_join" }`
+  - `{ type: "companion_leave" }`
+  - `{ type: "companion_emoji", emoji, edge, y }`
+  - `{ type: "companion_chat", body }`
+- Server messages:
+  - `{ type: "companion_presence", users }`
+  - `{ type: "companion_joined", userId, users }`
+  - `{ type: "companion_left", userId, users }`
+  - `{ type: "companion_emoji", userId, emoji, edge, y, at }`
+  - `{ type: "companion_chat", id, userId, handle, body, at }`
+  - `{ type: "companion_chat_history", messages }`
+- Presence uses per-user connection counts so multiple active tabs from the same user do not flicker presence incorrectly.
+- Chat history is server-memory only: latest 30 messages, at most 30 minutes old, lost on server restart, never written to SQLite.
+
+Frontend:
+
+- InfoPanel exposes `Find companion` / `Leave companion`.
+- Orb shows companion count only after the user has opted into companion mode.
+- Companion mode shows a small fixed emoji toss row; emoji render as short left/right edge bursts.
+- Tiny chat is closed by default and toggled from companion mode.
+- Opening chat puts InfoPanel into chat focus mode:
+  - reading mode,
+  - Lens counts,
+  - hide controls,
+  - current Lens actions,
+  - orphan rows
+  collapse with a soft transition so the chat area has room.
+- `prefers-reduced-motion` disables keyframe animations and transition-heavy collapse.
+
+Schema / docs:
+
+- `packages/schema/src/index.ts` now includes companion WS message types.
+- `apps/extension/README.md` and `apps/server/README.md` describe current companion mode status.
+
 ## Important Current Behavior
 
 On Paul Graham's "Do Things that Don't Scale", nested Lens around `going out` should behave like this:
@@ -182,9 +232,6 @@ Relevant Lens rows in `data/lumen.db`:
 Passing after latest changes:
 
 - `cmd /c node_modules\.bin\tsc -p apps\extension\tsconfig.json --noEmit`
-
-Previously passing in this work sequence:
-
 - `cmd /c node_modules\.bin\tsc -p apps\server\tsconfig.json --noEmit`
 - `cmd /c bun run build:extension`
 
@@ -192,62 +239,26 @@ Notes:
 
 - `bun run build:extension` often fails inside Codex sandbox with Vite/esbuild `spawn EPERM`; rerun with escalation when needed.
 - The user has been manually building/reloading the extension while testing. After future code changes, rebuild `apps/extension/dist` or run `bun run dev:extension` depending on the user's current loop.
-- The newest overlap UX changes after the last user build still need a fresh build before browser testing.
+- User manually verified two-window companion communication after the first chat pass.
 
-## Companion Mode Discussion State
+## Companion Mode Current State
 
-No companion mode code has been implemented yet in this session. The current product direction is:
+Implemented:
 
-- Reading is solo by default.
-- Companion mode is opt-in only.
-- Do not show "X people are reading" unless the user has entered companion mode.
-- Do not build default danmaku/floating text.
-- Default companion interaction should be edge emoji toss; tiny chat is a togglable upgrade.
+- `Find companion` / `Leave companion` in InfoPanel.
+- `N here now` is shown only while companion mode is active.
+- Edge emoji toss works over WS.
+- Tiny chat works over WS.
+- Late joiners receive short in-memory room chat history.
+- Chat open state collapses non-chat InfoPanel sections with a soft transition.
 
-Suggested MVP scope:
+Still needs manual UX pass:
 
-1. Add a `Find companion` entry in InfoPanel or the orb panel.
-2. On opt-in, join a companion presence layer for the current room.
-3. Show `N here now` only while companion mode is active.
-4. Add ephemeral edge emoji toss over WS.
-5. Add tiny chat toggle with ephemeral WS messages.
-6. Add a clear `Leave` action.
-
-Suggested WS events:
-
-Client to server:
-
-```ts
-{ type: "companion_join", roomId }
-{ type: "companion_leave", roomId }
-{ type: "companion_emoji", roomId, emoji, edge, y }
-{ type: "companion_chat", roomId, body }
-```
-
-Server to clients:
-
-```ts
-{ type: "companion_presence", users: [...] }
-{ type: "companion_joined", user }
-{ type: "companion_left", userId }
-{ type: "companion_emoji", userId, handle, emoji, edge, y, at }
-{ type: "companion_chat", userId, handle, body, at }
-```
-
-Implementation recommendation:
-
-1. Add schema/shared types for companion events.
-2. Extend server WS state with companion presence separate from normal room subscription.
-3. Extend content script state:
-   - `companionActive`
-   - `companionUsers`
-   - `emojiBursts`
-   - `chatOpen`
-   - `companionMessages`
-4. Add InfoPanel controls.
-5. Add edge emoji animation layer.
-6. Add tiny chat panel.
-7. Test with two Chrome windows on the same URL.
+- Late joiner history in two Chrome windows.
+- Chat focus collapse/expand smoothness.
+- Edge emoji animation across small and large viewports.
+- Leave/rejoin cleanup and history behavior.
+- Reduced-motion behavior.
 
 ## Open Issues / Watch Items
 
@@ -263,15 +274,14 @@ Implementation recommendation:
 1. Read `AGENTS.md`.
 2. Read this handoff.
 3. Read `docs/technical/overlap-lens-ux-archive.md`.
-4. Run or request a fresh extension build if browser testing is needed.
-5. Do a quick smoke test on the PG page if the user asks about overlap UX.
-6. Start companion mode as its own arc.
-
-Suggested first companion mode implementation slice:
-
-- Server: add ephemeral companion presence and `companion_join` / `companion_leave`.
-- Extension: add `Find companion` / `Leave` UI in InfoPanel and display companion-only online count.
-- Do not start with chat. Get explicit opt-in presence correct first.
+4. Read `docs/technical/companion-mode-mvp.md`.
+5. Run or request a fresh extension build if browser testing is needed.
+6. Do a two-window smoke test on the PG page:
+   - overlap Lens stack still behaves,
+   - companion presence updates,
+   - emoji toss appears on both windows,
+   - late joiner receives chat history,
+   - chat focus collapse/expand feels smooth.
 
 ## Cautions For Next Session
 
