@@ -9,7 +9,13 @@ Bun + WebSocket + SQLite. Single process, single SQLite file.
 bun install
 bun run keygen                          # writes data/keys.json
 bun run dev:server                      # http://localhost:3000
-bun run issue-invite -- --by founder    # mint an invite, copy the code
+```
+
+By default, small-group signup only requires a handle. Set `LUMEN_INVITES_REQUIRED=1`
+to restore invite-code-only signup, then mint codes with:
+
+```bash
+bun run issue-invite -- --by founder
 ```
 
 ## HTTP routes
@@ -17,7 +23,7 @@ bun run issue-invite -- --by founder    # mint an invite, copy the code
 | Method | Path | Auth | Body / Query | Returns |
 |---|---|---|---|---|
 | GET | `/api/health` | – | – | `{ ok: true }` |
-| POST | `/api/redeem` | – | `{ code, handle }` | `{ userId, handle, token }` |
+| POST | `/api/redeem` | – | `{ handle, code? }` | `{ userId, handle, token }` |
 | GET | `/api/lenses` | bearer | `?room=<sha256>` | `{ lenses: [...] }` |
 | POST | `/api/lenses` | bearer | `{ roomId, url, type, body, anchor, tags?, refs?, anonymous? }` | `{ lens }` |
 | PATCH | `/api/lenses/:id/anchor` | bearer | `{ anchor }` | `{ lens }` |
@@ -71,6 +77,11 @@ SQLite at `data/lumen.db`. Schema is applied automatically on every import of `s
 ## Auth
 
 Bearer tokens are JWT-shaped (`base64url(header).base64url(payload).base64url(sig)`) with `alg: EdDSA`. Keys live in `data/keys.json` (private + public JWKs). Tokens last 365 days. Token revocation is a future addition.
+
+Signup mode:
+
+- Default: handle-only signup for small-group use.
+- Invite-only: set `LUMEN_INVITES_REQUIRED=1`; `/api/redeem` then requires a valid unused invite code.
 
 ## What this skeleton does NOT do yet
 

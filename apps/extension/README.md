@@ -18,7 +18,8 @@ Then load the extension as unpacked:
 3. Click "Load unpacked"
 4. Select `apps/extension/dist` (after first run; crxjs writes dist/ on dev/build)
 
-The extension activates on these whitelisted hosts:
+The extension activates on normal HTTP(S) pages. These pages remain recommended
+seed/test pages, not the only supported pages:
 
 - https://paulgraham.com/*
 - https://karpathy.github.io/*
@@ -33,22 +34,32 @@ bun run build:extension
 # load apps/extension/dist as unpacked
 ```
 
+For a real deployment, build with the public server URL:
+
+```bash
+VITE_LUMEN_API_BASE=https://lumen.example.com bun run build:extension
+```
+
+The manifest uses broad `http://*/*` and `https://*/*` access so Lumen can run
+on arbitrary webpages. In the Chrome Web Store listing, explain this permission
+as necessary for anchoring Lens cards to the page the user is currently reading.
+
 ## Architecture deviation note
 
-`docs/ARCHITECTURE.md` §5 describes the WebSocket living in the service worker, with content scripts proxying via `chrome.runtime.connect()` ports. **This MVP puts the WebSocket directly in the content script** — one WS per tab.
+`docs/ARCHITECTURE.md` §5 describes the WebSocket living in the service worker, with content scripts proxying via `chrome.runtime.connect()` ports. The extension now follows that shape for both live events and companion mode.
 
-Why: server-side per-room presence still works (closing the tab closes the WS, server broadcasts leave). Multi-room subscription via SW-as-router adds non-trivial complexity for ~50 concurrent connections worth of "savings" we don't need yet.
+Why: while the beta server is exposed over plain HTTP/WS, HTTPS pages block direct `ws://` connections from content scripts as mixed content. Keeping the real socket in the extension service worker lets page scripts talk only to the extension bridge, while the worker owns the backend connection.
 
-When to refactor back to SW-hosted WS: if N tabs per user routinely exceeds 5–10, or if companion mode needs cross-tab signal aggregation. Tracked as a TODO in `src/content.tsx`.
+When a real domain + HTTPS/WSS is available, this bridge can stay in place or be simplified; keeping it is still useful for future cross-tab signal aggregation.
 
 ## Files
 
 - `manifest.json` — MV3 manifest
 - `popup.html` + `src/popup.tsx` — popup UI (redeem invite, show identity)
-- `src/content.tsx` — content script: overlay, WS, anchoring, marker rendering
+- `src/content.tsx` — content script: overlay, live-event bridge, anchoring, marker rendering
 - `@lumen/anchoring` (workspace package) — W3C selectors + `approx-string-match` fuzzy fallback
 - `src/marker.ts` — CSS Custom Highlight API rendering
-- `src/service-worker.ts` — minimal SW (WS does not live here in MVP)
+- `src/service-worker.ts` — API + WebSocket bridge for content scripts
 - `src/shared/` — API client, storage, URL canonicalization, config
 
 ## What is NOT yet implemented

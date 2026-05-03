@@ -38,6 +38,11 @@ body {
   margin-top: 4px;
 }
 
+.popup .optional {
+  color: #aaa;
+  font-weight: 400;
+}
+
 .popup input {
   width: 100%;
   padding: 6px 8px;

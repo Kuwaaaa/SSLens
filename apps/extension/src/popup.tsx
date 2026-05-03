@@ -65,14 +65,14 @@ function Popup() {
   }, []);
 
   async function onRedeem() {
-    if (!code.trim() || !handle.trim()) {
-      setError("code and handle required");
+    if (!handle.trim()) {
+      setError("handle required");
       return;
     }
     setBusy(true);
     setError(null);
     try {
-      const r = await redeem(code.trim(), handle.trim());
+      const r = await redeem(handle.trim(), code.trim() || undefined);
       await setToken(r.token);
       await setUser({ userId: r.userId, handle: r.handle });
       setTok(r.token);
@@ -138,7 +138,7 @@ function Popup() {
         )}
 
         <p className="hint">
-          Open one of the whitelisted pages to use the overlay.
+          Open any regular webpage to use the overlay.
         </p>
         <a className="privacy-link" href={`${API_BASE}/privacy`} target="_blank" rel="noreferrer">Privacy</a>
         <button className="secondary" onClick={onLogout}>Log out</button>
@@ -149,12 +149,12 @@ function Popup() {
   return (
     <div className="popup">
       <h1>Lumen</h1>
-      <p className="hint">Redeem an invite code to start.</p>
-      <label>Invite code</label>
-      <input value={code} onChange={(e) => setCode(e.target.value)} placeholder="e.g. UDC6PP6A" />
+      <p className="hint">Choose a handle to start.</p>
       <label>Handle</label>
       <input value={handle} onChange={(e) => setHandle(e.target.value)} placeholder="e.g. alice" />
-      <button onClick={onRedeem} disabled={busy}>{busy ? "Redeeming…" : "Redeem"}</button>
+      <label>Invite code <span className="optional">optional</span></label>
+      <input value={code} onChange={(e) => setCode(e.target.value)} placeholder="leave blank" />
+      <button onClick={onRedeem} disabled={busy}>{busy ? "Starting..." : "Start"}</button>
       <a className="privacy-link" href={`${API_BASE}/privacy`} target="_blank" rel="noreferrer">Privacy</a>
       {error && <p className="err">{error}</p>}
     </div>

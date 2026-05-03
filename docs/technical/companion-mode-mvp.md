@@ -21,13 +21,13 @@ This keeps Lens cards as the durable social layer and companion mode as a lightw
 
 ### Opt-in Presence
 
-The content script still subscribes to the page room for Lens broadcasts, but visible social presence is companion-only.
+The service worker subscribes to the page room for Lens broadcasts and forwards live events to the content script through a `chrome.runtime.connect()` port. Visible social presence remains companion-only.
 
 Flow:
 
 1. User opens the InfoPanel.
 2. User clicks `Find companion`.
-3. Client sends `{ type: "companion_join" }` over the existing page WebSocket.
+3. Content script sends `{ type: "companion_join" }` through the extension bridge; the service worker forwards it over the room WebSocket.
 4. Server adds the user to a separate in-memory companion presence map for the subscribed room.
 5. Client shows `N here now` only while companion mode is active.
 6. `Leave companion`, tab close, hidden Lumen state, or socket close removes the user.
@@ -90,6 +90,7 @@ The extension merges history and live messages by stable message `id`, so late j
 Primary implementation:
 
 - `apps/server/src/ws.ts`
+- `apps/extension/src/service-worker.ts`
 - `apps/extension/src/content.tsx`
 - `apps/extension/src/styles.css`
 - `packages/schema/src/index.ts`
@@ -139,7 +140,8 @@ Manual user verification so far:
 
 ## Manual Test Checklist
 
-Use two Chrome windows on the same allowlisted URL:
+Use two Chrome windows on the same URL. The original seed pages are still useful
+test targets, but companion mode is not limited to an allowlist.
 
 1. Before either user clicks `Find companion`, the Orb should not show online-reader count.
 2. User A clicks `Find companion`; A sees companion mode active.
@@ -156,5 +158,5 @@ Use two Chrome windows on the same allowlisted URL:
 
 - The chat focus animation should be checked for jank on smaller laptop viewports.
 - The 30-message / 30-minute in-memory backlog is intentionally conservative; tune only after real use.
-- Companion presence is still content-script-owned for MVP. Revisit service-worker-hosted WS if cross-tab aggregation becomes important.
+- Companion presence now uses a service-worker-hosted WebSocket so HTTPS pages do not directly open `ws://` connections during the no-domain beta.
 - Do not make chat durable without a product review. Durable page memory should remain Lens-shaped.

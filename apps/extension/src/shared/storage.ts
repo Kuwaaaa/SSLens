@@ -4,8 +4,8 @@
 
 import type { ReadingMode } from "@lumen/schema";
 
-const KEY_TOKEN = "lumen.token";
-const KEY_USER = "lumen.user";
+export const KEY_TOKEN = "lumen.token";
+export const KEY_USER = "lumen.user";
 export const KEY_READING_MODE = "lumen.readingMode";
 export const KEY_HIDDEN_SITES = "lumen.hiddenSites";
 

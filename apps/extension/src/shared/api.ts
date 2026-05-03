@@ -7,11 +7,11 @@ export interface RedeemResult {
   token: string;
 }
 
-export async function redeem(code: string, handle: string): Promise<RedeemResult> {
+export async function redeem(handle: string, code?: string): Promise<RedeemResult> {
   const res = await fetch(`${API_BASE}/api/redeem`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ code, handle }),
+    body: JSON.stringify({ handle, ...(code?.trim() ? { code: code.trim() } : {}) }),
   });
   if (!res.ok) {
     const txt = await res.text();

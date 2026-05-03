@@ -1,0 +1,167 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Lumen v2 Privacy Policy</title>
+    <style>
+      :root {
+        color: #201629;
+        background: #fffdf8;
+        font-family: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      }
+
+      body {
+        margin: 0;
+        line-height: 1.65;
+      }
+
+      main {
+        width: min(800px, calc(100% - 40px));
+        margin: 0 auto;
+        padding: 56px 0 72px;
+      }
+
+      h1,
+      h2 {
+        color: #4a1a7a;
+        line-height: 1.16;
+      }
+
+      h1 {
+        margin: 0 0 8px;
+        font-size: clamp(32px, 7vw, 52px);
+      }
+
+      h2 {
+        margin: 36px 0 10px;
+        font-size: 22px;
+      }
+
+      p,
+      li {
+        color: #44364f;
+        font-size: 16px;
+      }
+
+      p {
+        margin: 0 0 14px;
+      }
+
+      ul {
+        margin: 0 0 18px 22px;
+        padding: 0;
+      }
+
+      a {
+        color: #4a1a7a;
+        font-weight: 700;
+        text-decoration-color: rgba(74, 26, 122, 0.28);
+        text-underline-offset: 4px;
+      }
+
+      .meta {
+        margin-bottom: 32px;
+        color: #766783;
+      }
+
+      .note {
+        padding: 14px 16px;
+        border: 1px solid rgba(245, 158, 11, 0.32);
+        border-radius: 8px;
+        background: #fffbeb;
+      }
+    </style>
+  </head>
+  <body>
+    <main>
+      <h1>Lumen v2 Privacy Policy</h1>
+      <p class="meta">Last updated: May 4, 2026</p>
+
+      <p>
+        Lumen v2 ("Lumen", "we", "our") is a browser extension that lets users create
+        contextual Lens cards on webpages and optionally use a lightweight real-time
+        companion mode. This policy explains what information Lumen handles and why.
+      </p>
+
+      <h2>Information We Collect or Transmit</h2>
+      <p>Lumen may collect, store, or transmit the following information:</p>
+      <ul>
+        <li>Your chosen handle, internal user ID, and authentication token.</li>
+        <li>The URL of the webpage where Lumen is used, plus a hashed room ID derived from the canonical URL.</li>
+        <li>Lens content you create, including body text, type, tags, references, reactions, reports, and timestamps.</li>
+        <li>Lens anchoring data, including the selected page text, nearby text context, and text position data needed to restore the Lens on the page.</li>
+        <li>Companion mode presence, emoji events, and temporary chat messages while you actively opt into companion mode.</li>
+        <li>Operational logs that may include IP address, user agent, request path, and timestamps for debugging, abuse prevention, and server security.</li>
+      </ul>
+
+      <h2>How We Use Information</h2>
+      <p>We use this information only to operate Lumen:</p>
+      <ul>
+        <li>To authenticate users and keep small-group access working.</li>
+        <li>To fetch, create, display, and synchronize Lens cards for the current webpage.</li>
+        <li>To support reactions, reports, and moderation.</li>
+        <li>To provide opt-in companion mode presence, edge emoji events, and temporary chat.</li>
+        <li>To diagnose bugs, protect the service from abuse, and maintain server reliability.</li>
+      </ul>
+
+      <h2>Anonymous Lens</h2>
+      <p class="note">
+        Posting a Lens as "Anonymous" hides the author from other users in the product interface.
+        It does not make the Lens unlinkable to operators. The server still records the real author
+        so we can handle abuse, reports, and safety issues.
+      </p>
+
+      <h2>Companion Mode</h2>
+      <p>
+        Companion mode is opt-in. If you do not click "Find companion", you do not appear in
+        companion presence and do not participate in companion chat. Companion emoji and chat
+        events are designed to be ephemeral. Recent chat messages may be kept briefly in server
+        memory so late joiners can see recent context, but companion chat is not intended as
+        durable page history.
+      </p>
+
+      <h2>Local Browser Storage</h2>
+      <p>
+        Lumen stores your token, handle, reading mode, and visibility preferences in browser
+        extension storage. This lets the extension stay signed in and remember your local settings.
+      </p>
+
+      <h2>Sharing and Sale of Data</h2>
+      <p>
+        We do not sell personal information. We do not use Lumen data for advertising, ad targeting,
+        or cross-site advertising profiles. We do not share user data with third parties except when
+        necessary to operate hosting infrastructure, comply with law, or protect the service from abuse.
+      </p>
+
+      <h2>Data Retention</h2>
+      <p>
+        Lens cards are intended to persist on the page where they were created unless deleted through
+        an operator or future product deletion flow. Authentication and operational logs may be retained
+        as needed for service operation, debugging, and abuse prevention. Companion chat is temporary and
+        not stored in the main database by design.
+      </p>
+
+      <h2>Security</h2>
+      <p>
+        We use reasonable technical measures to protect Lumen data. Before public release, production
+        service traffic should be served over HTTPS and WSS. No internet service can be guaranteed to be
+        perfectly secure.
+      </p>
+
+      <h2>Your Choices</h2>
+      <ul>
+        <li>You can choose not to create Lens cards.</li>
+        <li>You can choose not to enter companion mode.</li>
+        <li>You can hide Lumen on a tab or site using extension controls.</li>
+        <li>You can remove the extension to stop Lumen from running in your browser.</li>
+      </ul>
+
+      <h2>Contact</h2>
+      <p>
+        For privacy questions or deletion requests, open an issue at
+        <a href="https://github.com/Kuwaaaa/SSLens/issues">https://github.com/Kuwaaaa/SSLens/issues</a>.
+      </p>
+    </main>
+  </body>
+</html>

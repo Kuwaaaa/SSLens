@@ -18,6 +18,8 @@ export const json = (body: unknown, status = 200): Response =>
 
 // --- POST /api/redeem -------------------------------------------------------
 
+const INVITES_REQUIRED = /^(1|true|yes)$/i.test(process.env.LUMEN_INVITES_REQUIRED ?? "");
+
 const findInvite = db.query<
   { code: string; issued_by: string | null; consumed_at: number | null },
   [string]
@@ -41,21 +43,30 @@ const findUserById = db.query<{ id: string; handle: string }, [string]>(
 
 export async function handleRedeem(req: Request): Promise<Response> {
   const body = (await req.json().catch(() => null)) as { code?: string; handle?: string } | null;
-  if (!body?.code || !body?.handle) return json({ error: "code and handle required" }, 400);
+  if (!body?.handle) return json({ error: "handle required" }, 400);
   if (!/^[A-Za-z0-9_-]{2,32}$/.test(body.handle)) return json({ error: "invalid handle" }, 400);
   if (body.handle.toLowerCase() === "anonymous") return json({ error: "reserved handle" }, 400);
 
-  const invite = findInvite.get(body.code);
-  if (!invite) return json({ error: "invalid code" }, 404);
-  if (invite.consumed_at !== null) return json({ error: "code already used" }, 409);
+  const code = body.code?.trim();
+  if (INVITES_REQUIRED && !code) return json({ error: "invite code required" }, 400);
 
-  if (findUserByHandle.get(body.handle)) return json({ error: "handle taken" }, 409);
+  const invite = code ? findInvite.get(code) : null;
+  if (code && !invite) return json({ error: "invalid code" }, 404);
+  if (invite?.consumed_at !== null && invite?.consumed_at !== undefined) {
+    return json({ error: "code already used" }, 409);
+  }
+
+  const existingUser = findUserByHandle.get(body.handle);
+  if (existingUser) {
+    const token = await signToken(existingUser.id);
+    return json({ userId: existingUser.id, handle: body.handle, token });
+  }
 
   const userId = ulid();
   const now = Date.now();
   db.transaction(() => {
-    consumeInvite.run(userId, now, body.code!);
-    createUser.run(userId, body.handle!, invite.issued_by, now);
+    if (invite && code) consumeInvite.run(userId, now, code);
+    createUser.run(userId, body.handle!, invite?.issued_by ?? null, now);
   })();
 
   const token = await signToken(userId);

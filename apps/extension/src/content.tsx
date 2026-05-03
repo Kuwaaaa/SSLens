@@ -1,17 +1,17 @@
-// Content script entry. Injected into whitelisted pages by the manifest.
+// Content script entry. Injected into normal HTTP(S) pages by the manifest.
 //
 // Responsibilities:
 //   - render existing Lens as CSS Highlight markers (filtered by reading mode)
 //   - capture user text selection -> show "Create Lens" button -> composer
-//   - WebSocket subscription to the page's room (lens_created, companion_*)
+//   - bridge live room events through the extension service worker
 //   - mount React overlay inside Shadow DOM so page CSS doesn't leak in
 //   - track anchor recovery; surface orphan Lens through info panel
 //
-// MVP NOTE: WebSocket is owned here, not the service worker. See README.md.
+// The service worker owns the real WebSocket so HTTPS pages do not directly
+// connect to an insecure ws:// backend during the no-domain beta.
 
 import { useCallback, useEffect, useMemo, useRef, useState, type FormEvent, type ReactNode } from "react";
 import { createRoot } from "react-dom/client";
-import { WebSocket as ReconnectingWS } from "partysocket";
 import { REACTION_KINDS, type Lens, type LensType, type ReactionKind, type ReadingMode } from "@lumen/schema";
 
 import { canonicalizeUrl, roomIdFor } from "./shared/canonicalize";
@@ -22,11 +22,13 @@ import {
   getUser,
   KEY_HIDDEN_SITES,
   KEY_READING_MODE,
+  KEY_TOKEN,
+  KEY_USER,
+  logout,
   normalizeHost,
   type StoredUser,
 } from "./shared/storage";
-import { fetchLensesForRoom, createLens, reportLens, toggleReaction, updateLensAnchor } from "./shared/api";
-import { WS_BASE } from "./shared/config";
+import { fetchLensesForRoom, createLens, reportLens, toggleReaction, updateLensAnchor } from "./shared/api-proxy";
 import { buildTextIndex, createAnchor, flatOffsetsToRange, rangeToFlatOffsets, restoreAnchor } from "@lumen/anchoring";
 import {
   applyClusterHighlight,
@@ -93,6 +95,12 @@ interface CompanionChatMessage {
   at: number;
 }
 
+type WsBridgeEvent =
+  | { namespace: "lumen.ws"; type: "open" }
+  | { namespace: "lumen.ws"; type: "close"; code?: number; reason?: string; wasClean?: boolean }
+  | { namespace: "lumen.ws"; type: "error"; error?: string }
+  | { namespace: "lumen.ws"; type: "message"; data: string };
+
 const CARD_WIDTH = 340;
 const CARD_HEIGHT_ESTIMATE = 280;
 const DEFAULT_CLUSTER_SIBLINGS = 2;
@@ -154,8 +162,9 @@ function shouldShowInMode(lens: Lens, mode: ReadingMode): boolean {
   if (mode === "thinking") {
     return ["question", "knowledge", "challenge"].includes(lens.type);
   }
-  // quiet
-  return ["knowledge", "challenge"].includes(lens.type);
+  // quiet: keep the page sparse, but do show Quick Lens because Quick is
+  // the default creation mode for v2's small-group UGC loop.
+  return ["quick", "knowledge", "challenge"].includes(lens.type);
 }
 
 function refsFromBody(body: string) {
@@ -264,7 +273,7 @@ function Overlay({ url, roomId, canonical }: { url: string; roomId: string; cano
   const [layoutTick, setLayoutTick] = useState(0);
 
   const anchorRanges = useRef<Map<string, Range>>(new Map());
-  const wsRef = useRef<ReconnectingWS | null>(null);
+  const wsRef = useRef<chrome.runtime.Port | null>(null);
   const companionActiveRef = useRef(false);
 
   // --- Geometric shape blooms ---
@@ -333,6 +342,10 @@ function Overlay({ url, roomId, canonical }: { url: string; roomId: string; cano
   // Listen for popup changes.
   useEffect(() => {
     const handler = (changes: Record<string, chrome.storage.StorageChange>) => {
+      const tokenChange = changes[KEY_TOKEN];
+      if (tokenChange) setToken((tokenChange.newValue as string | undefined) ?? null);
+      const userChange = changes[KEY_USER];
+      if (userChange) setCurrentUser((userChange.newValue as StoredUser | undefined) ?? null);
       const c = changes[KEY_READING_MODE];
       if (c) setReadingMode((c.newValue as ReadingMode | undefined) ?? "quiet");
       const hidden = changes[KEY_HIDDEN_SITES];
@@ -400,7 +413,18 @@ function Overlay({ url, roomId, canonical }: { url: string; roomId: string; cano
         setOrphanIds(orphans);
         setLenses(ls);
       })
-      .catch((err) => console.warn("[Lumen] fetchLenses failed:", err));
+      .catch(async (err) => {
+        if (err instanceof Error && err.message.includes("fetchLenses 401")) {
+          console.warn("[Lumen] token was rejected by the server; logging out:", err);
+          await logout();
+          if (!cancelled) {
+            setToken(null);
+            setCurrentUser(null);
+          }
+          return;
+        }
+        console.warn("[Lumen] fetchLenses failed:", err);
+      });
     return () => {
       cancelled = true;
       anchorRanges.current.clear();
@@ -411,24 +435,41 @@ function Overlay({ url, roomId, canonical }: { url: string; roomId: string; cano
   // WebSocket
   useEffect(() => {
     if (!token || lumenHidden) return;
-    const ws = new ReconnectingWS(`${WS_BASE}/ws?token=${encodeURIComponent(token)}`);
-    wsRef.current = ws;
+    const port = chrome.runtime.connect({ name: "lumen.ws" });
+    wsRef.current = port;
 
-    ws.addEventListener("open", () => {
-      setWsConnected(true);
-      ws.send(JSON.stringify({ type: "subscribe", roomId }));
-      if (companionActiveRef.current) {
-        ws.send(JSON.stringify({ type: "companion_join" }));
+    port.onMessage.addListener((event: WsBridgeEvent) => {
+      if (!event || event.namespace !== "lumen.ws") return;
+      if (event.type === "open") {
+        setWsConnected(true);
+        if (companionActiveRef.current) {
+          port.postMessage({ namespace: "lumen.ws", type: "send", payload: { type: "companion_join" } });
+        }
+        return;
       }
-    });
-    ws.addEventListener("close", () => {
-      setWsConnected(false);
-      setCompanionUsers([]);
-    });
-    ws.addEventListener("message", (e: MessageEvent) => {
+      if (event.type === "error") {
+        console.warn(
+          "[Lumen] WebSocket bridge failed. If HTTP API requests work, check token validity, extension service worker logs, and reverse-proxy Upgrade headers.",
+          event.error ?? "",
+        );
+        return;
+      }
+      if (event.type === "close") {
+        if (event.code !== 1000) {
+          console.warn("[Lumen] WebSocket closed:", {
+            code: event.code,
+            reason: event.reason || "(no reason)",
+            wasClean: event.wasClean,
+          });
+        }
+        setWsConnected(false);
+        setCompanionUsers([]);
+        return;
+      }
+      if (event.type !== "message") return;
       let msg: { type: string; [k: string]: unknown };
       try {
-        msg = JSON.parse(typeof e.data === "string" ? e.data : "");
+        msg = JSON.parse(event.data);
       } catch {
         return;
       }
@@ -522,16 +563,28 @@ function Overlay({ url, roomId, canonical }: { url: string; roomId: string; cano
       }
     });
 
+    port.onDisconnect.addListener(() => {
+      setWsConnected(false);
+      setCompanionUsers([]);
+    });
+
+    port.postMessage({ namespace: "lumen.ws", type: "connect", token, roomId });
+
     return () => {
       if (companionActiveRef.current) {
         try {
-          ws.send(JSON.stringify({ type: "companion_leave" }));
+          port.postMessage({ namespace: "lumen.ws", type: "send", payload: { type: "companion_leave" } });
         } catch {
           // Socket is already gone; server close handling clears presence.
         }
       }
-      ws.close();
-      if (wsRef.current === ws) wsRef.current = null;
+      try {
+        port.postMessage({ namespace: "lumen.ws", type: "disconnect" });
+        port.disconnect();
+      } catch {
+        // The extension worker may already be gone during tab teardown.
+      }
+      if (wsRef.current === port) wsRef.current = null;
       setWsConnected(false);
     };
   }, [token, roomId, lumenHidden, addEmojiBurst, addCompanionMessage, mergeCompanionHistory]);
@@ -661,19 +714,29 @@ function Overlay({ url, roomId, canonical }: { url: string; roomId: string; cano
   async function publish(input: { type: LensType; body: string; tags: string[]; anonymous: boolean }) {
     if (!token || !draft) return;
     const anchor = createAnchor(draft.range);
-    await createLens(
-      {
-        roomId,
-        url: canonical,
-        type: input.type,
-        body: input.body,
-        anchor,
-        tags: input.tags,
-        refs: refsFromBody(input.body),
-        anonymous: input.anonymous,
-      },
-      token,
-    );
+    try {
+      await createLens(
+        {
+          roomId,
+          url: canonical,
+          type: input.type,
+          body: input.body,
+          anchor,
+          tags: input.tags,
+          refs: refsFromBody(input.body),
+          anonymous: input.anonymous,
+        },
+        token,
+      );
+    } catch (err) {
+      if (err instanceof Error && err.message.includes("createLens 401")) {
+        console.warn("[Lumen] token was rejected while creating a Lens; logging out:", err);
+        await logout();
+        setToken(null);
+        setCurrentUser(null);
+      }
+      throw err;
+    }
     setComposerOpen(false);
     setDraft(null);
     window.getSelection()?.removeAllRanges();
@@ -917,9 +980,9 @@ function Overlay({ url, roomId, canonical }: { url: string; roomId: string; cano
   function findCompanion() {
     setCompanionActive(true);
     try {
-      wsRef.current?.send(JSON.stringify({ type: "companion_join" }));
+      wsRef.current?.postMessage({ namespace: "lumen.ws", type: "send", payload: { type: "companion_join" } });
     } catch {
-      // ReconnectingWS will join on the next open event while companionActive is true.
+      // The bridge will join on the next open event while companionActive is true.
     }
   }
 
@@ -930,7 +993,7 @@ function Overlay({ url, roomId, canonical }: { url: string; roomId: string; cano
     setChatOpen(false);
     setCompanionMessages([]);
     try {
-      wsRef.current?.send(JSON.stringify({ type: "companion_leave" }));
+      wsRef.current?.postMessage({ namespace: "lumen.ws", type: "send", payload: { type: "companion_leave" } });
     } catch {
       // Socket close handling on the server also clears companion presence.
     }
@@ -940,14 +1003,14 @@ function Overlay({ url, roomId, canonical }: { url: string; roomId: string; cano
     if (!companionActive || !wsConnected) return;
     const edge = Math.random() > 0.5 ? "right" : "left";
     const y = 0.18 + Math.random() * 0.64;
-    wsRef.current?.send(JSON.stringify({ type: "companion_emoji", emoji, edge, y }));
+    wsRef.current?.postMessage({ namespace: "lumen.ws", type: "send", payload: { type: "companion_emoji", emoji, edge, y } });
   }
 
   function sendCompanionChat(body: string) {
     if (!companionActive || !wsConnected) return;
     const trimmed = body.trim().slice(0, 280);
     if (!trimmed) return;
-    wsRef.current?.send(JSON.stringify({ type: "companion_chat", body: trimmed }));
+    wsRef.current?.postMessage({ namespace: "lumen.ws", type: "send", payload: { type: "companion_chat", body: trimmed } });
   }
 
   return (

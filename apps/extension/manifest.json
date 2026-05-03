@@ -14,11 +14,8 @@
   "content_scripts": [
     {
       "matches": [
-        "https://paulgraham.com/*",
-        "https://karpathy.github.io/*",
-        "https://www.joelonsoftware.com/*",
-        "https://kk.org/*",
-        "https://sre.google/*"
+        "http://*/*",
+        "https://*/*"
       ],
       "js": ["src/content.tsx"],
       "run_at": "document_idle"
@@ -26,11 +23,7 @@
   ],
   "permissions": ["storage"],
   "host_permissions": [
-    "http://localhost:3000/*",
-    "https://paulgraham.com/*",
-    "https://karpathy.github.io/*",
-    "https://www.joelonsoftware.com/*",
-    "https://kk.org/*",
-    "https://sre.google/*"
+    "http://*/*",
+    "https://*/*"
   ]
 }
