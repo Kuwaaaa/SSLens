@@ -186,14 +186,29 @@ $("redeem-btn").onclick = async () => {
 };
 
 // --- URL canonicalization (mirror of scripts/canonicalize-url.ts) ---
-const TRACKING_PARAMS = new Set(["fbclid","gclid","ref","mc_eid","mc_cid","yclid","msclkid","twclid","igshid","ck_subscriber_id","_hsenc","_hsmi"]);
-function canonicalizeUrl(input) {
+const TRACKING_PARAMS = new Set(["fbclid","gclid","ref","mc_eid","mc_cid","yclid","msclkid","twclid","igshid","ck_subscriber_id","_hsenc","_hsmi","spm_id_from","from_spmid","vd_source","share_source","share_medium","share_plat","share_session_id","si","siid"]);
+const TRACKING_PREFIXES = ["utm_", "WT.", "pk_", "ycl_"];
+const SITE_RULES = [
+  {
+    hosts: ["bilibili.com"],
+    matchPath: /^\/video\/((?:BV|av)[A-Za-z0-9]+)\/?$/i,
+    canonicalHost: "www.bilibili.com",
+    buildPath: (match) => `/video/${match[1]}`,
+    keepQuery: [],
+  },
+];
+function canonicalizeUrl(input, documentCanonical = null) {
+  const source = documentCanonical && sameOriginOrHost(input, documentCanonical) ? documentCanonical : input;
+  return canonicalizeUrlString(source);
+}
+function canonicalizeUrlString(input) {
   const u = new URL(input);
-  u.hash = ""; u.host = u.host.toLowerCase();
+  u.hash = ""; u.host = u.host.toLowerCase(); u.protocol = u.protocol.toLowerCase();
+  applySiteCanonicalRule(u);
   const toRemove = [];
   for (const k of u.searchParams.keys()) {
     const lower = k.toLowerCase();
-    if (TRACKING_PARAMS.has(lower) || lower.startsWith("utm_")) toRemove.push(k);
+    if (TRACKING_PARAMS.has(lower) || TRACKING_PREFIXES.some((p) => lower.startsWith(p.toLowerCase()))) toRemove.push(k);
   }
   for (const k of toRemove) u.searchParams.delete(k);
   const entries = [...u.searchParams.entries()].sort(([a],[b]) => a < b ? -1 : a > b ? 1 : 0);
@@ -202,8 +217,31 @@ function canonicalizeUrl(input) {
   if (u.pathname.length > 1 && u.pathname.endsWith("/")) u.pathname = u.pathname.slice(0,-1);
   return u.toString();
 }
-async function roomIdFor(url) {
-  const canonical = canonicalizeUrl(url);
+function applySiteCanonicalRule(u) {
+  for (const rule of SITE_RULES) {
+    if (!rule.hosts.some((host) => u.hostname === host || u.hostname.endsWith(`.${host}`))) continue;
+    const match = u.pathname.match(rule.matchPath);
+    if (!match) continue;
+    if (rule.canonicalHost) u.hostname = rule.canonicalHost;
+    u.pathname = rule.buildPath(match);
+    const keep = new Set((rule.keepQuery || []).map((key) => key.toLowerCase()));
+    for (const key of [...u.searchParams.keys()]) {
+      if (!keep.has(key.toLowerCase())) u.searchParams.delete(key);
+    }
+    return;
+  }
+}
+function sameOriginOrHost(current, candidate) {
+  try {
+    const currentUrl = new URL(current);
+    const candidateUrl = new URL(candidate);
+    return currentUrl.origin === candidateUrl.origin || currentUrl.hostname === candidateUrl.hostname;
+  } catch {
+    return false;
+  }
+}
+async function roomIdFor(url, documentCanonical = null) {
+  const canonical = canonicalizeUrl(url, documentCanonical);
   const buf = new TextEncoder().encode(canonical);
   const hash = await crypto.subtle.digest("SHA-256", buf);
   return [...new Uint8Array(hash)].map(b => b.toString(16).padStart(2,"0")).join("");

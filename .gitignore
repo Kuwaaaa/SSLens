@@ -8,3 +8,6 @@ data/
 .DS_Store
 .vscode/
 .idea/
+
+apps/extension/.env.production
+apps/extension/.env.local

@@ -4,19 +4,50 @@ const TRACKING_PARAMS = new Set([
   "fbclid", "gclid", "ref", "mc_eid", "mc_cid",
   "yclid", "msclkid", "twclid", "igshid",
   "ck_subscriber_id", "_hsenc", "_hsmi",
+  "spm_id_from", "from_spmid", "vd_source",
+  "share_source", "share_medium", "share_plat", "share_session_id",
+  "si", "siid",
 ]);
 
-const TRACKING_PREFIXES = ["utm_"];
+const TRACKING_PREFIXES = ["utm_", "WT.", "pk_", "ycl_"];
 
-export function canonicalizeUrl(input: string): string {
+interface SiteCanonicalRule {
+  hosts: string[];
+  matchPath: RegExp;
+  canonicalHost?: string;
+  buildPath(match: RegExpMatchArray): string;
+  keepQuery?: string[];
+}
+
+const SITE_RULES: SiteCanonicalRule[] = [
+  {
+    hosts: ["bilibili.com"],
+    matchPath: /^\/video\/((?:BV|av)[A-Za-z0-9]+)\/?$/i,
+    canonicalHost: "www.bilibili.com",
+    buildPath: (match) => `/video/${match[1]}`,
+    keepQuery: [],
+  },
+];
+
+export function canonicalizeUrl(input: string, documentCanonical?: string | null): string {
+  const source = documentCanonical && sameOriginOrHost(input, documentCanonical)
+    ? documentCanonical
+    : input;
+  return canonicalizeUrlString(source);
+}
+
+function canonicalizeUrlString(input: string): string {
   const u = new URL(input);
   u.hash = "";
   u.host = u.host.toLowerCase();
+  u.protocol = u.protocol.toLowerCase();
+
+  applySiteCanonicalRule(u);
 
   const toRemove: string[] = [];
   for (const key of u.searchParams.keys()) {
     const lower = key.toLowerCase();
-    if (TRACKING_PARAMS.has(lower) || TRACKING_PREFIXES.some((p) => lower.startsWith(p))) {
+    if (TRACKING_PARAMS.has(lower) || TRACKING_PREFIXES.some((p) => lower.startsWith(p.toLowerCase()))) {
       toRemove.push(key);
     }
   }
@@ -34,8 +65,33 @@ export function canonicalizeUrl(input: string): string {
   return u.toString();
 }
 
-export async function roomIdFor(url: string): Promise<string> {
-  const canonical = canonicalizeUrl(url);
+function applySiteCanonicalRule(u: URL) {
+  for (const rule of SITE_RULES) {
+    if (!rule.hosts.some((host) => u.hostname === host || u.hostname.endsWith(`.${host}`))) continue;
+    const match = u.pathname.match(rule.matchPath);
+    if (!match) continue;
+    if (rule.canonicalHost) u.hostname = rule.canonicalHost;
+    u.pathname = rule.buildPath(match);
+    const keep = new Set((rule.keepQuery ?? []).map((key) => key.toLowerCase()));
+    for (const key of [...u.searchParams.keys()]) {
+      if (!keep.has(key.toLowerCase())) u.searchParams.delete(key);
+    }
+    return;
+  }
+}
+
+function sameOriginOrHost(current: string, candidate: string): boolean {
+  try {
+    const currentUrl = new URL(current);
+    const candidateUrl = new URL(candidate);
+    return currentUrl.origin === candidateUrl.origin || currentUrl.hostname === candidateUrl.hostname;
+  } catch {
+    return false;
+  }
+}
+
+export async function roomIdFor(url: string, documentCanonical?: string | null): Promise<string> {
+  const canonical = canonicalizeUrl(url, documentCanonical);
   const buf = new TextEncoder().encode(canonical);
   const hash = await crypto.subtle.digest("SHA-256", buf);
   return [...new Uint8Array(hash)].map((b) => b.toString(16).padStart(2, "0")).join("");

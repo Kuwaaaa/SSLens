@@ -14,7 +14,7 @@ import { useCallback, useEffect, useMemo, useRef, useState, type FormEvent, type
 import { createRoot } from "react-dom/client";
 import { REACTION_KINDS, type Lens, type LensType, type ReactionKind, type ReadingMode } from "@lumen/schema";
 
-import { canonicalizeUrl, roomIdFor } from "./shared/canonicalize";
+import { canonicalizeUrl, canonicalUrlFromDocument, roomIdFor } from "./shared/canonicalize";
 import {
   getReadingMode,
   getSiteHidden,
@@ -1994,8 +1994,9 @@ async function boot() {
   let roomId: string;
   let canonical: string;
   try {
-    canonical = canonicalizeUrl(url);
-    roomId = await roomIdFor(url);
+    const documentCanonical = canonicalUrlFromDocument();
+    canonical = canonicalizeUrl(url, documentCanonical);
+    roomId = await roomIdFor(url, documentCanonical);
   } catch (err) {
     console.warn("[Lumen] could not derive room from URL, aborting:", err);
     return;

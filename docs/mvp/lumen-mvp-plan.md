@@ -3,6 +3,11 @@
 Date: 2026-04-26
 Status: Replaces v1 plan. v1 is archived as a sibling.
 
+> Current status note (2026-05-04): this plan remains the original MVP thesis
+> and discipline document, but several implementation checkboxes below are now
+> stale. Read `docs/project-status.md` for the current beta status and next
+> project plan before starting new work.
+
 ## 1. MVP thesis
 
 The v2 MVP is not a feature list. It is **a 4-week soak experiment with ~10–15 invited users**, designed to find out whether async-accumulating Lens cards on a page genuinely make the page feel inhabited, and whether opt-in companion mode is a good shape for "I want company right now."
