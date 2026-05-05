@@ -78,6 +78,23 @@ export async function updateLensAnchor(
   return data.lens;
 }
 
+export interface DeleteLensResult {
+  lensId: string;
+  deleted: boolean;
+}
+
+export async function deleteLens(lensId: string, token: string): Promise<DeleteLensResult> {
+  const res = await fetch(`${API_BASE}/api/lenses/${encodeURIComponent(lensId)}`, {
+    method: "DELETE",
+    headers: { Authorization: `Bearer ${token}` },
+  });
+  if (!res.ok) {
+    const txt = await res.text();
+    throw new Error(`deleteLens ${res.status}: ${txt}`);
+  }
+  return (await res.json()) as DeleteLensResult;
+}
+
 export interface ReactionResult {
   lensId: string;
   kind: ReactionKind;

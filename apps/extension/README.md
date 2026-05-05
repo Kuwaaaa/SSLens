@@ -40,6 +40,10 @@ For a real deployment, build with the public server URL:
 VITE_LUMEN_API_BASE=https://lumen.example.com bun run build:extension
 ```
 
+Production builds intentionally fail if `VITE_LUMEN_API_BASE` is missing or
+points at `localhost` / `127.0.0.1`. This prevents accidentally publishing an
+extension that still talks to the local dev server.
+
 The manifest uses broad `http://*/*` and `https://*/*` access so Lumen can run
 on arbitrary webpages. In the Chrome Web Store listing, explain this permission
 as necessary for anchoring Lens cards to the page the user is currently reading.
@@ -81,6 +85,8 @@ When a real domain + HTTPS/WSS is available, this bridge can stay in place or be
 - Companion mode opt-in presence with `Find companion` / `Leave companion`
 - Companion mode edge emoji toss over WebSocket
 - Companion mode tiny ephemeral chat with short in-memory room history for late joiners
+- In-panel room debug disclosure showing the canonical URL and roomId for
+  diagnosing same-page room mismatches
 
 ## Deferred verifications
 

@@ -164,8 +164,9 @@ inside `dist`, not the parent `dist` directory itself. Do not publish source,
 `node_modules`, `.pem`, or `.crx` files.
 
 Watch item: if `VITE_LUMEN_API_BASE` is missing, the extension falls back to
-`http://localhost:3000`. Always inspect the built files or test a fresh install
-before publishing.
+`http://localhost:3000` in dev. Production extension builds now fail when
+`VITE_LUMEN_API_BASE` is missing or points at localhost, so release builds must
+provide a public backend URL.
 
 ### Server
 
@@ -211,6 +212,7 @@ Manual smoke tests:
 
 - Fresh user can register with handle only.
 - A Lens created by user A is visible to user B on the same canonical page.
+- Room debug in the InfoPanel shows the expected canonical URL and room ID.
 - Two windows on the same Bilibili video URL with different tracking/query
   parameters share one room.
 - Companion mode is invisible before opt-in.
@@ -224,9 +226,9 @@ Manual smoke tests:
 
 ### Phase A: Stabilize Current Beta
 
-- Make `VITE_LUMEN_API_BASE` hard to forget in release builds.
-- Add a lightweight debug view or log for canonical URL and room ID.
-- Add focused canonicalization tests for common URL patterns.
+- Keep the production API-base build guard working.
+- Use the InfoPanel room debug disclosure when diagnosing room mismatches.
+- Keep focused canonicalization tests passing for common URL patterns.
 - Re-test companion mode after every service-worker or WebSocket change.
 - Back up `data/lumen.db` and `data/keys.json` before inviting more users.
 
@@ -265,10 +267,10 @@ directory, notifications, or voice/video in the first Lounge version.
 - Product constraints: `AGENTS.md`
 - Project status: `docs/project-status.md`
 - Companion mode: `docs/technical/companion-mode-mvp.md`
+- Server bottlenecks: `docs/technical/server-bottlenecks.md`
 - Lounge design: `docs/product/persistent-lounge-design.md`
 - URL identity code: `apps/extension/src/shared/canonicalize.ts`
 - Service-worker bridge: `apps/extension/src/service-worker.ts`
 - Main content overlay: `apps/extension/src/content.tsx`
 - Extension config: `apps/extension/src/shared/config.ts`
 - Server WebSocket handling: `apps/server/src/ws.ts`
-

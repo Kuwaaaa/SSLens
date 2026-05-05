@@ -13,7 +13,8 @@
     "dev:extension": "cd apps/extension && bun run dev",
     "build:extension": "cd apps/extension && bun run build",
     "keygen": "bun scripts/keygen.ts",
-    "issue-invite": "bun scripts/issue-invite.ts"
+    "issue-invite": "bun scripts/issue-invite.ts",
+    "test:canonicalize": "bun scripts/canonicalize-url.test.ts"
   },
   "engines": {
     "bun": ">=1.1.0"

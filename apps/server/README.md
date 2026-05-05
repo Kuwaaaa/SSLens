@@ -27,10 +27,14 @@ bun run issue-invite -- --by founder
 | GET | `/api/lenses` | bearer | `?room=<sha256>` | `{ lenses: [...] }` |
 | POST | `/api/lenses` | bearer | `{ roomId, url, type, body, anchor, tags?, refs?, anonymous? }` | `{ lens }` |
 | PATCH | `/api/lenses/:id/anchor` | bearer | `{ anchor }` | `{ lens }` |
+| DELETE | `/api/lenses/:id` | bearer + operator | - | `{ lensId, deleted }` |
 | POST | `/api/reactions` | bearer | `{ lensId, kind }` | `{ lensId, kind, selected, reactions, myReactions }` |
 | POST | `/api/reports` | bearer | `{ lensId, reason? }` | `{ reportId, lensId }` |
 
 `PATCH /api/lenses/:id/anchor` is limited to the original Lens author or an operator. Configure operators with comma-separated `LUMEN_OPERATOR_USER_IDS` or `LUMEN_OPERATOR_HANDLES`.
+`DELETE /api/lenses/:id` is operator-only and also removes reports/reactions for that Lens.
+
+Write routes have a small in-memory rate limiter as beta abuse protection. It is per-process and resets on server restart; use it as a guardrail, not as a durable abuse system.
 
 ## WebSocket
 

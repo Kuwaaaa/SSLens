@@ -4,19 +4,21 @@ import {
   handleRedeem,
   handleListLenses,
   handleCreateLens,
+  handleDeleteLens,
   handleUpdateLensAnchor,
   handleToggleReaction,
   handleCreateReport,
 } from "./routes.ts";
 import { handleUpgrade, websocket, setServerRef } from "./ws.ts";
 import { verifyToken, type TokenPayload } from "./auth.ts";
+import { checkRateLimit, pruneRateLimitBuckets } from "./rate-limit.ts";
 
 const PORT = Number(process.env.PORT ?? 3000);
 
 const cors = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "Content-Type, Authorization",
-  "Access-Control-Allow-Methods": "GET, POST, PATCH, OPTIONS",
+  "Access-Control-Allow-Methods": "GET, POST, PATCH, DELETE, OPTIONS",
 };
 
 async function authFromReq(req: Request): Promise<TokenPayload | null> {
@@ -58,6 +60,8 @@ const server = Bun.serve({
 
     try {
       if (url.pathname === "/api/redeem" && req.method === "POST") {
+        const limited = checkRateLimit(req, "redeem");
+        if (limited) return limited;
         return await handleRedeem(req);
       }
 
@@ -66,19 +70,36 @@ const server = Bun.serve({
 
       if (url.pathname === "/api/lenses") {
         if (req.method === "GET") return handleListLenses(req, user);
-        if (req.method === "POST") return await handleCreateLens(req, user, srv);
+        if (req.method === "POST") {
+          const limited = checkRateLimit(req, "createLens", user);
+          if (limited) return limited;
+          return await handleCreateLens(req, user, srv);
+        }
       }
 
       const anchorMatch = url.pathname.match(/^\/api\/lenses\/([^/]+)\/anchor$/);
       if (anchorMatch && req.method === "PATCH") {
+        const limited = checkRateLimit(req, "updateAnchor", user);
+        if (limited) return limited;
         return await handleUpdateLensAnchor(req, user, srv, decodeURIComponent(anchorMatch[1]));
       }
 
+      const lensMatch = url.pathname.match(/^\/api\/lenses\/([^/]+)$/);
+      if (lensMatch && req.method === "DELETE") {
+        const limited = checkRateLimit(req, "deleteLens", user);
+        if (limited) return limited;
+        return await handleDeleteLens(user, srv, decodeURIComponent(lensMatch[1]));
+      }
+
       if (url.pathname === "/api/reactions" && req.method === "POST") {
+        const limited = checkRateLimit(req, "reaction", user);
+        if (limited) return limited;
         return await handleToggleReaction(req, user, srv);
       }
 
       if (url.pathname === "/api/reports" && req.method === "POST") {
+        const limited = checkRateLimit(req, "report", user);
+        if (limited) return limited;
         return await handleCreateReport(req, user);
       }
 
@@ -92,5 +113,7 @@ const server = Bun.serve({
 });
 
 setServerRef(server);
+
+setInterval(() => pruneRateLimitBuckets(), 10 * 60_000);
 
 console.log(`Lumen v2 server listening on http://localhost:${PORT}`);

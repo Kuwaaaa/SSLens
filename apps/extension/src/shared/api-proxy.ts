@@ -1,6 +1,7 @@
 import type { Lens, LensAnchor, LensType, ReactionKind } from "@lumen/schema";
 import type {
   CreateLensInput,
+  DeleteLensResult,
   ReactionResult,
   ReportResult,
 } from "./api";
@@ -34,6 +35,10 @@ export async function updateLensAnchor(
   token: string,
 ): Promise<Lens> {
   return sendApiMessage<Lens>({ action: "updateLensAnchor", lensId, anchor, token });
+}
+
+export async function deleteLens(lensId: string, token: string): Promise<DeleteLensResult> {
+  return sendApiMessage<DeleteLensResult>({ action: "deleteLens", lensId, token });
 }
 
 export async function toggleReaction(

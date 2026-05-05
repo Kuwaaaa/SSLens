@@ -7,6 +7,7 @@
 import { WebSocket as ReconnectingWS } from "partysocket";
 import {
   createLens,
+  deleteLens,
   fetchLensesForRoom,
   reportLens,
   toggleReaction,
@@ -24,6 +25,7 @@ type ApiRequest =
   | { namespace: "lumen.api"; action: "fetchLensesForRoom"; roomId: string; token: string }
   | { namespace: "lumen.api"; action: "createLens"; input: CreateLensInput; token: string }
   | { namespace: "lumen.api"; action: "updateLensAnchor"; lensId: string; anchor: LensAnchor; token: string }
+  | { namespace: "lumen.api"; action: "deleteLens"; lensId: string; token: string }
   | { namespace: "lumen.api"; action: "toggleReaction"; lensId: string; kind: ReactionKind; token: string }
   | { namespace: "lumen.api"; action: "reportLens"; lensId: string; token: string };
 
@@ -48,6 +50,9 @@ chrome.runtime.onMessage.addListener((message: ApiRequest, _sender, sendResponse
             ok: true,
             value: await updateLensAnchor(message.lensId, message.anchor, message.token),
           });
+          break;
+        case "deleteLens":
+          sendResponse({ ok: true, value: await deleteLens(message.lensId, message.token) });
           break;
         case "toggleReaction":
           sendResponse({

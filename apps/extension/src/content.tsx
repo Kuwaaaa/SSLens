@@ -10,7 +10,7 @@
 // The service worker owns the real WebSocket so HTTPS pages do not directly
 // connect to an insecure ws:// backend during the no-domain beta.
 
-import { useCallback, useEffect, useMemo, useRef, useState, type FormEvent, type ReactNode } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, type FormEvent } from "react";
 import { createRoot } from "react-dom/client";
 import { REACTION_KINDS, type Lens, type LensType, type ReactionKind, type ReadingMode } from "@lumen/schema";
 
@@ -26,6 +26,7 @@ import {
   KEY_USER,
   logout,
   normalizeHost,
+  setReadingMode as saveReadingMode,
   type StoredUser,
 } from "./shared/storage";
 import { fetchLensesForRoom, createLens, reportLens, toggleReaction, updateLensAnchor } from "./shared/api-proxy";
@@ -45,6 +46,7 @@ import overlayCss from "./styles.css?inline";
 
 const LENS_TYPES: LensType[] = ["quick", "fun", "question", "knowledge"];
 const REACTION_CHOICES = REACTION_KINDS;
+const READING_MODES: ReadingMode[] = ["quiet", "thinking", "full"];
 
 interface SelectionDraft {
   range: Range;
@@ -554,6 +556,19 @@ function Overlay({ url, roomId, canonical }: { url: string; roomId: string; cano
             ? prev.map((l) => (l.id === lens.id ? { ...lens, myReactions: l.myReactions } : l))
             : [...prev, lens]
         ));
+      } else if (msg.type === "lens_deleted" && typeof msg.lensId === "string") {
+        const lensId = msg.lensId;
+        anchorRanges.current.delete(lensId);
+        setOrphanIds((s) => {
+          if (!s.has(lensId)) return s;
+          const next = new Set(s);
+          next.delete(lensId);
+          return next;
+        });
+        setLenses((prev) => prev.filter((l) => l.id !== lensId));
+        setActiveLens((prev) => prev && (prev.rootId === lensId || prev.clusterIds.includes(lensId) || prev.childIds.includes(lensId))
+          ? null
+          : prev);
       } else if (msg.type === "reaction_updated") {
         const lensId = msg.lensId as string;
         const reactions = msg.reactions as Partial<Record<ReactionKind, number>>;
@@ -1013,6 +1028,11 @@ function Overlay({ url, roomId, canonical }: { url: string; roomId: string; cano
     wsRef.current?.postMessage({ namespace: "lumen.ws", type: "send", payload: { type: "companion_chat", body: trimmed } });
   }
 
+  async function changeReadingMode(mode: ReadingMode) {
+    await saveReadingMode(mode);
+    setReadingMode(mode);
+  }
+
   return (
     <>
       <Orb
@@ -1031,6 +1051,8 @@ function Overlay({ url, roomId, canonical }: { url: string; roomId: string; cano
           hidden={hiddenCount}
           orphanLenses={lenses.filter((l) => orphanIds.has(l.id))}
           currentLens={activeLensStack[activeLensStack.length - 1] ?? null}
+          canonical={canonical}
+          roomId={roomId}
           reanchorTargetId={reanchorTargetId}
           companionActive={companionActive}
           companionCount={companionCount}
@@ -1039,6 +1061,7 @@ function Overlay({ url, roomId, canonical }: { url: string; roomId: string; cano
           chatOpen={chatOpen}
           companionMessages={companionMessages}
           currentUserId={currentUser?.userId ?? null}
+          onModeChange={(mode) => void changeReadingMode(mode)}
           onClose={() => setPanelOpen(false)}
           onHideTab={() => setTabHidden(true)}
           onFindCompanion={findCompanion}
@@ -1175,6 +1198,8 @@ function InfoPanel({
   hidden,
   orphanLenses,
   currentLens,
+  canonical,
+  roomId,
   reanchorTargetId,
   companionActive,
   companionCount,
@@ -1183,6 +1208,7 @@ function InfoPanel({
   chatOpen,
   companionMessages,
   currentUserId,
+  onModeChange,
   onClose,
   onHideTab,
   onFindCompanion,
@@ -1199,6 +1225,8 @@ function InfoPanel({
   hidden: number;
   orphanLenses: Lens[];
   currentLens: Lens | null;
+  canonical: string;
+  roomId: string;
   reanchorTargetId: string | null;
   companionActive: boolean;
   companionCount: number;
@@ -1207,6 +1235,7 @@ function InfoPanel({
   chatOpen: boolean;
   companionMessages: CompanionChatMessage[];
   currentUserId: string | null;
+  onModeChange: (mode: ReadingMode) => void;
   onClose: () => void;
   onHideTab: () => void;
   onFindCompanion: () => void;
@@ -1220,6 +1249,7 @@ function InfoPanel({
 }) {
   const [copyState, setCopyState] = useState<"idle" | "copied" | "failed">("idle");
   const [reportState, setReportState] = useState<"idle" | "reported" | "failed">("idle");
+  const [debugOpen, setDebugOpen] = useState(false);
   const copyResetTimer = useRef<number | null>(null);
   const reportResetTimer = useRef<number | null>(null);
 
@@ -1274,47 +1304,77 @@ function InfoPanel({
   return (
     <section className={`info-panel ${chatFocused ? "chat-focus" : ""}`} data-lumen-overlay="">
       <div className="ip-header">
-        <strong>Lumen</strong>
+        <div>
+          <strong>Lumen</strong>
+          <div className="ip-header-meta">{visible} visible</div>
+        </div>
         <button className="close" onClick={onClose} aria-label="Close">×</button>
       </div>
 
-      <PanelCollapse collapsed={chatFocused}>
-        <div className="ip-section">
-        <div className="ip-row">
-          <span>Reading mode</span>
+      {chatFocused && (
+        <div className="ip-chat-summary">
+          <span>{mode}</span>
+          <span>{visible} visible</span>
+          <span>{companionConnected ? "Companion live" : "Companion offline"}</span>
+        </div>
+      )}
+
+      <div className={`ip-section ip-control-section ${chatFocused ? "soft-collapsed" : ""}`}>
+        <div className="ip-section-head">
+          <span className="ip-label">Reading mode</span>
           <span className="pill">{mode}</span>
         </div>
-        <div className="ip-hint">Switch in the extension popup.</div>
+        <div className="ip-mode-switch" role="group" aria-label="Reading mode">
+          {READING_MODES.map((m) => (
+            <button
+              key={m}
+              className={mode === m ? "active" : ""}
+              onClick={() => onModeChange(m)}
+              aria-pressed={mode === m}
+            >
+              {m}
+            </button>
+          ))}
         </div>
-      </PanelCollapse>
+      </div>
 
-      <PanelCollapse collapsed={chatFocused}>
-        <div className="ip-section">
-          <div className="ip-row"><span>{visible} visible on this page</span></div>
-          {hidden > 0 && (
-            <div className="ip-row muted">{hidden} hidden by {mode} mode</div>
+      <div className={`ip-section ip-lens-status ${chatFocused ? "soft-collapsed" : ""}`}>
+        <div className="ip-section-head">
+          <span className="ip-label">Page lens</span>
+          <button className="ip-link-action" onClick={onHideTab}>Hide this tab</button>
+        </div>
+        <div className="ip-stat-grid">
+          <div className="ip-stat">
+            <strong>{visible}</strong>
+            <span>visible</span>
+          </div>
+          <div className="ip-stat">
+            <strong>{hidden}</strong>
+            <span>filtered</span>
+          </div>
+          <div className="ip-stat">
+            <strong>{orphanLenses.length}</strong>
+            <span>orphan</span>
+          </div>
+        </div>
+        {hidden > 0 && <div className="ip-hint">{hidden} hidden by {mode} mode.</div>}
+        {orphanLenses.length > 0 && <div className="ip-hint">{orphanLenses.length} Lens lost their anchor.</div>}
+      </div>
+
+      <div className="ip-section companion-dock">
+        <div className="ip-section-head">
+          <span className="ip-label">Companion</span>
+          {companionActive && (
+            <span className={`pill ${companionConnected ? "" : "muted"}`}>
+              {companionConnected ? "live" : "offline"}
+            </span>
           )}
-          {orphanLenses.length > 0 && (
-            <div className="ip-row muted">{orphanLenses.length} lost their anchor</div>
-          )}
         </div>
-      </PanelCollapse>
-
-      <PanelCollapse collapsed={chatFocused}>
-        <div className="ip-section">
-          <button className="ip-action" onClick={onHideTab}>Hide on this tab</button>
-        </div>
-      </PanelCollapse>
-
-      <div className="ip-section">
-        <div className="ip-label">Companion mode</div>
         {companionActive ? (
           <>
             <div className="ip-row">
               <span>{companionCount <= 1 ? "Only you here now" : `${companionCount} here now`}</span>
-              <span className={`pill ${companionConnected ? "" : "muted"}`}>
-                {companionConnected ? "live" : "offline"}
-              </span>
+              <button className="ip-link-action" onClick={onLeaveCompanion}>Leave</button>
             </div>
             <div className="companion-toss-row" aria-label="Toss emoji">
               {companionEmojiChoices.map((emoji) => (
@@ -1329,24 +1389,20 @@ function InfoPanel({
                 </button>
               ))}
             </div>
-            <button className="ip-action companion-chat-toggle" onClick={onToggleChat}>
-              {chatOpen ? "Close chat" : "Open chat"}
+            <button className="ip-action companion-chat-toggle" onClick={onToggleChat} aria-expanded={chatOpen}>
+              {chatOpen ? "Hide tiny chat" : companionMessages.length > 0 ? `Open tiny chat (${companionMessages.length})` : "Open tiny chat"}
             </button>
-            {chatOpen && (
-              <CompanionChat
-                messages={companionMessages}
-                currentUserId={currentUserId}
-                disabled={!companionConnected}
-                onSend={onSendCompanionChat}
-              />
-            )}
-            <button className="ip-action companion leave" onClick={onLeaveCompanion}>
-              Leave companion
-            </button>
+            <CompanionChat
+              open={chatOpen}
+              messages={companionMessages}
+              currentUserId={currentUserId}
+              disabled={!companionConnected || !chatOpen}
+              onSend={onSendCompanionChat}
+            />
           </>
         ) : (
           <>
-            <div className="ip-hint">Opt in when you want company on this page.</div>
+            <div className="ip-hint">Opt in for live presence, emoji toss, and tiny chat on this page.</div>
             <button className="ip-action companion" onClick={onFindCompanion} disabled={!companionConnected}>
               {companionConnected ? "Find companion" : "Connecting..."}
             </button>
@@ -1354,10 +1410,11 @@ function InfoPanel({
         )}
       </div>
 
-      <PanelCollapse collapsed={chatFocused}>
-        {currentLens && (
-          <div className="ip-section">
-            <div className="ip-label">Current lens</div>
+      {currentLens && (
+        <div className={`ip-section ${chatFocused ? "soft-collapsed" : ""}`}>
+            <div className="ip-section-head">
+              <span className="ip-label">Current lens</span>
+            </div>
             <div className="ip-row">
               <span className="ip-current-meta">
                 <span className="pill">{currentLens.type}</span>
@@ -1378,14 +1435,14 @@ function InfoPanel({
                 {reportLabel}
               </button>
             </div>
-          </div>
-        )}
-      </PanelCollapse>
+        </div>
+      )}
 
-      <PanelCollapse collapsed={chatFocused}>
-        {orphanLenses.length > 0 && (
-          <div className="ip-section">
-            <div className="ip-label">Orphan lens</div>
+      {orphanLenses.length > 0 && (
+        <div className={`ip-section ${chatFocused ? "soft-collapsed" : ""}`}>
+            <div className="ip-section-head">
+              <span className="ip-label">Orphan lens</span>
+            </div>
             {reanchorTargetId && (
               <div className="ip-hint reanchor-hint">
                 <span>Select the new text anchor on the page.</span>
@@ -1417,27 +1474,38 @@ function InfoPanel({
                 )}
               </div>
             ))}
+        </div>
+      )}
+
+      <div className={`ip-section ip-debug-section ${chatFocused ? "soft-collapsed" : ""}`}>
+        <button className="ip-debug-toggle" onClick={() => setDebugOpen((open) => !open)} aria-expanded={debugOpen}>
+          Room debug
+        </button>
+        {debugOpen && (
+          <div className="ip-debug-body">
+            <div>
+              <span>canonical</span>
+              <code title={canonical}>{canonical}</code>
+            </div>
+            <div>
+              <span>room</span>
+              <code title={roomId}>{roomId}</code>
+            </div>
           </div>
         )}
-      </PanelCollapse>
+      </div>
     </section>
   );
 }
 
-function PanelCollapse({ collapsed, children }: { collapsed: boolean; children: ReactNode }) {
-  return (
-    <div className={`panel-collapse ${collapsed ? "collapsed" : ""}`} aria-hidden={collapsed}>
-      <div className="panel-collapse-inner">{children}</div>
-    </div>
-  );
-}
-
 function CompanionChat({
+  open,
   messages,
   currentUserId,
   disabled,
   onSend,
 }: {
+  open: boolean;
   messages: CompanionChatMessage[];
   currentUserId: string | null;
   disabled: boolean;
@@ -1447,21 +1515,22 @@ function CompanionChat({
   const listRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
+    if (!open) return;
     const el = listRef.current;
     if (!el) return;
     el.scrollTop = el.scrollHeight;
-  }, [messages.length]);
+  }, [messages.length, open]);
 
   function submit(e: FormEvent) {
     e.preventDefault();
     const trimmed = body.trim();
-    if (!trimmed || disabled) return;
+    if (!open || !trimmed || disabled) return;
     onSend(trimmed);
     setBody("");
   }
 
   return (
-    <div className="companion-chat">
+    <div className={`companion-chat ${open ? "expanded" : "collapsed"}`} aria-hidden={!open}>
       <div ref={listRef} className="companion-chat-messages">
         {messages.length === 0 ? (
           <div className="companion-chat-empty">Tiny chat starts here.</div>

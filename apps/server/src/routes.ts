@@ -7,7 +7,7 @@ import { signToken, type TokenPayload } from "./auth.ts";
 const corsHeaders: Record<string, string> = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "Content-Type, Authorization",
-  "Access-Control-Allow-Methods": "GET, POST, PATCH, OPTIONS",
+  "Access-Control-Allow-Methods": "GET, POST, PATCH, DELETE, OPTIONS",
 };
 
 export const json = (body: unknown, status = 200): Response =>
@@ -19,6 +19,7 @@ export const json = (body: unknown, status = 200): Response =>
 // --- POST /api/redeem -------------------------------------------------------
 
 const INVITES_REQUIRED = /^(1|true|yes)$/i.test(process.env.LUMEN_INVITES_REQUIRED ?? "");
+const ALLOWED_REACTIONS = new Set<string>(REACTION_KINDS);
 
 const findInvite = db.query<
   { code: string; issued_by: string | null; consumed_at: number | null },
@@ -121,6 +122,23 @@ const userReactionsByLens = db.query<{ kind: string }, [string, string]>(`
   ORDER BY kind ASC
 `);
 
+const reactionCountsByRoom = db.query<{ lens_id: string; kind: string; count: number }, [string]>(`
+  SELECT r.lens_id, r.kind, COUNT(*) AS count
+  FROM reactions r
+  JOIN lenses l ON l.id = r.lens_id
+  WHERE l.room_id = ?
+  GROUP BY r.lens_id, r.kind
+  ORDER BY r.lens_id ASC, count DESC, r.kind ASC
+`);
+
+const userReactionsByRoom = db.query<{ lens_id: string; kind: string }, [string, string]>(`
+  SELECT r.lens_id, r.kind
+  FROM reactions r
+  JOIN lenses l ON l.id = r.lens_id
+  WHERE l.room_id = ? AND r.user_id = ?
+  ORDER BY r.lens_id ASC, r.kind ASC
+`);
+
 function reactionsForLens(lensId: string): Record<string, number> {
   const out: Record<string, number> = {};
   for (const row of reactionCountsByLens.all(lensId)) {
@@ -150,12 +168,22 @@ function isOperatorUser(userId: string): boolean {
   return user ? handles.has(user.handle.toLowerCase()) : false;
 }
 
+export function isOperator(userId: string): boolean {
+  return isOperatorUser(userId);
+}
+
 function canEditLensAnchor(r: LensRow, viewerId?: string): boolean {
   if (!viewerId) return false;
   return r.author_id === viewerId || isOperatorUser(viewerId);
 }
 
-function rowToLens(r: LensRow, viewerId?: string) {
+function rowToLens(
+  r: LensRow,
+  viewerId?: string,
+  reactions: Record<string, number> = reactionsForLens(r.id),
+  myReactions: ReactionKind[] = viewerId ? myReactionsForLens(r.id, viewerId) : [],
+  viewerIsOperator: boolean = viewerId ? isOperatorUser(viewerId) : false,
+) {
   const isAnon = r.anonymous === 1;
   return {
     id: r.id,
@@ -171,13 +199,34 @@ function rowToLens(r: LensRow, viewerId?: string) {
     url: r.url,
     roomId: r.room_id,
     createdAt: r.created_at,
-    reactions: reactionsForLens(r.id),
-    myReactions: viewerId ? myReactionsForLens(r.id, viewerId) : [],
+    reactions,
+    myReactions,
     replyCount: 0,
     saveCount: 0,
     viewerIsAuthor: viewerId ? r.author_id === viewerId : false,
-    canEditAnchor: canEditLensAnchor(r, viewerId),
+    canEditAnchor: viewerId ? r.author_id === viewerId || viewerIsOperator : false,
   };
+}
+
+function reactionsByLensForRoom(roomId: string): Map<string, Record<string, number>> {
+  const out = new Map<string, Record<string, number>>();
+  for (const row of reactionCountsByRoom.all(roomId)) {
+    const existing = out.get(row.lens_id) ?? {};
+    existing[row.kind] = row.count;
+    out.set(row.lens_id, existing);
+  }
+  return out;
+}
+
+function myReactionsByLensForRoom(roomId: string, userId: string): Map<string, ReactionKind[]> {
+  const out = new Map<string, ReactionKind[]>();
+  for (const row of userReactionsByRoom.all(roomId, userId)) {
+    if (!ALLOWED_REACTIONS.has(row.kind)) continue;
+    const existing = out.get(row.lens_id) ?? [];
+    existing.push(row.kind as ReactionKind);
+    out.set(row.lens_id, existing);
+  }
+  return out;
 }
 
 export function handleListLenses(req: Request, user: TokenPayload): Response {
@@ -187,7 +236,18 @@ export function handleListLenses(req: Request, user: TokenPayload): Response {
     return json({ error: "invalid room" }, 400);
   }
   const rows = listLensesByRoom.all(room);
-  return json({ lenses: rows.map((r) => rowToLens(r, user.sub)) });
+  const reactionsByLens = reactionsByLensForRoom(room);
+  const myReactionsByLens = myReactionsByLensForRoom(room, user.sub);
+  const viewerIsOperator = isOperatorUser(user.sub);
+  return json({
+    lenses: rows.map((r) => rowToLens(
+      r,
+      user.sub,
+      reactionsByLens.get(r.id) ?? {},
+      myReactionsByLens.get(r.id) ?? [],
+      viewerIsOperator,
+    )),
+  });
 }
 
 // --- POST /api/lenses -------------------------------------------------------
@@ -280,9 +340,42 @@ export async function handleUpdateLensAnchor(
   return json({ lens });
 }
 
-// --- POST /api/reactions ----------------------------------------------------
+// --- DELETE /api/lenses/:id -------------------------------------------------
 
-const ALLOWED_REACTIONS = new Set<string>(REACTION_KINDS);
+const deleteLensReactions = db.query<unknown, [string]>(
+  "DELETE FROM reactions WHERE lens_id = ?",
+);
+
+const deleteLensReports = db.query<unknown, [string]>(
+  "DELETE FROM reports WHERE lens_id = ?",
+);
+
+const deleteLensById = db.query<unknown, [string]>(
+  "DELETE FROM lenses WHERE id = ?",
+);
+
+export async function handleDeleteLens(
+  user: TokenPayload,
+  server: Server<unknown>,
+  lensId: string,
+): Promise<Response> {
+  if (!isOperatorUser(user.sub)) return json({ error: "forbidden" }, 403);
+
+  const row = fetchLensById.get(lensId);
+  if (!row) return json({ error: "lens not found" }, 404);
+
+  db.transaction(() => {
+    deleteLensReactions.run(lensId);
+    deleteLensReports.run(lensId);
+    deleteLensById.run(lensId);
+  })();
+
+  server.publish(row.room_id, JSON.stringify({ type: "lens_deleted", lensId }));
+
+  return json({ lensId, deleted: true });
+}
+
+// --- POST /api/reactions ----------------------------------------------------
 
 function myReactionsForLens(lensId: string, userId: string): ReactionKind[] {
   return userReactionsByLens.all(lensId, userId)

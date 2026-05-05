@@ -21,9 +21,9 @@ import {
 const MODES: ReadingMode[] = ["quiet", "thinking", "full"];
 
 const MODE_DESCRIPTIONS: Record<ReadingMode, string> = {
-  quiet: "Minimal — knowledge & challenges only",
-  thinking: "Show questions, knowledge, challenges",
-  full: "Show everything — including jokes and polls",
+  quiet: "Minimal markers for calmer reading.",
+  thinking: "Questions and knowledge stay visible.",
+  full: "Everything on the page is visible.",
 };
 
 function hostForTabUrl(url: string | undefined): string | null {
@@ -111,7 +111,7 @@ function Popup() {
         </p>
 
         <div className="mode-section">
-          <label>Reading mode</label>
+          <label>Default reading mode</label>
           <div className="mode-buttons">
             {MODES.map((m) => (
               <button
@@ -123,7 +123,7 @@ function Popup() {
               </button>
             ))}
           </div>
-          <p className="mode-desc">{MODE_DESCRIPTIONS[mode]}</p>
+          <p className="mode-desc">{MODE_DESCRIPTIONS[mode]} You can also switch this from the page panel.</p>
         </div>
 
         {currentHost && (
@@ -133,12 +133,12 @@ function Popup() {
               checked={siteHidden}
               onChange={(e) => void onSiteHiddenChange(e.currentTarget.checked)}
             />
-            <span>Hide on {currentHost}</span>
+            <span>Disable Lumen on {currentHost}</span>
           </label>
         )}
 
         <p className="hint">
-          Open any regular webpage to use the overlay.
+          Page controls live in the Lumen panel on each webpage.
         </p>
         <a className="privacy-link" href={`${API_BASE}/privacy`} target="_blank" rel="noreferrer">Privacy</a>
         <button className="secondary" onClick={onLogout}>Log out</button>
