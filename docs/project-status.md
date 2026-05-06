@@ -266,6 +266,9 @@ directory, notifications, or voice/video in the first Lounge version.
 
 - Product constraints: `AGENTS.md`
 - Project status: `docs/project-status.md`
+- Ecosystem roadmap: `docs/product/ecosystem-roadmap.md`
+- Lens reading design: `docs/product/lens-reading-design.md`
+  (`docs/product/lens-reading-design.zh.md`)
 - Companion mode: `docs/technical/companion-mode-mvp.md`
 - Server bottlenecks: `docs/technical/server-bottlenecks.md`
 - Lounge design: `docs/product/persistent-lounge-design.md`

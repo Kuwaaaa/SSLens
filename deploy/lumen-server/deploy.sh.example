@@ -1,0 +1,22 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+APP_DIR=${LUMEN_APP_DIR:-/opt/lumen/current}
+COMPOSE_DIR=${LUMEN_COMPOSE_DIR:-/root/dockerServers/lumen-server}
+SERVICE=${LUMEN_SERVICE_NAME:-lumen-server}
+
+cd "$APP_DIR"
+git pull --ff-only
+
+cd "$COMPOSE_DIR"
+
+if docker compose version >/dev/null 2>&1; then
+  docker compose exec "$SERVICE" bun install --frozen-lockfile
+  docker compose restart "$SERVICE"
+else
+  docker exec "$SERVICE" bun install --frozen-lockfile
+  docker restart "$SERVICE"
+fi
+
+curl -fsS http://127.0.0.1:3000/api/health
+curl -fsS http://127.0.0.1/api/health

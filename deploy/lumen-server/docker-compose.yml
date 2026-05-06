@@ -1,0 +1,39 @@
+services:
+  lumen-server:
+    image: ${LUMEN_BUN_IMAGE:-oven/bun:1}
+    container_name: lumen-server
+    working_dir: /app
+    command: ["bun", "apps/server/src/index.ts"]
+    restart: unless-stopped
+    environment:
+      PORT: "3000"
+      LUMEN_DB: /app/data/lumen.db
+      LUMEN_KEYS: /app/keys/keys.json
+      LUMEN_INVITES_REQUIRED: ${LUMEN_INVITES_REQUIRED:-}
+      LUMEN_OPERATOR_HANDLES: ${LUMEN_OPERATOR_HANDLES:-}
+      LUMEN_OPERATOR_USER_IDS: ${LUMEN_OPERATOR_USER_IDS:-}
+    ports:
+      - "${LUMEN_BIND_HOST:-127.0.0.1}:${LUMEN_HOST_PORT:-3000}:3000"
+    volumes:
+      - type: bind
+        source: ${LUMEN_APP_DIR:-/opt/lumen/current}
+        target: /app
+        bind:
+          create_host_path: false
+      - type: bind
+        source: ${LUMEN_DATA_DIR:-/opt/lumen/data}
+        target: /app/data
+        bind:
+          create_host_path: false
+      - type: bind
+        source: ${LUMEN_KEYS_DIR:-/opt/lumen/keys}
+        target: /app/keys
+        read_only: true
+        bind:
+          create_host_path: false
+    healthcheck:
+      test: ["CMD-SHELL", "bun -e \"fetch('http://127.0.0.1:3000/api/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))\""]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s

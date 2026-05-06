@@ -348,8 +348,165 @@ button, input, textarea, select {
 }
 
 .card .body {
+  position: relative;
+  min-width: 0;
+  line-height: 1.5;
+  max-height: none;
+  overflow: hidden;
+  transition: max-height 220ms cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+
+.card .body.long {
+  max-height: 180px;
+}
+
+.card .body.long.expanded {
+  max-height: min(62vh, 560px);
+}
+
+.card .body-scroll {
+  min-width: 0;
+}
+
+.card .body.long.expanded .body-scroll {
+  max-height: min(62vh, 560px);
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding-right: 4px;
+}
+
+.card .body-fade {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 54px;
+  pointer-events: none;
+  background: linear-gradient(to bottom, rgba(255, 255, 255, 0), rgba(255, 255, 255, 0.98) 78%);
+}
+
+.card .body-read-more {
+  margin-top: 7px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: #4a1a7a;
+  cursor: pointer;
+  font: inherit;
+  font-size: 11px;
+  font-weight: 800;
+}
+
+.card .body-read-more:hover {
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.card .lens-markdown {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.card .lens-markdown > :first-child {
+  margin-top: 0;
+}
+
+.card .lens-markdown > :last-child {
+  margin-bottom: 0;
+}
+
+.card .lens-markdown p {
+  margin: 0 0 8px;
   white-space: pre-wrap;
+}
+
+.card .lens-markdown h3,
+.card .lens-markdown h4,
+.card .lens-markdown h5 {
+  margin: 10px 0 6px;
+  color: #2b153d;
+  line-height: 1.25;
+  letter-spacing: 0;
+}
+
+.card .lens-markdown h3 {
+  font-size: 14px;
+  font-weight: 800;
+}
+
+.card .lens-markdown h4 {
+  font-size: 13px;
+  font-weight: 800;
+}
+
+.card .lens-markdown h5 {
+  font-size: 12px;
+  font-weight: 750;
+}
+
+.card .lens-markdown ul,
+.card .lens-markdown ol {
+  margin: 0 0 8px;
+  padding-left: 18px;
+}
+
+.card .lens-markdown li {
+  margin: 3px 0;
+  padding-left: 2px;
+  white-space: pre-wrap;
+}
+
+.card .lens-markdown blockquote {
+  margin: 0 0 8px;
+  padding: 2px 0 2px 9px;
+  border-left: 3px solid rgba(107, 33, 168, 0.28);
+  color: #5f5368;
+  white-space: pre-wrap;
+}
+
+.card .lens-markdown a {
+  color: #4a1a7a;
+  text-decoration: underline;
+  text-decoration-color: rgba(74, 26, 122, 0.3);
+  text-underline-offset: 2px;
+}
+
+.card .md-inline-code {
+  padding: 1px 4px;
+  border: 1px solid rgba(107, 33, 168, 0.12);
+  border-radius: 4px;
+  background: #faf6ff;
+  color: #3b155d;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 0.92em;
+}
+
+.card .md-code-block {
+  position: relative;
+  margin: 0 0 9px;
+  padding: 10px 10px 9px;
+  border: 1px solid rgba(107, 33, 168, 0.14);
+  border-radius: 8px;
+  background: #171321;
+  color: #f6f0ff;
+  overflow-x: auto;
+  white-space: pre;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 11px;
   line-height: 1.45;
+}
+
+.card .md-code-block code {
+  font-family: inherit;
+}
+
+.card .md-code-language {
+  display: block;
+  margin-bottom: 6px;
+  color: #c4a7e7;
+  font-size: 10px;
+  font-weight: 800;
+  text-transform: uppercase;
 }
 
 .card .reaction-bar {
@@ -582,7 +739,8 @@ button, input, textarea, select {
 
 @media (prefers-reduced-motion: reduce) {
   .card-stack .collapsed-cluster,
-  .card-stack .expandable-cluster {
+  .card-stack .expandable-cluster,
+  .card .body {
     transition: none;
   }
 }

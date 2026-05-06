@@ -47,6 +47,7 @@ import overlayCss from "./styles.css?inline";
 const LENS_TYPES: LensType[] = ["quick", "fun", "question", "knowledge"];
 const REACTION_CHOICES = REACTION_KINDS;
 const READING_MODES: ReadingMode[] = ["quiet", "thinking", "full"];
+const LONG_LENS_PREVIEW_CHARS = 520;
 
 interface SelectionDraft {
   range: Range;
@@ -1959,6 +1960,8 @@ function LensPanel({
   const quote = lens.anchor?.quote?.exact ?? "";
   const [reactionBusy, setReactionBusy] = useState<string | null>(null);
   const [pickerOpen, setPickerOpen] = useState(false);
+  const [bodyExpanded, setBodyExpanded] = useState(false);
+  const isLongBody = lens.body.length > LONG_LENS_PREVIEW_CHARS || lens.body.split(/\r?\n/).length > 10;
 
   async function toggleEmoji(kind: ReactionKind) {
     setReactionBusy(kind);
@@ -1997,9 +2000,17 @@ function LensPanel({
         )}
       </div>
       {quote && <div className="quote">"{quote.slice(0, 160)}"</div>}
-      <div className="body">
-        <RenderBody body={lens.body} knownLenses={knownLenses} onLensClick={onLensClick} />
+      <div className={`body ${isLongBody ? "long" : ""} ${bodyExpanded ? "expanded" : ""}`}>
+        <div className="body-scroll">
+          <RenderBody body={lens.body} knownLenses={knownLenses} onLensClick={onLensClick} />
+        </div>
+        {isLongBody && !bodyExpanded && <div className="body-fade" aria-hidden="true" />}
       </div>
+      {isLongBody && (
+        <button className="body-read-more" onClick={() => setBodyExpanded((v) => !v)}>
+          {bodyExpanded ? "Show less" : "Read more"}
+        </button>
+      )}
       <div className="reaction-bar" aria-label="Reactions">
         {visibleReactions.map((kind) => {
           const count = lens.reactions?.[kind] ?? 0;
