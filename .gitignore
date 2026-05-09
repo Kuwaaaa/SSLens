@@ -11,3 +11,4 @@ data/
 
 apps/extension/.env.production
 apps/extension/.env.local
+apps/extension/dist.*

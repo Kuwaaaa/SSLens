@@ -3,14 +3,14 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Lumen v2 — operator console</title>
+<title>Lumen v2 operator console</title>
 <style>
   :root { --bg: #fafafa; --card: #fff; --border: #e0e0e0; --muted: #666; --fg: #1a1a1a; --accent: #1a1a1a; --ok: #16a34a; --err: #ef4444; }
   * { box-sizing: border-box; }
   body { font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif; max-width: 920px; margin: 0 auto; padding: 28px 22px 64px; color: var(--fg); background: var(--bg); }
-  h1 { font-size: 22px; letter-spacing: -0.02em; margin: 0 0 6px; }
+  h1 { font-size: 22px; margin: 0 0 6px; }
   .sub { color: var(--muted); font-size: 13px; margin-bottom: 22px; }
-  section { background: var(--card); border: 1px solid var(--border); border-radius: 12px; padding: 18px 22px; margin-bottom: 14px; }
+  section { background: var(--card); border: 1px solid var(--border); border-radius: 8px; padding: 18px 22px; margin-bottom: 14px; }
   h2 { font-size: 15px; margin: 0 0 12px; color: #444; font-weight: 600; }
   label { display: block; margin: 10px 0 4px; font-size: 12px; color: var(--muted); }
   input, textarea, button, select { font: inherit; padding: 7px 10px; border: 1px solid #d0d0d0; border-radius: 8px; background: white; color: var(--fg); }
@@ -27,9 +27,10 @@
   .pill { display: inline-block; padding: 2px 8px; border-radius: 999px; background: #eee; font-size: 11px; color: #333; }
   .pill.live { background: var(--ok); color: white; }
   .pill.error { background: var(--err); color: white; }
-  .lens { padding: 10px 12px; border: 1px solid #eee; border-radius: 8px; margin-bottom: 8px; font-size: 13px; }
-  .lens .meta { color: #888; font-size: 11px; margin-bottom: 4px; display: flex; gap: 6px; flex-wrap: wrap; align-items: center; }
+  .lens, .report-item { padding: 10px 12px; border: 1px solid #eee; border-radius: 8px; margin-bottom: 8px; font-size: 13px; }
+  .lens .meta, .report-item .meta { color: #888; font-size: 11px; margin-bottom: 4px; display: flex; gap: 6px; flex-wrap: wrap; align-items: center; }
   .lens .quote { color: #666; font-style: italic; margin: 4px 0; font-size: 12px; }
+  .report-actions { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 8px; }
   .log { background: #111; color: #d0d0d0; padding: 10px 12px; border-radius: 8px; font-family: ui-monospace, monospace; font-size: 11px; max-height: 240px; overflow-y: auto; margin-top: 8px; }
   .log .l { padding: 1px 0; }
   .log .l.send { color: #7dd3fc; }
@@ -39,27 +40,27 @@
 </style>
 </head>
 <body>
-<h1>Lumen v2 — operator console</h1>
-<div class="sub">Local dev tool for testing the backend. All state in this page (token, current room) is stored in localStorage. <a href="/privacy">Privacy policy</a>.</div>
+<h1>Lumen v2 operator console</h1>
+<div class="sub">Local dev tool for testing the backend. State in this page is stored in localStorage. <a href="/privacy">Privacy policy</a>.</div>
 
 <section>
   <h2>Status</h2>
-  <div>Server: <span class="pill" id="health-pill">checking…</span></div>
+  <div>Server: <span class="pill" id="health-pill">checking</span></div>
   <div id="auth-status" style="margin-top:10px;">Not logged in</div>
   <button class="secondary" id="logout-btn" style="margin-top:10px; display:none;">Logout</button>
 </section>
 
 <section>
-  <h2>1 · Redeem invite</h2>
+  <h2>1. Redeem invite</h2>
   <div class="helprow">Mint a code via terminal: <code>bun run issue-invite</code>. Then paste below.</div>
   <div class="row" style="margin-top:6px;">
     <div>
       <label>Invite code</label>
-      <input id="code-input" placeholder="e.g. UDC6PP6A" />
+      <input id="code-input" placeholder="e.g. UDC6PP6A">
     </div>
     <div>
       <label>Handle</label>
-      <input id="handle-input" placeholder="e.g. alice" />
+      <input id="handle-input" placeholder="e.g. alice">
     </div>
     <button id="redeem-btn">Redeem</button>
   </div>
@@ -67,11 +68,11 @@
 </section>
 
 <section>
-  <h2>2 · Resolve room (URL → roomId)</h2>
+  <h2>2. Resolve room</h2>
   <div class="row">
     <div>
       <label>URL</label>
-      <input id="url-input" value="https://paulgraham.com/ds.html" />
+      <input id="url-input" value="https://paulgraham.com/ds.html">
     </div>
     <button id="resolve-btn" class="secondary">Resolve</button>
     <button id="load-lens-btn">Load lens</button>
@@ -81,9 +82,9 @@
 </section>
 
 <section>
-  <h2>3 · Create Lens</h2>
-  <label>Quote (the text the user "selected")</label>
-  <input id="lens-quote" value="Manual work is a feature." />
+  <h2>3. Create Lens</h2>
+  <label>Quote</label>
+  <input id="lens-quote" value="Manual work is a feature.">
   <div class="row" style="margin-top:6px;">
     <div>
       <label>Type</label>
@@ -94,21 +95,21 @@
     </div>
     <div>
       <label>Tags (comma-separated)</label>
-      <input id="lens-tags" value="startup" />
+      <input id="lens-tags" value="startup">
     </div>
   </div>
   <label>Body (Markdown; supports <code>[[lens:id]]</code> and <code>[[url:...]]</code>)</label>
   <textarea id="lens-body" rows="3">A quick observation about this passage.</textarea>
   <label style="display:flex; align-items:center; gap:6px;">
-    <input type="checkbox" id="lens-anonymous" style="width:auto;" /> Post anonymously
+    <input type="checkbox" id="lens-anonymous" style="width:auto;"> Post anonymously
   </label>
   <div style="margin-top:10px;"><button id="create-lens-btn">Create</button></div>
   <pre id="create-result" style="display:none;"></pre>
 </section>
 
 <section>
-  <h2>4 · WebSocket</h2>
-  <div class="helprow">Connect, subscribe to the current room, watch <code>lens_created</code> / <code>presence_*</code> events arrive.</div>
+  <h2>4. WebSocket</h2>
+  <div class="helprow">Connect, subscribe to the current room, watch Lens and presence events arrive.</div>
   <div class="row" style="margin-top:6px;">
     <button id="ws-connect-btn">Connect</button>
     <button id="ws-disconnect-btn" class="secondary" disabled>Disconnect</button>
@@ -118,16 +119,29 @@
 </section>
 
 <section>
-  <h2>5 · Moderation</h2>
+  <h2>5. Moderation</h2>
   <div class="helprow">Operator-only cleanup. Configure operators with <code>LUMEN_OPERATOR_USER_IDS</code> or <code>LUMEN_OPERATOR_HANDLES</code>.</div>
   <div class="row" style="margin-top:6px;">
     <div>
       <label>Lens ID</label>
-      <input id="delete-lens-id" placeholder="01..." />
+      <input id="delete-lens-id" placeholder="01...">
     </div>
     <button id="delete-lens-btn">Delete lens</button>
   </div>
   <pre id="delete-result" style="display:none;"></pre>
+  <div class="row" style="margin-top:14px;">
+    <div>
+      <label>Report status</label>
+      <select id="report-status">
+        <option value="open">open</option>
+        <option value="reviewed">reviewed</option>
+        <option value="dismissed">dismissed</option>
+        <option value="all">all</option>
+      </select>
+    </div>
+    <button id="load-reports-btn" class="secondary">Load reports</button>
+  </div>
+  <div id="report-list" style="margin-top:10px;"></div>
 </section>
 
 <script>
@@ -145,7 +159,7 @@ function escapeHtml(s) {
 
 function refreshAuthStatus() {
   if (token && userInfo) {
-    $("auth-status").innerHTML = `Logged in as <strong>${escapeHtml(userInfo.handle)}</strong> <span class="pill">${escapeHtml(userInfo.userId.slice(0, 8))}…</span>`;
+    $("auth-status").innerHTML = `Logged in as <strong>${escapeHtml(userInfo.handle)}</strong> <span class="pill">${escapeHtml(userInfo.userId.slice(0, 8))}</span>`;
     $("logout-btn").style.display = "inline-block";
   } else {
     $("auth-status").textContent = "Not logged in";
@@ -169,7 +183,6 @@ async function fetchJson(path, opts = {}) {
   return { status: res.status, data };
 }
 
-// Health
 fetchJson("/api/health").then(({ data }) => {
   const ok = data && data.ok;
   $("health-pill").textContent = ok ? "ok" : "down";
@@ -178,14 +191,13 @@ fetchJson("/api/health").then(({ data }) => {
   $("health-pill").textContent = "down"; $("health-pill").className = "pill error";
 });
 
-// --- Redeem ---
 $("redeem-btn").onclick = async () => {
   const code = $("code-input").value.trim();
   const handle = $("handle-input").value.trim();
-  if (!code || !handle) return;
+  if (!handle) return;
   const { status, data } = await fetchJson("/api/redeem", {
     method: "POST",
-    body: JSON.stringify({ code, handle }),
+    body: JSON.stringify({ ...(code ? { code } : {}), handle }),
   });
   $("redeem-result").style.display = "block";
   $("redeem-result").textContent = JSON.stringify(data, null, 2);
@@ -198,74 +210,17 @@ $("redeem-btn").onclick = async () => {
   }
 };
 
-// --- URL canonicalization (mirror of scripts/canonicalize-url.ts) ---
-const TRACKING_PARAMS = new Set(["fbclid","gclid","ref","mc_eid","mc_cid","yclid","msclkid","twclid","igshid","ck_subscriber_id","_hsenc","_hsmi","spm_id_from","from_spmid","vd_source","share_source","share_medium","share_plat","share_session_id","si","siid"]);
-const TRACKING_PREFIXES = ["utm_", "WT.", "pk_", "ycl_"];
-const SITE_RULES = [
-  {
-    hosts: ["bilibili.com"],
-    matchPath: /^\/video\/((?:BV|av)[A-Za-z0-9]+)\/?$/i,
-    canonicalHost: "www.bilibili.com",
-    buildPath: (match) => `/video/${match[1]}`,
-    keepQuery: [],
-  },
-];
-function canonicalizeUrl(input, documentCanonical = null) {
-  const source = documentCanonical && sameOriginOrHost(input, documentCanonical) ? documentCanonical : input;
-  return canonicalizeUrlString(source);
-}
-function canonicalizeUrlString(input) {
-  const u = new URL(input);
-  u.hash = ""; u.host = u.host.toLowerCase(); u.protocol = u.protocol.toLowerCase();
-  applySiteCanonicalRule(u);
-  const toRemove = [];
-  for (const k of u.searchParams.keys()) {
-    const lower = k.toLowerCase();
-    if (TRACKING_PARAMS.has(lower) || TRACKING_PREFIXES.some((p) => lower.startsWith(p.toLowerCase()))) toRemove.push(k);
-  }
-  for (const k of toRemove) u.searchParams.delete(k);
-  const entries = [...u.searchParams.entries()].sort(([a],[b]) => a < b ? -1 : a > b ? 1 : 0);
-  u.search = "";
-  for (const [k,v] of entries) u.searchParams.append(k,v);
-  if (u.pathname.length > 1 && u.pathname.endsWith("/")) u.pathname = u.pathname.slice(0,-1);
-  return u.toString();
-}
-function applySiteCanonicalRule(u) {
-  for (const rule of SITE_RULES) {
-    if (!rule.hosts.some((host) => u.hostname === host || u.hostname.endsWith(`.${host}`))) continue;
-    const match = u.pathname.match(rule.matchPath);
-    if (!match) continue;
-    if (rule.canonicalHost) u.hostname = rule.canonicalHost;
-    u.pathname = rule.buildPath(match);
-    const keep = new Set((rule.keepQuery || []).map((key) => key.toLowerCase()));
-    for (const key of [...u.searchParams.keys()]) {
-      if (!keep.has(key.toLowerCase())) u.searchParams.delete(key);
-    }
-    return;
-  }
-}
-function sameOriginOrHost(current, candidate) {
-  try {
-    const currentUrl = new URL(current);
-    const candidateUrl = new URL(candidate);
-    return currentUrl.origin === candidateUrl.origin || currentUrl.hostname === candidateUrl.hostname;
-  } catch {
-    return false;
-  }
-}
-async function roomIdFor(url, documentCanonical = null) {
-  const canonical = canonicalizeUrl(url, documentCanonical);
-  const buf = new TextEncoder().encode(canonical);
-  const hash = await crypto.subtle.digest("SHA-256", buf);
-  return [...new Uint8Array(hash)].map(b => b.toString(16).padStart(2,"0")).join("");
-}
-
 async function resolveCurrentRoom() {
-  const url = $("url-input").value.trim();
-  if (!url) return null;
-  const canonical = canonicalizeUrl(url);
-  const roomId = await roomIdFor(url);
-  currentRoom = { url, canonical, roomId };
+  const inputUrl = $("url-input").value.trim();
+  if (!inputUrl) return null;
+  const { status, data } = await fetchJson(`/api/room?url=${encodeURIComponent(inputUrl)}`);
+  if (status !== 200) {
+    currentRoom = null;
+    $("resolve-result").style.display = "block";
+    $("resolve-result").textContent = JSON.stringify(data, null, 2);
+    return null;
+  }
+  currentRoom = data;
   localStorage.setItem("lumen_room", JSON.stringify(currentRoom));
   return currentRoom;
 }
@@ -277,9 +232,8 @@ $("resolve-btn").onclick = async () => {
   $("resolve-result").textContent = JSON.stringify(r, null, 2);
 };
 
-// --- List lens ---
 async function loadLens() {
-  if (!token) { alert("Redeem an invite first"); return; }
+  if (!token) { alert("Redeem/sign in first"); return; }
   const r = await resolveCurrentRoom();
   if (!r) return;
   $("resolve-result").style.display = "block";
@@ -304,7 +258,7 @@ async function loadLens() {
       <div class="meta">
         <span class="pill">${escapeHtml(lens.type)}</span>
         ${tags}
-        <span>@${escapeHtml(lens.author.handle)} · ${new Date(lens.createdAt).toLocaleString()}</span>
+        <span>@${escapeHtml(lens.author.handle)} - ${new Date(lens.createdAt).toLocaleString()}</span>
       </div>
       ${quote ? `<div class="quote">"${escapeHtml(quote.slice(0, 120))}"</div>` : ""}
       <div>${escapeHtml(lens.body)}</div>
@@ -315,9 +269,8 @@ async function loadLens() {
 
 $("load-lens-btn").onclick = loadLens;
 
-// --- Create lens ---
 $("create-lens-btn").onclick = async () => {
-  if (!token) { alert("Redeem an invite first"); return; }
+  if (!token) { alert("Redeem/sign in first"); return; }
   const r = await resolveCurrentRoom();
   if (!r) return;
   const quote = $("lens-quote").value.trim();
@@ -339,7 +292,6 @@ $("create-lens-btn").onclick = async () => {
   if (status === 201) await loadLens();
 };
 
-// --- Moderation ---
 $("delete-lens-btn").onclick = async () => {
   if (!token) { alert("Redeem/sign in first"); return; }
   const lensId = $("delete-lens-id").value.trim();
@@ -353,7 +305,62 @@ $("delete-lens-btn").onclick = async () => {
   if (status === 200) await loadLens();
 };
 
-// --- WebSocket ---
+async function updateReport(reportId, status) {
+  const note = prompt(`Optional note for ${status}:`) || "";
+  const { data } = await fetchJson(`/api/admin/reports/${encodeURIComponent(reportId)}`, {
+    method: "PATCH",
+    body: JSON.stringify({ status, note }),
+  });
+  $("delete-result").style.display = "block";
+  $("delete-result").textContent = JSON.stringify(data, null, 2);
+  await loadReports();
+}
+
+async function loadReports() {
+  if (!token) { alert("Redeem/sign in first"); return; }
+  const reportStatus = $("report-status").value;
+  const { status, data } = await fetchJson(`/api/admin/reports?status=${encodeURIComponent(reportStatus)}`);
+  const list = $("report-list");
+  list.innerHTML = "";
+  if (status !== 200 || !data.reports) {
+    list.innerHTML = `<div class="pill error">${escapeHtml(JSON.stringify(data))}</div>`;
+    return;
+  }
+  if (data.reports.length === 0) {
+    list.innerHTML = `<div style="color:#888; padding:8px 0;">No reports.</div>`;
+    return;
+  }
+  for (const report of data.reports) {
+    const div = document.createElement("div");
+    div.className = "report-item";
+    div.innerHTML = `
+      <div class="meta">
+        <span class="pill">${escapeHtml(report.status)}</span>
+        <span>${escapeHtml(report.reason)}</span>
+        <span>by @${escapeHtml(report.reporter.handle)} - ${new Date(report.createdAt).toLocaleString()}</span>
+      </div>
+      <div><strong>${escapeHtml(report.lens.type)}</strong> by @${escapeHtml(report.lens.author.handle)}</div>
+      <div style="margin-top:4px;">${escapeHtml(report.lens.body.slice(0, 240))}</div>
+      <div class="report-actions">
+        <button class="secondary" data-action="reviewed">Mark reviewed</button>
+        <button class="secondary" data-action="dismissed">Dismiss</button>
+        <button data-action="delete">Delete lens</button>
+      </div>
+    `;
+    div.querySelector('[data-action="reviewed"]').onclick = () => updateReport(report.id, "reviewed");
+    div.querySelector('[data-action="dismissed"]').onclick = () => updateReport(report.id, "dismissed");
+    div.querySelector('[data-action="delete"]').onclick = async () => {
+      if (!confirm(`Delete Lens ${report.lens.id}?`)) return;
+      $("delete-lens-id").value = report.lens.id;
+      await $("delete-lens-btn").onclick();
+      await loadReports();
+    };
+    list.appendChild(div);
+  }
+}
+
+$("load-reports-btn").onclick = loadReports;
+
 function logWs(s, cls) {
   const div = document.createElement("div");
   div.className = "l" + (cls ? " " + cls : "");
@@ -363,7 +370,7 @@ function logWs(s, cls) {
 }
 
 $("ws-connect-btn").onclick = async () => {
-  if (!token) { alert("Redeem an invite first"); return; }
+  if (!token) { alert("Redeem/sign in first"); return; }
   const proto = location.protocol === "https:" ? "wss:" : "ws:";
   ws = new WebSocket(`${proto}//${location.host}/ws?token=${encodeURIComponent(token)}`);
   ws.onopen = async () => {
@@ -374,7 +381,7 @@ $("ws-connect-btn").onclick = async () => {
     const r = await resolveCurrentRoom();
     if (r) {
       ws.send(JSON.stringify({ type: "subscribe", roomId: r.roomId }));
-      logWs(`>> subscribe ${r.roomId.slice(0, 12)}…`, "send");
+      logWs(`>> subscribe ${r.roomId.slice(0, 12)}...`, "send");
     }
   };
   ws.onmessage = (e) => logWs(`<< ${e.data}`, "recv");
@@ -389,11 +396,8 @@ $("ws-connect-btn").onclick = async () => {
 
 $("ws-disconnect-btn").onclick = () => { if (ws) ws.close(); };
 
-// --- Init ---
 refreshAuthStatus();
-if (currentRoom) {
-  $("url-input").value = currentRoom.url;
-}
+if (currentRoom) $("url-input").value = currentRoom.url;
 </script>
 </body>
 </html>

@@ -15,7 +15,14 @@ export async function redeem(handle: string, code?: string): Promise<RedeemResul
   });
   if (!res.ok) {
     const txt = await res.text();
-    throw new Error(`redeem ${res.status}: ${txt}`);
+    let message = txt;
+    try {
+      const parsed = JSON.parse(txt) as { error?: string };
+      message = parsed.error ?? txt;
+    } catch {
+      // Keep the raw response text.
+    }
+    throw new Error(`redeem ${res.status}: ${message}`);
   }
   return (await res.json()) as RedeemResult;
 }

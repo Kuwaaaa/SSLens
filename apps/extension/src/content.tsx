@@ -11,7 +11,7 @@
 // connect to an insecure ws:// backend during the no-domain beta.
 
 import { useCallback, useEffect, useMemo, useRef, useState, type FormEvent } from "react";
-import { createRoot } from "react-dom/client";
+import { createRoot, type Root } from "react-dom/client";
 import { REACTION_KINDS, type Lens, type LensType, type ReactionKind, type ReadingMode } from "@lumen/schema";
 
 import { canonicalizeUrl, canonicalUrlFromDocument, roomIdFor } from "./shared/canonicalize";
@@ -233,6 +233,15 @@ function mergeCompanionMessages(
     .slice(-40);
 }
 
+function mergeLensLists(current: Lens[], incoming: Lens[]): Lens[] {
+  const byId = new Map<string, Lens>();
+  for (const lens of current) byId.set(lens.id, lens);
+  for (const lens of incoming) {
+    byId.set(lens.id, { ...byId.get(lens.id), ...lens });
+  }
+  return [...byId.values()].sort((a, b) => a.createdAt - b.createdAt);
+}
+
 function Overlay({ url, roomId, canonical }: { url: string; roomId: string; canonical: string }) {
   const siteHost = useMemo(() => hostForUrl(canonical || url), [canonical, url]);
   const [lenses, setLenses] = useState<Lens[]>([]);
@@ -267,6 +276,7 @@ function Overlay({ url, roomId, canonical }: { url: string; roomId: string; cano
   const [tabHidden, setTabHidden] = useState(false);
   const [settingsReady, setSettingsReady] = useState(false);
   const [wsConnected, setWsConnected] = useState(false);
+  const [wsRetryTick, setWsRetryTick] = useState(0);
   const [companionActive, setCompanionActive] = useState(false);
   const [companionUsers, setCompanionUsers] = useState<string[]>([]);
   const [emojiBursts, setEmojiBursts] = useState<CompanionEmojiBurst[]>([]);
@@ -406,15 +416,21 @@ function Overlay({ url, roomId, canonical }: { url: string; roomId: string; cano
     fetchLensesForRoom(roomId, token)
       .then((ls) => {
         if (cancelled) return;
-        anchorRanges.current.clear();
         const orphans = new Set<string>();
         for (const lens of ls) {
           const range = restoreAnchor(lens.anchor);
           if (range) anchorRanges.current.set(lens.id, range);
           else orphans.add(lens.id);
         }
-        setOrphanIds(orphans);
-        setLenses(ls);
+        setOrphanIds((current) => {
+          const next = new Set(current);
+          for (const lens of ls) {
+            if (orphans.has(lens.id)) next.add(lens.id);
+            else next.delete(lens.id);
+          }
+          return next;
+        });
+        setLenses((prev) => mergeLensLists(prev, ls));
       })
       .catch(async (err) => {
         if (err instanceof Error && err.message.includes("fetchLenses 401")) {
@@ -439,6 +455,8 @@ function Overlay({ url, roomId, canonical }: { url: string; roomId: string; cano
   useEffect(() => {
     if (!token || lumenHidden) return;
     const port = chrome.runtime.connect({ name: "lumen.ws" });
+    let disposed = false;
+    let reconnectTimer: number | null = null;
     wsRef.current = port;
 
     port.onMessage.addListener((event: WsBridgeEvent) => {
@@ -582,11 +600,18 @@ function Overlay({ url, roomId, canonical }: { url: string; roomId: string; cano
     port.onDisconnect.addListener(() => {
       setWsConnected(false);
       setCompanionUsers([]);
+      if (!disposed) {
+        reconnectTimer = window.setTimeout(() => {
+          setWsRetryTick((n) => n + 1);
+        }, 1000);
+      }
     });
 
     port.postMessage({ namespace: "lumen.ws", type: "connect", token, roomId });
 
     return () => {
+      disposed = true;
+      if (reconnectTimer !== null) window.clearTimeout(reconnectTimer);
       if (companionActiveRef.current) {
         try {
           port.postMessage({ namespace: "lumen.ws", type: "send", payload: { type: "companion_leave" } });
@@ -603,7 +628,7 @@ function Overlay({ url, roomId, canonical }: { url: string; roomId: string; cano
       if (wsRef.current === port) wsRef.current = null;
       setWsConnected(false);
     };
-  }, [token, roomId, lumenHidden, addEmojiBurst, addCompanionMessage, mergeCompanionHistory]);
+  }, [token, roomId, lumenHidden, wsRetryTick, addEmojiBurst, addCompanionMessage, mergeCompanionHistory]);
 
   // Visible lenses = not orphan + passes mode filter
   const visibleLenses = useMemo(
@@ -647,6 +672,7 @@ function Overlay({ url, roomId, canonical }: { url: string; roomId: string; cano
       const range = anchorRanges.current.get(lens.id);
       if (range) applyHighlight(lens.id, range);
     }
+    return () => clearAllHighlights();
   }, [visibleLenses]);
 
   // The rounded overlay paints every visible marker segment. Single-covered
@@ -2067,8 +2093,14 @@ function TargetIcon() {
 
 // --- bootstrap ---
 
-async function boot() {
-  if (document.getElementById("lumen-root")) return;
+let lumenRoot: Root | null = null;
+let lumenMount: HTMLElement | null = null;
+let bootUrl: string | null = null;
+let routeRefreshTimer: number | null = null;
+
+async function renderForCurrentPage() {
+  const mount = lumenMount;
+  if (!mount) return;
 
   const url = window.location.href;
   let roomId: string;
@@ -2081,6 +2113,42 @@ async function boot() {
     console.warn("[Lumen] could not derive room from URL, aborting:", err);
     return;
   }
+
+  bootUrl = url;
+  if (!lumenRoot) lumenRoot = createRoot(mount);
+  lumenRoot.render(<Overlay key={roomId} url={url} roomId={roomId} canonical={canonical} />);
+}
+
+function scheduleRouteRefresh() {
+  if (routeRefreshTimer !== null) window.clearTimeout(routeRefreshTimer);
+  routeRefreshTimer = window.setTimeout(() => {
+    routeRefreshTimer = null;
+    if (window.location.href !== bootUrl) void renderForCurrentPage();
+  }, 100);
+}
+
+function installRouteHooks() {
+  const originalPushState = history.pushState;
+  const originalReplaceState = history.replaceState;
+
+  history.pushState = function pushState(...args) {
+    const result = originalPushState.apply(this, args);
+    scheduleRouteRefresh();
+    return result;
+  };
+
+  history.replaceState = function replaceState(...args) {
+    const result = originalReplaceState.apply(this, args);
+    scheduleRouteRefresh();
+    return result;
+  };
+
+  window.addEventListener("popstate", scheduleRouteRefresh);
+  window.addEventListener("hashchange", scheduleRouteRefresh);
+}
+
+async function boot() {
+  if (document.getElementById("lumen-root")) return;
 
   injectMarkerStyles();
 
@@ -2096,8 +2164,10 @@ async function boot() {
   const mount = document.createElement("div");
   mount.setAttribute("data-lumen-overlay", "");
   shadow.appendChild(mount);
+  lumenMount = mount;
+  installRouteHooks();
 
-  createRoot(mount).render(<Overlay url={url} roomId={roomId} canonical={canonical} />);
+  await renderForCurrentPage();
 }
 
 void boot();

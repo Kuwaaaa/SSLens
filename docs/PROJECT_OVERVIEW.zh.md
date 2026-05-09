@@ -1,130 +1,104 @@
-# Lumen v2 —— 项目总览
+# Lumen v2 项目概览
 
-日期：2026-04-26
-状态：替代 v1 总览。v1 已作为兄弟目录归档。
+日期：2026-05-06
+状态：稳定产品概览
+
+这份文档解释 Lumen v2 是什么、为什么存在。它不是当前实现 checklist。当前状态看 `docs/project-status.md`。AI 助手入口和阅读路由看 `AGENTS.md`。
 
 ## 1. Lumen 是什么
 
-Lumen 是一个浏览器扩展，让一个**被邀请的小群体**在真实网页上留下有上下文、好玩的"Lens"卡片。卡片永久挂在 URL 上，由 handle 署名、有时间戳。**几周下来一个页面会累积出一层 Lens**，让它感觉有人来过。当用户**当下**想要陪伴时，可以主动开启"同伴模式"，匹配同时也在读这个页面的其他人。
+Lumen 是一个浏览器扩展，让一个小群体可以在真实网页上留下上下文相关、带一点玩味的 Lens 卡片。Lens 锚定到页面或段落，由 handle 签名，并且随时间持久存在。当一个页面累积了 Lens 卡片，它会开始显得像有人来过。
 
-最简描述：
+当读者想要实时陪伴时，可以显式进入当前页面的 companion mode。Companion 是短暂的、opt-in 的；持久记忆应该回到 Lens 卡片。
 
-> Lumen 让一个网页变成一个**有人读过**的地方，偶尔，一个**此刻有人在读**的地方。
+最简单的描述：
 
-## 2. 我们押的是什么
+> Lumen turns a webpage into a place that has been read, and occasionally a place where someone else is reading right now.
 
-Lumen 背后有一个长期想法——把开源的精神扩散到软件之外，每学一个"透镜"就让你能看到现实里的更多东西，**toy project** 是学习快感的最小单元。原始构想（保留在 `docs/Chat.md`）是一个完整的生态：Lumen 是观察层，Atlas 是个人工坊，加上知识图、沙龙、项目支架等等。
+## 2. 核心赌注
 
-v2 把这个押注**收窄到一个可被验证的核心命题**——这是其他一切的承重墙：
+Lumen 背后更大的想法是：知识可以在软件之外被开源。解释、路径、观察和小项目，都可以成为别人重新看世界的 lens。
 
-> **当一个网页让人感到"有人来过"时，人们才会参与（写、回应、回来）。知识从这种参与中涌现，而不是反过来作为种子。**
+v2 刻意把这个想法收窄成一个可验证的判断：
 
-如果这个命题成立，整个生态才有可能；如果不成立，再多的知识图工程也救不回来。所以 v2 先验证**且只先验证**这一件事。
+> 当一个网页感觉像有人来过，人们才会愿意参与。知识从参与中涌现，而不是作为起点。
 
-v2 押注的因果链：
+如果这是真的，更大的生态以后才有意义。如果不是，先建知识图谱救不了这个产品。
 
+v2 的链条是：
+
+```text
+entertainment substrate -> participation -> UGC -> emergent knowledge
 ```
-娱乐底座  →  吸引来用户  →  UGC  →  知识涌现
-```
 
-把箭头反过来就是 v1 踩的坑：先建知识层，期待用户为它来，然后没人来。
+反过来就是 v1 的陷阱：先建知识基础设施，再希望人们后来抵达，最后发现他们不会来。
 
-## 3. 为什么这件事在开放网上很难
+## 3. 产品形态
 
-UGC 启动的经典招式是找一个已经聚集的群体（Niconico 的二次元同时看新番、Reddit 的程序员、Quora 的硅谷专家）。**长尾博客没有这种群体**：Paul Graham 一篇文章一周可能就 30 个读者，散落在 24 个时区。
+Lumen v2 有三层：
 
-**直觉的解法是制造并发**——把一群人定时拉到同一篇文章上、用飘动弹幕假装实时。**这种直觉对阅读这件事是错的形状**。阅读是节奏化、可中断的；硬把它放到一个时钟上，是在跟用户来这里要做的事打架；满屏飘动的文字主动打扰页面。
+- **异步 Lens 累积。** 卡片持久留在真实网页上，成为页面的 durable social memory。
+- **阅读模式。** Quiet、Thinking、Full 让读者自己控制看到多少社交信号。
+- **Page companion。** 读者可以 opt in 到同页 presence、emoji toss 和 tiny chat。
 
-Lumen 的真实模型是三层，**全都是卡片，不是飘动 UI**：
+这三层都必须尊重原网页。Lumen 是安静的 overlay，不是替代阅读表面。
 
-**A. 异步累积是底座。** Lens 卡片持久、署名、有时间戳。几周下来，每次访问只有一个读者的页面，也会长出一层让它"感觉有人"。**更接近 StackOverflow 的累积模型，不是 Twitch 聊天**。对长尾天然友好。
+## 4. 范围边界
 
-**B. 同伴模式是 opt-in。** 用户**当下**想要陪伴时，**点按钮**。服务端把他和当前在同一页面也开了按钮的人配对。交互极简：往屏幕上扔表情，或者切到一个小聊天层。tab 关掉就结束。**从不开按钮的用户从不出现在任何匹配里**。
+v2 不做：
 
-**C. 阅读模式。** 每个用户决定**当前**想看多少社交信号：安静（几乎和原页面一样）、思考（只显示问题/知识/挑战）、火力全开（全显示）。**底座持久存在，用户控制自己的音量**。
+- 可见的 AI-authored Lens，
+- 默认浮动弹幕，
+- 把定时共读作为核心循环，
+- 可见知识图谱 UI，
+- skill tree UI，
+- 公开 reputation、karma、leaderboard，
+- 把 durable Lounge chat 当作页面记忆，
+- 把 Atlas UI 塞进 Lumen。
 
-冷启动问题被简化成：**怎么让每个页面有第一批有用的卡片**？答案不浪漫——**founder + 早期用户亲手在自己关心的页面上播种**。**没有 AI 播种**（理由见 `docs/ARCHITECTURE.md` §10）。
-
-## 4. 10 人 beta
-
-第一批用户故意做小、做部落化：
-
-- ~10–15 人，主要是密友 + 项目宣发后过来的感兴趣的人
-- 人群画像猜测：年轻、技术倾向、对开源感兴趣
-- **零公开注册**。仅邀请码。
-
-理由来自所有靠 UGC 起家的平台（B 站、Reddit、Quora、Lobsters、Stack Overflow）：**早期用户永久性地决定调性**，他们必须共享足够的文化语境，让最初的评论不会被解读成外星语言。一个有共同亚文化的小邀请部落能跨过这道门槛；公开 beta 跨不过。
+如果 Lens 参与循环跑通，这些想法未来可以回来。它们不是第一件要验证的事。
 
 ## 5. 身份模型
 
-- **Handle**：必填，半实名（化名也可——Twitter handle 那种程度的"真"）。永远显示。
-- **邀请码**：加入必填。创始人预先分发。
-- **Bearer token**：兑换时签发，存在 `chrome.storage.local`，每次 API/WS 调用都带。**没有密码、没有邮箱**。
-- **GitHub 关联**（可选，P1）：作为用户显示的徽章。目标用户和 GitHub 用户高度重叠。**纯装饰**，bearer token 仍然是鉴权。
-- **匿名回复 flag**（每条 Lens）：发布时可切换。显示变成 "Anonymous"；服务端仍记录真实作者用于 moderation。隐私政策必须明说。**这不是零知识匿名**。
+当前身份模型刻意很小：
 
-## 6. 北极星成功标准
+- **Handle：** 必需的显示身份。
+- **Bearer token：** 由扩展保存，用于 API/WS 调用。
+- **Invite mode：** 可选 server 设置，用于更紧的小群体。
+- **Anonymous Lens flag：** UI 隐藏作者，但 server 记录真实作者用于 moderation。
 
-成功标准是**质性的、累积式的**，不是单次活动：
+这不是 zero-knowledge anonymity system。
 
-> 邀请群体经过 ~4 周自由使用后，项目成功的判定：
->
-> - 第 4 周仍有至少 3 个邀请用户**主动创建** Lens（不只是 reaction）
-> - 至少有一个白名单页面累积出多作者的 Lens 层（≥10 张卡片，至少出现一处 Lens 互引）
-> - 主流主观反馈是某种版本的"我想一直开着这个"，而不是"我忘了打开"
-> - 加分项：至少一个用户用过同伴模式，且做过非泛泛的交流（不只是 emoji 互挥）
+## 6. 和 Atlas 的关系
 
-MVP 失败的判定：第 1 周后使用骤降归零、Lens 间引用从未出现、反馈被"标记挡阅读"或"我不知道在这里能干嘛"主导。
+`docs/Chat.md` 中的原始设想描述了一个更大的生态：Lumen 是 perception layer，Atlas 是未来的 path-weaving / project layer。
 
-如果跨过这条线，v2 核心假设被验证，**开始扩**；如果没跨过，**重新设计再继续，不要再加代码**。
+Atlas 是真实方向，但不属于 Lumen v2 范围。Lumen 应保留足够上下文，让部分 Lens 未来可以成为 node candidate；但不能把 v2 UI 变成知识管理工具。
 
-## 7. v2 明确**不**做
+当前生态规划看 `docs/product/ecosystem-roadmap.md`。
 
-这些在早期框定里曾经显眼，**v2 MVP 不做**：
+## 7. 成功形态
 
-- AI 生成的可见 Lens（陷阱：用 AI 把页面填满会杀掉 UGC 动机；详见 `docs/ARCHITECTURE.md` §10）
-- **可见的飘动弹幕**（推迟到 MVP 后的 opt-in 扩展功能——Lumen 的主要形态是卡片，不是飘动文字）
-- **定时群体共读活动**（opt-in 同伴模式覆盖了同步用例）
-- 知识图谱 / canonical 知识节点系统
-- Skill tree UI（信号可以悄悄记，**不给任何用户可见的界面**）
-- Atlas（原始构想里的 App B）：个人工坊、3D 展厅、项目支架
-- 声誉 / karma / 榜单（瞬间杀掉小群调性）
-- 公开声誉投票 / "merge PR 进 canonical 知识"
-- 7-Pillar 内容框架作为用户可见要求
-- 浏览器 app shell / web app
-- 实时音视频房间
-- 跨浏览器打包（只 Chrome）
-- PDF、iframe、Shadow DOM、视频时间戳锚定
+成功指标是定性和累积性的：
 
-这些**推迟、不放弃**——v2 假设被验证后 v3+ 可能回来。
+- 被邀请用户在新鲜感过去后仍继续创建 Lens，
+- 至少一些页面累积出多作者 Lens layer，
+- Lens 之间自然出现引用，
+- 用户说他们想继续开着扩展，
+- companion mode 偶尔产生轻量的实时陪伴，但不变成产品中心。
 
-## 8. 阶段计划（高层）
+Lens 总量不是北极星指标。
 
-| 阶段 | 目标 | 完成的标志 |
-|---|---|---|
-| **Phase 0（现在）** | 架构 + 脚手架 | `docs/ARCHITECTURE.md` 写好，v2 仓库初始化，技术栈冻结 |
-| **Phase 1** | 搭可用的扩展 + 后端 | 用户能粘贴邀请码、注册 handle、打开白名单页面、留 Lens、对方浏览器实时收到 |
-| **Phase 2** | Anchoring + presence | 多 selector anchoring，CSS Highlight API，基本 presence（谁在这），阅读模式过滤 |
-| **Phase 3** | Tag + 引用 + 同伴模式 | Lens tag、`[[lens:id]]`/`[[url:...]]` 引用、"搜寻同伴"按钮 + 表情扔 + 聊天层 |
-| **Phase 4** | 邀请群体浸泡 | 手工种子内容 + ~10–15 邀请用户 + 4 周自由使用；收集质性反馈 |
-| **Phase 5** | 基于反馈迭代 | 砍掉没用的，加倍下注感到活的 |
+## 8. 文档职责
 
-按周细化的时间表在 `docs/mvp/lumen-mvp-plan.md`。
+- AI 助手入口和路由：`AGENTS.md`。
+- 当前实现状态和近期计划：`docs/project-status.md`。
+- 技术架构和取舍理由：`docs/ARCHITECTURE.md`。
+- Lens 产品细节：`docs/product/lens-design.md`。
+- 原始中文设想：`docs/Chat.md`。
 
-## 9. 文档地图
+旧计划文档可能包含过期 checklist。当前快照以 `docs/project-status.md` 为准。
 
-新贡献者（人或 AI）按这个顺序读：
+## 9. 北极星
 
-1. `docs/Chat.md` —— 原始构想、哲学、生态愿景
-2. `docs/PROJECT_OVERVIEW.md` —— 本文：v2 的收窄和当前方向
-3. `docs/ARCHITECTURE.md` —— 技术决策和栈
-4. `docs/mvp/lumen-mvp-plan.md` —— 按周搭建计划
-5. `docs/product/lens-design.md` —— Lens 内容类型、交互回路、视觉方向（沿用 v1；其中"弹幕能量"的措辞已被超越——卡片才是主形态）
-6. `docs/technical/lens-anchoring.md` —— anchoring 技术细节（注：很大部分被 ARCHITECTURE.md §6 取代）
-7. `docs/research/seed-webpages.md` —— 长期网页类型研究
-
-仓库根目录的 `CLAUDE.md` 是给 AI 助手的简短 onboarding——你如果是 AI，先读这个。
-
-## 10. 北极星，再说一遍
-
-> **Lumen 存在的目的就是让一个网页感觉"有人"——通过持久存在的卡片，而不是打扰阅读的浮动 chrome**。知识、技能成长、更大的生态都是解决这一个问题之后的下游效应。
+> Lumen exists to make a webpage feel inhabited through cards that persist, not chrome that interrupts. Knowledge, skill growth, and a wider ecosystem are downstream effects of solving that one problem first.

@@ -1,8 +1,14 @@
 import type { Server } from "bun";
-import { REACTION_KINDS, type ReactionKind } from "@lumen/schema";
+import {
+  REACTION_KINDS,
+  validateCreateLensInput,
+  validateLensAnchor,
+  type ReactionKind,
+} from "@lumen/schema";
 import { db } from "./db.ts";
 import { ulid } from "./ulid.ts";
-import { signToken, type TokenPayload } from "./auth.ts";
+import { revokeTokensForUser, signToken, type TokenPayload } from "./auth.ts";
+import { roomIdFor } from "@lumen/url";
 
 const corsHeaders: Record<string, string> = {
   "Access-Control-Allow-Origin": "*",
@@ -59,8 +65,7 @@ export async function handleRedeem(req: Request): Promise<Response> {
 
   const existingUser = findUserByHandle.get(body.handle);
   if (existingUser) {
-    const token = await signToken(existingUser.id);
-    return json({ userId: existingUser.id, handle: body.handle, token });
+    return json({ error: "handle already registered" }, 409);
   }
 
   const userId = ulid();
@@ -260,30 +265,22 @@ const insertLens = db.query<
   VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
 `);
 
-interface CreateLensBody {
-  roomId: string;
-  url: string;
-  type: string;
-  body: string;
-  anchor: unknown;
-  tags?: string[];
-  refs?: unknown[];
-  anonymous?: boolean;
-}
-
-const VALID_TYPES = new Set(["quick", "fun", "question", "poll", "knowledge", "challenge", "spoiler"]);
-
 export async function handleCreateLens(
   req: Request,
   user: TokenPayload,
   server: Server<unknown>,
 ): Promise<Response> {
-  const body = (await req.json().catch(() => null)) as CreateLensBody | null;
+  const rawBody = await req.json().catch(() => null);
+  const body = validateCreateLensInput(rawBody);
   if (!body) return json({ error: "invalid body" }, 400);
-  if (!/^[a-f0-9]{64}$/.test(body.roomId)) return json({ error: "invalid roomId" }, 400);
-  if (!VALID_TYPES.has(body.type)) return json({ error: "invalid type" }, 400);
-  if (!body.body || !body.anchor || !body.url) return json({ error: "missing fields" }, 400);
-  if (body.body.length > 4096) return json({ error: "body too long" }, 413);
+
+  let expectedRoomId: string;
+  try {
+    expectedRoomId = await roomIdFor(body.url);
+  } catch {
+    return json({ error: "invalid url" }, 400);
+  }
+  if (expectedRoomId !== body.roomId) return json({ error: "roomId does not match url" }, 400);
 
   const id = ulid();
   const now = Date.now();
@@ -323,13 +320,14 @@ export async function handleUpdateLensAnchor(
   lensId: string,
 ): Promise<Response> {
   const body = (await req.json().catch(() => null)) as { anchor?: unknown } | null;
-  if (!body?.anchor) return json({ error: "anchor required" }, 400);
+  const anchor = validateLensAnchor(body?.anchor);
+  if (!anchor) return json({ error: "invalid anchor" }, 400);
 
   const row = fetchLensById.get(lensId);
   if (!row) return json({ error: "lens not found" }, 404);
   if (!canEditLensAnchor(row, user.sub)) return json({ error: "forbidden" }, 403);
 
-  updateLensAnchor.run(JSON.stringify(body.anchor), lensId);
+  updateLensAnchor.run(JSON.stringify(anchor), lensId);
 
   const updated = fetchLensById.get(lensId);
   if (!updated) return json({ error: "internal" }, 500);
@@ -441,6 +439,112 @@ const insertReport = db.query<unknown, [string, string, string, string, number]>
   "INSERT INTO reports (id, lens_id, reporter_id, reason, created_at) VALUES (?, ?, ?, ?, ?)",
 );
 
+type ReportStatus = "open" | "reviewed" | "dismissed";
+
+interface ReportRow {
+  id: string;
+  lens_id: string;
+  reporter_id: string;
+  reporter_handle: string;
+  reason: string;
+  status: ReportStatus;
+  created_at: number;
+  reviewed_by: string | null;
+  reviewed_at: number | null;
+  review_note: string | null;
+  lens_body: string;
+  lens_type: string;
+  lens_url: string;
+  lens_room_id: string;
+  lens_author_id: string;
+  lens_author_handle: string;
+}
+
+const REPORT_STATUSES = new Set<ReportStatus>(["open", "reviewed", "dismissed"]);
+
+const listReportsByStatus = db.query<ReportRow, [string]>(`
+  SELECT
+    r.id,
+    r.lens_id,
+    r.reporter_id,
+    reporter.handle AS reporter_handle,
+    r.reason,
+    r.status,
+    r.created_at,
+    r.reviewed_by,
+    r.reviewed_at,
+    r.review_note,
+    l.body AS lens_body,
+    l.type AS lens_type,
+    l.url AS lens_url,
+    l.room_id AS lens_room_id,
+    l.author_id AS lens_author_id,
+    author.handle AS lens_author_handle
+  FROM reports r
+  JOIN lenses l ON l.id = r.lens_id
+  JOIN users reporter ON reporter.id = r.reporter_id
+  JOIN users author ON author.id = l.author_id
+  WHERE r.status = ?
+  ORDER BY r.created_at ASC
+  LIMIT 200
+`);
+
+const listReportsAll = db.query<ReportRow, []>(`
+  SELECT
+    r.id,
+    r.lens_id,
+    r.reporter_id,
+    reporter.handle AS reporter_handle,
+    r.reason,
+    r.status,
+    r.created_at,
+    r.reviewed_by,
+    r.reviewed_at,
+    r.review_note,
+    l.body AS lens_body,
+    l.type AS lens_type,
+    l.url AS lens_url,
+    l.room_id AS lens_room_id,
+    l.author_id AS lens_author_id,
+    author.handle AS lens_author_handle
+  FROM reports r
+  JOIN lenses l ON l.id = r.lens_id
+  JOIN users reporter ON reporter.id = r.reporter_id
+  JOIN users author ON author.id = l.author_id
+  ORDER BY r.created_at DESC
+  LIMIT 200
+`);
+
+const findReportById = db.query<{ id: string }, [string]>(
+  "SELECT id FROM reports WHERE id = ?",
+);
+
+const updateReportReview = db.query<unknown, [ReportStatus, string, number, string | null, string]>(
+  "UPDATE reports SET status = ?, reviewed_by = ?, reviewed_at = ?, review_note = ? WHERE id = ?",
+);
+
+function rowToReport(row: ReportRow) {
+  return {
+    id: row.id,
+    lensId: row.lens_id,
+    reason: row.reason,
+    status: row.status,
+    createdAt: row.created_at,
+    reviewedBy: row.reviewed_by,
+    reviewedAt: row.reviewed_at,
+    reviewNote: row.review_note,
+    reporter: { id: row.reporter_id, handle: row.reporter_handle },
+    lens: {
+      id: row.lens_id,
+      type: row.lens_type,
+      body: row.lens_body,
+      url: row.lens_url,
+      roomId: row.lens_room_id,
+      author: { id: row.lens_author_id, handle: row.lens_author_handle },
+    },
+  };
+}
+
 export async function handleCreateReport(req: Request, user: TokenPayload): Promise<Response> {
   const body = (await req.json().catch(() => null)) as { lensId?: string; reason?: string } | null;
   if (!body?.lensId) return json({ error: "lensId required" }, 400);
@@ -454,4 +558,57 @@ export async function handleCreateReport(req: Request, user: TokenPayload): Prom
   insertReport.run(id, body.lensId, user.sub, reason, now);
 
   return json({ reportId: id, lensId: body.lensId }, 201);
+}
+
+// --- GET/PATCH /api/admin/reports ------------------------------------------
+
+export function handleListReports(req: Request, user: TokenPayload): Response {
+  if (!isOperatorUser(user.sub)) return json({ error: "forbidden" }, 403);
+
+  const url = new URL(req.url);
+  const status = url.searchParams.get("status") ?? "open";
+  if (status === "all") {
+    return json({ reports: listReportsAll.all().map(rowToReport) });
+  }
+  if (!REPORT_STATUSES.has(status as ReportStatus)) return json({ error: "invalid status" }, 400);
+
+  return json({ reports: listReportsByStatus.all(status).map(rowToReport) });
+}
+
+export async function handleUpdateReport(
+  req: Request,
+  user: TokenPayload,
+  reportId: string,
+): Promise<Response> {
+  if (!isOperatorUser(user.sub)) return json({ error: "forbidden" }, 403);
+
+  const body = (await req.json().catch(() => null)) as { status?: string; note?: string } | null;
+  const status = body?.status;
+  if (!status || !REPORT_STATUSES.has(status as ReportStatus)) {
+    return json({ error: "invalid status" }, 400);
+  }
+
+  const report = findReportById.get(reportId);
+  if (!report) return json({ error: "report not found" }, 404);
+
+  const note = typeof body?.note === "string" ? body.note.trim().slice(0, 500) || null : null;
+  updateReportReview.run(status as ReportStatus, user.sub, Date.now(), note, reportId);
+  return json({ reportId, status, reviewed: true });
+}
+
+// --- POST /api/admin/revoke-user -------------------------------------------
+
+export async function handleRevokeUserTokens(req: Request, user: TokenPayload): Promise<Response> {
+  if (!isOperatorUser(user.sub)) return json({ error: "forbidden" }, 403);
+
+  const body = (await req.json().catch(() => null)) as { userId?: string } | null;
+  const userId = body?.userId?.trim();
+  if (!userId) return json({ error: "userId required" }, 400);
+
+  const target = findUserById.get(userId);
+  if (!target) return json({ error: "user not found" }, 404);
+
+  const revokedBefore = Math.floor(Date.now() / 1000);
+  revokeTokensForUser(userId, revokedBefore);
+  return json({ userId, revokedBefore, revoked: true });
 }

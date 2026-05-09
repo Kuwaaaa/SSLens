@@ -1,4 +1,5 @@
 import { existsSync, readFileSync } from "node:fs";
+import { db } from "./db.ts";
 
 const KEYS_PATH = process.env.LUMEN_KEYS ?? "data/keys.json";
 
@@ -32,6 +33,16 @@ const publicKey = await crypto.subtle.importKey(
 
 const enc = new TextEncoder();
 
+const findTokenRevocation = db.query<{ revoked_before: number }, [string]>(
+  "SELECT revoked_before FROM token_revocations WHERE user_id = ?",
+);
+
+const upsertTokenRevocation = db.query<unknown, [string, number]>(`
+  INSERT INTO token_revocations (user_id, revoked_before)
+  VALUES (?, ?)
+  ON CONFLICT(user_id) DO UPDATE SET revoked_before = excluded.revoked_before
+`);
+
 export interface TokenPayload {
   sub: string;
   iat: number;
@@ -61,10 +72,16 @@ export async function verifyToken(token: string): Promise<TokenPayload | null> {
     if (!ok) return null;
     const payload = JSON.parse(b64urlDecode(payloadB64)) as TokenPayload;
     if (payload.exp < Math.floor(Date.now() / 1000)) return null;
+    const revocation = findTokenRevocation.get(payload.sub);
+    if (revocation && payload.iat <= revocation.revoked_before) return null;
     return payload;
   } catch {
     return null;
   }
+}
+
+export function revokeTokensForUser(userId: string, revokedBefore = Math.floor(Date.now() / 1000)): void {
+  upsertTokenRevocation.run(userId, revokedBefore);
 }
 
 // --- base64url helpers ---

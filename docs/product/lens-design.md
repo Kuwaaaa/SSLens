@@ -317,7 +317,209 @@ UGC comment -> AI/user refinement -> knowledge Lens -> optional skill signal -> 
 
 Goal: let learning emerge naturally from social play.
 
-## 6. Visual Direction
+## 6. Lens On Ebooks And PDFs
+
+Ebook support extends the Lens anchoring model beyond normal webpages. It should
+not change the product center: a Lens is still a lightweight social card
+attached to context, not a formal note, a study database, or a book knowledge
+graph.
+
+The first ebook target should be PDF because many real reading workflows happen
+in PDFs: papers, manuals, textbooks, reports, and exported books. EPUB and other
+formats can come later.
+
+### 6.1 Product Goal
+
+The desired loop is:
+
+```text
+Open a PDF in Lumen -> select text -> create Lens -> later readers see cards on
+the same passage or a confidently matched copy of the same book
+```
+
+PDF Lens should preserve the same tone as webpage Lens:
+
+- quick comments,
+- questions,
+- explanations,
+- small references,
+- challenges,
+- reusable knowledge cards when they naturally emerge.
+
+It should not become:
+
+- a full PDF editor,
+- a citation manager,
+- a serious note-taking app,
+- an AI-generated study guide,
+- a visible Atlas or book graph UI.
+
+### 6.2 Identity Problem
+
+The hard problem is not OCR first. The hard problem is deciding what "the same
+book" means when users may have different PDF files.
+
+Use three identity layers:
+
+```text
+Work      -> the abstract book or paper
+Edition   -> a specific language/version/publisher/revision/ISBN
+Document  -> one concrete PDF file or source
+```
+
+P0 should bind Lens to a `Document`. Later versions may infer `Edition` and
+`Work`, but cross-document reuse must be confidence-based and visible to the
+user. Do not automatically merge Lens from different PDFs just because titles
+look similar.
+
+Recommended document signals:
+
+- file hash,
+- source URL when available,
+- PDF metadata title and author,
+- page count,
+- ISBN / DOI candidates,
+- normalized text fingerprint from stable pages,
+- chapter or heading fingerprints.
+
+### 6.3 Target And Anchor Shape
+
+The code model should move from webpage-only anchors:
+
+```text
+canonical URL + DOM text anchor
+```
+
+to media-specific Lens targets:
+
+```text
+target kind + canonical object identity + target-specific anchor
+```
+
+For PDF, the target should include enough information to restore both the text
+selection and the visual marker:
+
+```ts
+interface PdfDocumentTarget {
+  kind: "pdf-document";
+  documentId: string;
+  workId?: string;
+  editionId?: string;
+  sourceUrl?: string;
+  fileHash?: string;
+  fingerprint?: string;
+  metadata?: {
+    title?: string;
+    authors?: string[];
+    isbn?: string[];
+    doi?: string;
+    pageCount?: number;
+  };
+  anchor: PdfTextAnchor;
+}
+
+interface PdfTextAnchor {
+  quote: {
+    exact: string;
+    prefix?: string;
+    suffix?: string;
+  };
+  pageIndex: number;
+  pageLabel?: string;
+  textPositionOnPage?: { start: number; end: number };
+  textPositionInDocument?: { start: number; end: number };
+  rects?: Array<{
+    pageIndex: number;
+    x: number;
+    y: number;
+    width: number;
+    height: number;
+  }>;
+}
+```
+
+`quote` and text offsets recover the anchor. `rects` repaint the marker. Page
+numbers alone are not reliable enough.
+
+### 6.4 Reader Strategy
+
+Do not rely on the browser's built-in PDF viewer as the main implementation
+surface. Browser PDF viewers may expose text selection to users, but extension
+access to the PDF text layer, page geometry, and overlay behavior is not a
+stable product foundation.
+
+Prefer a Lumen-owned PDF reader, likely built on PDF.js:
+
+```text
+PDF.js render -> controlled text layer -> controlled selection -> Lens target
+creation -> controlled marker and card overlay
+```
+
+The first version can be narrow:
+
+- text-based PDFs only,
+- same-document Lens create/restore,
+- page quote and rect anchors,
+- no OCR,
+- no DRM formats,
+- no global book graph UI.
+
+### 6.5 Room Model
+
+Webpage rooms can stay keyed by canonical URL. PDF rooms should be keyed by
+target identity instead:
+
+```text
+web page room     = hash("web:" + canonicalUrl)
+PDF document room = hash("pdf-document:" + documentId)
+PDF edition room  = hash("pdf-edition:" + editionId)
+PDF work room     = hash("pdf-work:" + workId)
+```
+
+P0 should use document rooms. Edition/work rooms should be introduced only after
+the product has enough confidence in PDF identity and cross-document re-anchor.
+
+### 6.6 Runtime Boundary
+
+Ebook Lens should not be implemented by adding PDF-specific branches throughout
+the current webpage content script. The Lens runtime needs a surface boundary:
+
+```text
+Lens UI and room state
+-> surface adapter
+-> webpage / PDF / future ebook implementation
+```
+
+A webpage surface can keep using DOM `Range`. A PDF surface should use
+page-indexed rectangles and text offsets. This keeps Lens cards, composer,
+reading modes, reactions, refs, and orphan handling reusable across surfaces.
+
+Suggested surface responsibilities:
+
+- read current selection,
+- create target-specific anchor,
+- restore a Lens target,
+- apply and clear markers,
+- hit-test marker clicks,
+- return card positioning rects,
+- jump to an anchor.
+
+Implementation notes for this boundary are also tracked in
+`apps/extension/README.md`.
+
+### 6.7 Deferred Work
+
+Defer until the PDF text-based loop proves useful:
+
+- OCR for scanned PDFs,
+- EPUB support,
+- Kindle or DRM formats,
+- automatic cross-PDF merging,
+- persistent book library UI,
+- visible Atlas/book graph UI,
+- AI-generated public study notes.
+
+## 7. Visual Direction
 
 The current visual direction is:
 
@@ -345,7 +547,7 @@ Avoid:
 - Dark HUD overlays on normal reading pages
 - Cards with too much metadata
 
-## 7. Relationship to Skill Tree
+## 8. Relationship to Skill Tree
 
 Skill Tree is not the primary user-facing product in the first phase.
 
@@ -359,7 +561,7 @@ It should work quietly in the background:
 
 Users should first feel they are playing with the web, not studying a curriculum.
 
-## 8. AI Role
+## 9. AI Role
 
 AI is an assistant, not the core product.
 
@@ -380,7 +582,7 @@ Bad AI uses for MVP:
 - Generate too many fake comments
 - Make Lumen feel like an AI tutor
 
-## 9. MVP Product Shape
+## 10. MVP Product Shape
 
 The MVP should prove:
 
@@ -396,7 +598,7 @@ The MVP does not need to prove:
 - Perfect AI matching
 - Large-scale moderation automation
 
-## 10. Product Risks
+## 11. Product Risks
 
 ### Too Serious
 
@@ -418,7 +620,7 @@ If content feels fake, users will not trust the room.
 
 If spam or harassment spreads, the page layer becomes hostile.
 
-## 11. North Star
+## 12. North Star
 
 The north star is not “users learn concepts.”
 

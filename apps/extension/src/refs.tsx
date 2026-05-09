@@ -238,6 +238,14 @@ function renderInline(text: string, knownLenses?: Lens[], onLensClick?: (lensId:
 
 function renderRef(token: RefToken, key: number, knownLenses?: Lens[], onLensClick?: (lensId: string) => void): ReactNode {
   if (token.kind === "url") {
+    if (!isSafeHttpUrl(token.value)) {
+      const display = token.label ?? token.value;
+      return (
+        <span key={key} className="ref-url unknown" title="Only http and https URL refs are supported">
+          {display}
+        </span>
+      );
+    }
     const display = token.label ?? prettyUrl(token.value);
     return (
       <a
@@ -279,6 +287,15 @@ function prettyUrl(u: string): string {
     return `${url.host}${url.pathname.length > 1 ? url.pathname : ""}`;
   } catch {
     return u;
+  }
+}
+
+function isSafeHttpUrl(u: string): boolean {
+  try {
+    const url = new URL(u);
+    return url.protocol === "http:" || url.protocol === "https:";
+  } catch {
+    return false;
   }
 }
 

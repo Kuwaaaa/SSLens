@@ -1,4 +1,4 @@
-import "./db.ts"; // ensure schema is applied before queries are prepared
+import { db } from "./db.ts"; // ensure schema is applied before queries are prepared
 import {
   json,
   handleRedeem,
@@ -8,12 +8,19 @@ import {
   handleUpdateLensAnchor,
   handleToggleReaction,
   handleCreateReport,
+  handleListReports,
+  handleUpdateReport,
+  handleRevokeUserTokens,
+  isOperator,
 } from "./routes.ts";
-import { handleUpgrade, websocket, setServerRef } from "./ws.ts";
+import { handleUpgrade, websocket, setServerRef, pruneWsMemory, wsStats } from "./ws.ts";
 import { verifyToken, type TokenPayload } from "./auth.ts";
 import { checkRateLimit, pruneRateLimitBuckets } from "./rate-limit.ts";
+import { canonicalizeUrl, roomIdFor } from "@lumen/url";
 
 const PORT = Number(process.env.PORT ?? 3000);
+const startedAt = Date.now();
+let recentErrorCount = 0;
 
 const cors = {
   "Access-Control-Allow-Origin": "*",
@@ -42,6 +49,18 @@ const server = Bun.serve({
 
     if (url.pathname === "/api/health") {
       return json({ ok: true });
+    }
+
+    if (url.pathname === "/api/room" && req.method === "GET") {
+      const input = url.searchParams.get("url");
+      if (!input) return json({ error: "url required" }, 400);
+      try {
+        const canonical = canonicalizeUrl(input);
+        const roomId = await roomIdFor(canonical);
+        return json({ url: input, canonical, roomId });
+      } catch {
+        return json({ error: "invalid url" }, 400);
+      }
     }
 
     if (req.method === "GET" && url.pathname === "/privacy") {
@@ -103,8 +122,26 @@ const server = Bun.serve({
         return await handleCreateReport(req, user);
       }
 
+      if (url.pathname === "/api/admin/reports" && req.method === "GET") {
+        return handleListReports(req, user);
+      }
+
+      const reportMatch = url.pathname.match(/^\/api\/admin\/reports\/([^/]+)$/);
+      if (reportMatch && req.method === "PATCH") {
+        return await handleUpdateReport(req, user, decodeURIComponent(reportMatch[1]));
+      }
+
+      if (url.pathname === "/api/admin/revoke-user" && req.method === "POST") {
+        return await handleRevokeUserTokens(req, user);
+      }
+
+      if (url.pathname === "/api/status" && req.method === "GET") {
+        return handleStatus(user);
+      }
+
       return json({ error: "not_found" }, 404);
     } catch (err) {
+      recentErrorCount += 1;
       console.error("[fetch]", err);
       return json({ error: "internal" }, 500);
     }
@@ -114,6 +151,32 @@ const server = Bun.serve({
 
 setServerRef(server);
 
-setInterval(() => pruneRateLimitBuckets(), 10 * 60_000);
+setInterval(() => {
+  pruneRateLimitBuckets();
+  pruneWsMemory();
+}, 10 * 60_000);
 
 console.log(`Lumen v2 server listening on http://localhost:${PORT}`);
+
+function handleStatus(user: TokenPayload): Response {
+  if (!isOperator(user.sub)) return json({ error: "forbidden" }, 403);
+
+  let dbWritable = true;
+  try {
+    db.exec(`
+      CREATE TEMP TABLE IF NOT EXISTS lumen_status_write_check (id INTEGER);
+      INSERT INTO lumen_status_write_check (id) VALUES (1);
+      DELETE FROM lumen_status_write_check;
+    `);
+  } catch {
+    dbWritable = false;
+  }
+
+  return json({
+    ok: true,
+    uptimeMs: Date.now() - startedAt,
+    dbWritable,
+    ws: wsStats(),
+    recentErrorCount,
+  });
+}

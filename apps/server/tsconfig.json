@@ -6,7 +6,8 @@
     "rootDir": "../..",
     "baseUrl": ".",
     "paths": {
-      "@lumen/schema": ["../../packages/schema/src/index.ts"]
+      "@lumen/schema": ["../../packages/schema/src/index.ts"],
+      "@lumen/url": ["../../packages/url/src/index.ts"]
     }
   },
   "include": ["src/**/*", "../../scripts/**/*"]

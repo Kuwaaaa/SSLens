@@ -1710,6 +1710,13 @@ button, input, textarea, select {
   text-decoration-color: #4a1a7a;
 }
 
+.ref-url.unknown {
+  color: #888;
+  text-decoration: none;
+  font-style: italic;
+  cursor: not-allowed;
+}
+
 /* --- Universal entrance for popovers --- */
 
 @keyframes lumen-appear {

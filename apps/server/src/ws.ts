@@ -9,16 +9,22 @@ export interface WSData {
 }
 
 let serverRef: Server<WSData> | null = null;
+let wsConnectionCount = 0;
 export function setServerRef(s: Server<WSData>) {
   serverRef = s;
 }
 
-// roomId -> set of user ids currently subscribed (server-local presence map)
-const presence = new Map<string, Set<string>>();
+// roomId -> userId -> open connection count (server-local presence map)
+const presence = new Map<string, Map<string, number>>();
 const companionPresence = new Map<string, Map<string, number>>();
 const companionChatHistory = new Map<string, CompanionChatRecord[]>();
+const wsRateBuckets = new Map<string, { count: number; resetAt: number }>();
 const COMPANION_CHAT_HISTORY_LIMIT = 30;
 const COMPANION_CHAT_HISTORY_MAX_AGE_MS = 30 * 60 * 1000;
+const WS_RATE_RULES = {
+  companion_chat: { limit: 10, windowMs: 1000 },
+  companion_emoji: { limit: 5, windowMs: 1000 },
+} as const;
 const COMPANION_EMOJI_CHOICES = new Set([
   "\u{1F44B}",
   "\u{1F440}",
@@ -38,25 +44,31 @@ interface CompanionChatRecord {
 }
 
 function presenceJoin(roomId: string, userId: string): boolean {
-  let set = presence.get(roomId);
-  if (!set) {
-    set = new Set();
-    presence.set(roomId, set);
+  let room = presence.get(roomId);
+  if (!room) {
+    room = new Map();
+    presence.set(roomId, room);
   }
-  if (set.has(userId)) return false;
-  set.add(userId);
-  return true;
+  const current = room.get(userId) ?? 0;
+  room.set(userId, current + 1);
+  return current === 0;
 }
 
 function presenceLeave(roomId: string, userId: string): boolean {
-  const set = presence.get(roomId);
-  if (!set?.delete(userId)) return false;
-  if (set.size === 0) presence.delete(roomId);
-  return true;
+  const room = presence.get(roomId);
+  if (!room) return false;
+  const current = room.get(userId) ?? 0;
+  if (current <= 1) {
+    room.delete(userId);
+    if (room.size === 0) presence.delete(roomId);
+    return current === 1;
+  }
+  room.set(userId, current - 1);
+  return false;
 }
 
 function presenceList(roomId: string): string[] {
-  return [...(presence.get(roomId) ?? [])];
+  return [...(presence.get(roomId)?.keys() ?? [])];
 }
 
 function companionJoin(roomId: string, userId: string): boolean {
@@ -102,6 +114,62 @@ function rememberCompanionChat(roomId: string, message: CompanionChatRecord) {
   companionChatHistory.set(roomId, messages);
 }
 
+function checkWsRateLimit(
+  action: keyof typeof WS_RATE_RULES,
+  roomId: string,
+  userId: string,
+  now = Date.now(),
+): boolean {
+  const rule = WS_RATE_RULES[action];
+  const key = `${action}:${roomId}:${userId}`;
+  const current = wsRateBuckets.get(key);
+  if (!current || current.resetAt <= now) {
+    wsRateBuckets.set(key, { count: 1, resetAt: now + rule.windowMs });
+    return true;
+  }
+  current.count += 1;
+  return current.count <= rule.limit;
+}
+
+export function pruneWsMemory(now = Date.now()) {
+  for (const roomId of [...companionChatHistory.keys()]) {
+    pruneCompanionChatHistory(roomId, now);
+  }
+  for (const [key, bucket] of wsRateBuckets) {
+    if (bucket.resetAt <= now) wsRateBuckets.delete(key);
+  }
+}
+
+export function wsStats() {
+  let largestRoomSize = 0;
+  for (const room of presence.values()) {
+    largestRoomSize = Math.max(largestRoomSize, room.size);
+  }
+  return {
+    connectionCount: wsConnectionCount,
+    roomCount: presence.size,
+    largestRoomSize,
+    companionRoomCount: companionPresence.size,
+    companionHistoryRoomCount: companionChatHistory.size,
+  };
+}
+
+function websocketProtocols(req: Request): string[] {
+  return (req.headers.get("sec-websocket-protocol") ?? "")
+    .split(",")
+    .map((part) => part.trim())
+    .filter(Boolean);
+}
+
+function tokenFromWebSocketRequest(req: Request): string | null {
+  const protocols = websocketProtocols(req);
+  const tokenProtocol = protocols.find((protocol) => protocol.startsWith("lumen-token."));
+  if (tokenProtocol) return tokenProtocol.slice("lumen-token.".length);
+
+  const url = new URL(req.url);
+  return url.searchParams.get("token");
+}
+
 function isCompanionEmoji(input: unknown): input is string {
   return typeof input === "string" && COMPANION_EMOJI_CHOICES.has(input);
 }
@@ -115,28 +183,34 @@ function leaveCompanion(ws: ServerWebSocket<WSData>) {
   const roomId = ws.data.companionRoomId;
   ws.data.companionRoomId = null;
   if (companionLeave(roomId, ws.data.user.sub) && serverRef) {
+    const users = companionList(roomId);
+    if (users.length === 0) pruneCompanionChatHistory(roomId);
     serverRef.publish(roomId, JSON.stringify({
       type: "companion_left",
       userId: ws.data.user.sub,
-      users: companionList(roomId),
+      users,
     }));
   }
 }
 
 export async function handleUpgrade(req: Request, server: Server<WSData>): Promise<Response | undefined> {
-  const url = new URL(req.url);
-  const token = url.searchParams.get("token");
+  const token = tokenFromWebSocketRequest(req);
   if (!token) return new Response("missing token", { status: 401 });
   const user = await verifyToken(token);
   if (!user) return new Response("invalid token", { status: 401 });
 
-  const upgraded = server.upgrade(req, { data: { user, roomId: null, companionRoomId: null } });
+  const protocols = websocketProtocols(req);
+  const upgraded = server.upgrade(req, {
+    data: { user, roomId: null, companionRoomId: null },
+    headers: protocols.includes("lumen.v1") ? { "Sec-WebSocket-Protocol": "lumen.v1" } : undefined,
+  });
   if (!upgraded) return new Response("upgrade failed", { status: 500 });
   return undefined;
 }
 
 export const websocket = {
   open(_ws: ServerWebSocket<WSData>) {
+    wsConnectionCount += 1;
     // Wait for client to send subscribe.
   },
 
@@ -218,6 +292,7 @@ export const websocket = {
     if (msg.type === "companion_emoji") {
       const roomId = ws.data.companionRoomId;
       if (!roomId || roomId !== ws.data.roomId) return;
+      if (!checkWsRateLimit("companion_emoji", roomId, ws.data.user.sub)) return;
       if (!isCompanionEmoji(msg.emoji)) return;
       const edge = msg.edge === "left" || msg.edge === "right" ? msg.edge : null;
       if (!edge) return;
@@ -240,6 +315,7 @@ export const websocket = {
     if (msg.type === "companion_chat") {
       const roomId = ws.data.companionRoomId;
       if (!roomId || roomId !== ws.data.roomId) return;
+      if (!checkWsRateLimit("companion_chat", roomId, ws.data.user.sub)) return;
       const body = typeof msg.body === "string" ? msg.body.trim().slice(0, 280) : "";
       if (!body) return;
       const message = {
@@ -263,6 +339,7 @@ export const websocket = {
   },
 
   close(ws: ServerWebSocket<WSData>) {
+    wsConnectionCount = Math.max(0, wsConnectionCount - 1);
     leaveCompanion(ws);
     if (!ws.data.roomId) return;
     const roomId = ws.data.roomId;

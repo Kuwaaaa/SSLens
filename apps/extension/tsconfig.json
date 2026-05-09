@@ -8,7 +8,8 @@
     "baseUrl": ".",
     "paths": {
       "@lumen/schema": ["../../packages/schema/src/index.ts"],
-      "@lumen/anchoring": ["../../packages/anchoring/src/index.ts"]
+      "@lumen/anchoring": ["../../packages/anchoring/src/index.ts"],
+      "@lumen/url": ["../../packages/url/src/index.ts"]
     }
   },
   "include": ["src/**/*", "*.ts", "*.tsx"]

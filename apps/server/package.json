@@ -10,6 +10,7 @@
     "migrate": "bun src/db.ts"
   },
   "dependencies": {
-    "@lumen/schema": "workspace:*"
+    "@lumen/schema": "workspace:*",
+    "@lumen/url": "workspace:*"
   }
 }

@@ -1,4 +1,5 @@
 export type LensType = "quick" | "fun" | "question" | "poll" | "knowledge" | "challenge" | "spoiler";
+export const LENS_TYPES = ["quick", "fun", "question", "poll", "knowledge", "challenge", "spoiler"] as const;
 
 // Free-form tag. Conventional categories:
 //   topic:   "training", "debugging", "startup", "math", ...
@@ -45,6 +46,126 @@ export interface LensAnchor {
     end: number;
   };
   domRange?: Record<string, unknown>;
+}
+
+export interface CreateLensInput {
+  roomId: string;
+  url: string;
+  type: LensType;
+  body: string;
+  anchor: LensAnchor;
+  tags?: string[];
+  refs?: LensRef[];
+  anonymous?: boolean;
+}
+
+const MAX_TAGS = 12;
+const MAX_TAG_LENGTH = 40;
+const MAX_REFS = 32;
+const MAX_REF_TARGET_LENGTH = 2048;
+const MAX_REF_LABEL_LENGTH = 80;
+const MAX_QUOTE_LENGTH = 4096;
+
+function isObject(input: unknown): input is Record<string, unknown> {
+  return !!input && typeof input === "object" && !Array.isArray(input);
+}
+
+function isLensType(input: unknown): input is LensType {
+  return typeof input === "string" && (LENS_TYPES as readonly string[]).includes(input);
+}
+
+function cleanOptionalString(input: unknown, max: number): string | undefined {
+  if (typeof input !== "string") return undefined;
+  const trimmed = input.trim();
+  if (!trimmed || trimmed.length > max) return undefined;
+  return trimmed;
+}
+
+function isHttpUrl(input: string): boolean {
+  try {
+    const url = new URL(input);
+    return url.protocol === "http:" || url.protocol === "https:";
+  } catch {
+    return false;
+  }
+}
+
+function validatePosition(input: unknown): LensAnchor["position"] | undefined {
+  if (!isObject(input)) return undefined;
+  const start = input.start;
+  const end = input.end;
+  if (typeof start !== "number" || typeof end !== "number") return undefined;
+  if (!Number.isInteger(start) || !Number.isInteger(end)) return undefined;
+  if (start < 0 || end < start) return undefined;
+  return { start, end };
+}
+
+export function validateLensAnchor(input: unknown): LensAnchor | null {
+  if (!isObject(input) || !isObject(input.quote)) return null;
+  const exact = cleanOptionalString(input.quote.exact, MAX_QUOTE_LENGTH);
+  if (!exact) return null;
+
+  const anchor: LensAnchor = {
+    quote: { exact },
+  };
+  const prefix = cleanOptionalString(input.quote.prefix, 512);
+  const suffix = cleanOptionalString(input.quote.suffix, 512);
+  if (prefix) anchor.quote.prefix = prefix;
+  if (suffix) anchor.quote.suffix = suffix;
+
+  const position = validatePosition(input.position);
+  if (position) anchor.position = position;
+
+  return anchor;
+}
+
+export function validateLensTags(input: unknown): string[] {
+  if (!Array.isArray(input)) return [];
+  const out: string[] = [];
+  for (const tag of input) {
+    const cleaned = cleanOptionalString(tag, MAX_TAG_LENGTH);
+    if (!cleaned || out.includes(cleaned)) continue;
+    out.push(cleaned);
+    if (out.length >= MAX_TAGS) break;
+  }
+  return out;
+}
+
+export function validateLensRefs(input: unknown): LensRef[] {
+  if (!Array.isArray(input)) return [];
+  const out: LensRef[] = [];
+  for (const ref of input) {
+    if (!isObject(ref)) continue;
+    const kind = ref.kind === "lens" || ref.kind === "url" ? ref.kind : null;
+    const target = cleanOptionalString(ref.target, MAX_REF_TARGET_LENGTH);
+    if (!kind || !target) continue;
+    if (kind === "url" && !isHttpUrl(target)) continue;
+    const label = cleanOptionalString(ref.label, MAX_REF_LABEL_LENGTH);
+    out.push({ kind, target, ...(label ? { label } : {}) });
+    if (out.length >= MAX_REFS) break;
+  }
+  return out;
+}
+
+export function validateCreateLensInput(input: unknown): CreateLensInput | null {
+  if (!isObject(input)) return null;
+  if (typeof input.roomId !== "string" || !/^[a-f0-9]{64}$/.test(input.roomId)) return null;
+  if (typeof input.url !== "string" || !isHttpUrl(input.url)) return null;
+  if (!isLensType(input.type)) return null;
+  if (typeof input.body !== "string" || !input.body.trim() || input.body.length > 4096) return null;
+  const anchor = validateLensAnchor(input.anchor);
+  if (!anchor) return null;
+
+  return {
+    roomId: input.roomId,
+    url: input.url,
+    type: input.type,
+    body: input.body,
+    anchor,
+    tags: validateLensTags(input.tags),
+    refs: validateLensRefs(input.refs),
+    anonymous: input.anonymous === true,
+  };
 }
 
 export interface SkillLink {

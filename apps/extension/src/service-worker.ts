@@ -63,6 +63,8 @@ chrome.runtime.onMessage.addListener((message: ApiRequest, _sender, sendResponse
         case "reportLens":
           sendResponse({ ok: true, value: await reportLens(message.lensId, message.token) });
           break;
+        default:
+          sendResponse({ ok: false, error: "unknown action" });
       }
     } catch (err) {
       sendResponse({ ok: false, error: err instanceof Error ? err.message : String(err) });
@@ -97,6 +99,10 @@ function sendPort(port: chrome.runtime.Port, event: WsBridgeEvent) {
   } catch {
     // The tab may have navigated away while an async WS callback was queued.
   }
+}
+
+function tokenSubprotocol(token: string): string {
+  return `lumen-token.${token}`;
 }
 
 chrome.runtime.onConnect.addListener((port) => {
@@ -142,7 +148,7 @@ chrome.runtime.onConnect.addListener((port) => {
     closeSocket();
     roomId = nextRoomId;
     companionActive = false;
-    ws = new ReconnectingWS(`${WS_BASE}/ws?token=${encodeURIComponent(token)}`);
+    ws = new ReconnectingWS(`${WS_BASE}/ws`, [tokenSubprotocol(token), "lumen.v1"]);
 
     ws.addEventListener("open", () => {
       sendPort(port, { namespace: "lumen.ws", type: "open" });

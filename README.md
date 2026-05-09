@@ -1,32 +1,37 @@
 # Lumen Lens
 
-Browser extension + backend for contextual social commenting on real webpages.
+Browser extension and backend for contextual social Lens cards on real webpages.
 
-Read `AGENTS.md` first if you are an AI assistant, then read
-`docs/project-status.md` for the current implementation and release state. Read
-`docs/PROJECT_OVERVIEW.md` first if you are a human.
+## Start Here
 
-## Setup
+- AI assistants: read `AGENTS.md` first.
+- Humans: read `docs/PROJECT_OVERVIEW.md` for the product shape.
+- Current implementation status: read `docs/project-status.md`.
+
+Deployment drafts are currently archived and are not part of the main project
+plan.
+
+## Local Setup
 
 ```bash
 bun install
-bun run keygen                    # generate Ed25519 keys -> data/keys.json
-bun run dev:server                # start backend on :3000
-bun run issue-invite -- --by founder   # mint an invite code
+bun run keygen
+bun run dev:server
+bun run dev:extension
 ```
 
 ## Workspaces
 
-- `apps/server/` — Bun + ws + SQLite backend
-- `apps/extension/` — MV3 browser extension (TBD)
-- `packages/schema/` — shared TypeScript types
-- `scripts/` — CLI tools and shared utilities
+- `apps/server/` - Bun + SQLite + WebSocket backend.
+- `apps/extension/` - MV3 browser extension.
+- `packages/schema/` - shared TypeScript types.
+- `packages/anchoring/` - text anchoring implementation.
+- `scripts/` - CLI tools and shared utilities.
 
-## Docs
+## Main Docs
 
-- `AGENTS.md` - onboarding for AI assistants (also `AGENTS.zh.md`)
-- `docs/project-status.md` - current beta status, release notes, and next plan
-- `docs/PROJECT_OVERVIEW.md` — what v2 is and why
-- `docs/ARCHITECTURE.md` — every technical decision
-- `docs/mvp/lumen-mvp-plan.md` — 5-week build + 4-week soak plan
-- `docs/Chat.md` — original conception (Chinese)
+- `AGENTS.md` - AI assistant rules and document routing.
+- `docs/project-status.md` - current implementation snapshot and near-term plan.
+- `docs/PROJECT_OVERVIEW.md` - stable product overview.
+- `docs/ARCHITECTURE.md` - stable technical architecture and rationale.
+- `docs/Chat.md` - original Chinese conception.

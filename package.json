@@ -14,13 +14,17 @@
     "build:extension": "cd apps/extension && bun run build",
     "keygen": "bun scripts/keygen.ts",
     "issue-invite": "bun scripts/issue-invite.ts",
-    "test:canonicalize": "bun scripts/canonicalize-url.test.ts"
+    "typecheck": "bunx tsc -p packages/schema/tsconfig.json --noEmit && bunx tsc -p packages/url/tsconfig.json --noEmit && bunx tsc -p packages/anchoring/tsconfig.json --noEmit && bunx tsc -p apps/extension/tsconfig.json --noEmit && bunx tsc -p apps/server/tsconfig.json --noEmit",
+    "test:canonicalize": "bun scripts/canonicalize-url.test.ts",
+    "test:anchoring": "bun packages/anchoring/src/anchoring.test.ts",
+    "test:schema": "bun packages/schema/src/validation.test.ts",
+    "test": "bun run test:canonicalize && bun run test:anchoring && bun run test:schema"
   },
   "engines": {
     "bun": ">=1.1.0"
   },
   "devDependencies": {
-    "@types/bun": "latest",
+    "@types/bun": "1.3.13",
     "typescript": "^5.4.0"
   }
 }

@@ -12,6 +12,7 @@ interface LimitRule {
 }
 
 const buckets = new Map<string, Bucket>();
+const TRUST_PROXY = /^(1|true|yes)$/i.test(process.env.LUMEN_TRUST_PROXY ?? "");
 
 const RULES: Record<string, LimitRule> = {
   redeem: { limit: 20, windowMs: 10 * 60_000 },
@@ -23,6 +24,7 @@ const RULES: Record<string, LimitRule> = {
 };
 
 function clientIp(req: Request): string {
+  if (!TRUST_PROXY) return "direct";
   const forwarded = req.headers.get("x-forwarded-for")?.split(",")[0]?.trim();
   return forwarded || req.headers.get("x-real-ip") || "unknown";
 }
@@ -54,4 +56,3 @@ export function pruneRateLimitBuckets(now = Date.now()): void {
     if (bucket.resetAt <= now) buckets.delete(key);
   }
 }
-
