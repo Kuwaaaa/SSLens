@@ -1,0 +1,713 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Atlas Design Notes</title>
+  <style>
+    :root {
+      --bg: #0f0f0f;
+      --surface: #171717;
+      --border: #2a2a2a;
+      --text: #e0e0e0;
+      --text-dim: #888;
+      --accent: #7c6af7;
+      --accent-soft: #2d2850;
+      --node-hard: #c0392b;
+      --node-soft: #e67e22;
+      --node-parallel: #27ae60;
+      --code-bg: #1a1a1a;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: 'Georgia', serif;
+      line-height: 1.75;
+      padding: 0 1rem 6rem;
+    }
+
+    .page {
+      max-width: 720px;
+      margin: 0 auto;
+    }
+
+    header {
+      padding: 4rem 0 3rem;
+      border-bottom: 1px solid var(--border);
+      margin-bottom: 3rem;
+    }
+
+    header h1 {
+      font-size: 1.8rem;
+      font-weight: 400;
+      letter-spacing: 0.02em;
+      color: var(--text);
+      margin-bottom: 0.75rem;
+    }
+
+    .meta {
+      font-family: monospace;
+      font-size: 0.8rem;
+      color: var(--text-dim);
+      display: flex;
+      gap: 1.5rem;
+    }
+
+    .meta span::before {
+      content: attr(data-label) ': ';
+      color: var(--accent);
+    }
+
+    section {
+      margin-bottom: 3.5rem;
+    }
+
+    h2 {
+      font-size: 1rem;
+      font-weight: 400;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      color: var(--accent);
+      margin-bottom: 1.5rem;
+      padding-bottom: 0.5rem;
+      border-bottom: 1px solid var(--border);
+    }
+
+    h3 {
+      font-size: 1rem;
+      font-weight: 600;
+      color: var(--text);
+      margin: 2rem 0 0.75rem;
+    }
+
+    p {
+      margin-bottom: 1rem;
+      color: var(--text);
+    }
+
+    .quote {
+      border-left: 2px solid var(--accent);
+      padding: 0.75rem 1.25rem;
+      margin: 1.5rem 0;
+      color: var(--text-dim);
+      font-style: italic;
+    }
+
+    .diagram {
+      background: var(--code-bg);
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      padding: 1.25rem 1.5rem;
+      font-family: monospace;
+      font-size: 0.85rem;
+      color: var(--text-dim);
+      margin: 1.25rem 0;
+      white-space: pre;
+      overflow-x: auto;
+    }
+
+    .diagram .arrow { color: var(--accent); }
+
+    /* Path types */
+    .path-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 1rem;
+      margin: 1.25rem 0;
+    }
+
+    .path-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      padding: 1.25rem;
+    }
+
+    .path-card h4 {
+      font-size: 0.85rem;
+      font-weight: 600;
+      letter-spacing: 0.05em;
+      text-transform: uppercase;
+      color: var(--accent);
+      margin-bottom: 0.6rem;
+    }
+
+    .path-card p {
+      font-size: 0.9rem;
+      color: var(--text-dim);
+      margin: 0;
+    }
+
+    /* Dependency table */
+    .dep-table {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 1.25rem 0;
+      font-size: 0.9rem;
+    }
+
+    .dep-table th {
+      text-align: left;
+      font-size: 0.75rem;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: var(--text-dim);
+      padding: 0.5rem 0.75rem;
+      border-bottom: 1px solid var(--border);
+      font-weight: 400;
+    }
+
+    .dep-table td {
+      padding: 0.65rem 0.75rem;
+      border-bottom: 1px solid var(--border);
+      vertical-align: top;
+    }
+
+    .dep-table tr:last-child td { border-bottom: none; }
+
+    .badge {
+      display: inline-block;
+      padding: 0.1rem 0.5rem;
+      border-radius: 3px;
+      font-size: 0.75rem;
+      font-family: monospace;
+      font-weight: 600;
+    }
+
+    .badge-hard { background: rgba(192,57,43,0.2); color: #e74c3c; }
+    .badge-soft { background: rgba(230,126,22,0.2); color: #e67e22; }
+    .badge-parallel { background: rgba(39,174,96,0.2); color: #27ae60; }
+
+    /* Nodes */
+    .node-list {
+      display: flex;
+      flex-direction: column;
+      gap: 1rem;
+      margin: 1.25rem 0;
+    }
+
+    .node {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      overflow: hidden;
+    }
+
+    .node-header {
+      display: flex;
+      align-items: baseline;
+      gap: 0.75rem;
+      padding: 0.85rem 1.25rem;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .node-number {
+      font-family: monospace;
+      font-size: 0.75rem;
+      color: var(--accent);
+      flex-shrink: 0;
+    }
+
+    .node-title {
+      font-weight: 600;
+      font-size: 0.95rem;
+    }
+
+    .node-body {
+      padding: 1rem 1.25rem;
+      display: grid;
+      gap: 0.75rem;
+    }
+
+    .node-field {
+      display: grid;
+      grid-template-columns: 100px 1fr;
+      gap: 0.5rem;
+      font-size: 0.88rem;
+    }
+
+    .node-field-label {
+      color: var(--text-dim);
+      font-family: monospace;
+      font-size: 0.78rem;
+      padding-top: 0.1rem;
+    }
+
+    .node-field-value {
+      color: var(--text);
+    }
+
+    .node-dep {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+
+    /* Discovery mechanic */
+    .gap-demo {
+      background: var(--code-bg);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      padding: 1.25rem 1.5rem;
+      margin: 1.25rem 0;
+      font-family: monospace;
+      font-size: 0.85rem;
+    }
+
+    .gap-demo .line { margin-bottom: 0.4rem; color: var(--text-dim); }
+    .gap-demo .key { color: var(--accent); }
+    .gap-demo .val { color: var(--text); }
+    .gap-demo .result { color: #27ae60; margin-top: 0.75rem; }
+
+    /* Open questions */
+    .question-list {
+      display: flex;
+      flex-direction: column;
+      gap: 0.75rem;
+      margin-top: 1rem;
+    }
+
+    .question {
+      display: grid;
+      grid-template-columns: 1.5rem 1fr;
+      gap: 0.75rem;
+      padding: 0.85rem 1rem;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      font-size: 0.9rem;
+    }
+
+    .question-num {
+      font-family: monospace;
+      color: var(--accent);
+      font-size: 0.8rem;
+      padding-top: 0.1rem;
+    }
+
+    .question-title {
+      font-weight: 600;
+      margin-bottom: 0.3rem;
+      font-size: 0.88rem;
+    }
+
+    .question-body {
+      color: var(--text-dim);
+      font-size: 0.86rem;
+    }
+
+    .lens-example {
+      background: var(--accent-soft);
+      border-left: 2px solid var(--accent);
+      padding: 0.6rem 1rem;
+      margin: 0.4rem 0;
+      font-size: 0.86rem;
+      font-style: italic;
+      color: #b8b0f0;
+      border-radius: 0 3px 3px 0;
+    }
+
+    .path-meta {
+      display: grid;
+      grid-template-columns: 120px 1fr;
+      gap: 0.4rem 0.75rem;
+      margin: 1.25rem 0;
+      font-size: 0.88rem;
+    }
+
+    .path-meta-label {
+      color: var(--text-dim);
+      font-family: monospace;
+      font-size: 0.78rem;
+    }
+
+    @media (max-width: 560px) {
+      .path-grid { grid-template-columns: 1fr; }
+      .node-field { grid-template-columns: 1fr; }
+      .path-meta { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+<div class="page">
+
+  <header>
+    <h1>Atlas Design Notes</h1>
+    <div class="meta">
+      <span data-label="date">2026-05-09</span>
+      <span data-label="status">early concept — not a build spec</span>
+    </div>
+  </header>
+
+  <!-- 1. Core Philosophy -->
+  <section>
+    <h2>1. Core Philosophy</h2>
+    <p>
+      Atlas is not a utilitarian product. Its primary purpose is to help users
+      freely explore the world and acquire more agency — not to check off learning
+      objectives or build a resume.
+    </p>
+    <p>
+      The central metaphor comes from <code>docs/Chat.md</code>: a person's
+      perception of reality is filtered through a lens made of their senses,
+      experiences, and knowledge. When they acquire a new knowledge node, the image
+      they extract from the same reality gains a new channel — the way an image goes
+      from RG to RGB. Atlas exists to give people more channels, so the same reality
+      yields more interesting things to notice and make.
+    </p>
+    <div class="quote">
+      A toy ray tracer, a handmade plush toy, a running finish line — the point is
+      not that the artifact is impressive. The point is that the person holds
+      something they made, and that experience recalibrates what they believe they
+      are capable of building next.
+    </div>
+    <p>Atlas should never feel like school before it feels like possibility.</p>
+  </section>
+
+  <!-- 2. System Position -->
+  <section>
+    <h2>2. System Position</h2>
+    <div class="diagram"><span class="arrow">Lumen</span>  (perception layer — page-bound Lens cards)
+  |
+  |  Lens as node candidate
+  v
+<span class="arrow">Atlas</span>   (path-weaving and project layer)</div>
+    <p>
+      A Lens is contextual, personal, and often playful. It does not automatically
+      become a canonical knowledge node. Atlas can later promote, group, cite, or
+      remix Lens into reusable path material. The bridge is intentional and slow:
+      Lumen validates participation first; Atlas becomes worth building only if
+      people create Lens that others want to return to.
+    </p>
+  </section>
+
+  <!-- 3. Path Types -->
+  <section>
+    <h2>3. Path Types</h2>
+    <div class="path-grid">
+      <div class="path-card">
+        <h4>Vertical</h4>
+        <p>
+          A route through a single domain from the user's current state toward a toy
+          project. Example: from no sewing experience to completing a stuffed toy.
+        </p>
+      </div>
+      <div class="path-card">
+        <h4>Horizontal</h4>
+        <p>
+          Extracts a targeted slice of domain B to illuminate domain A — not to make
+          the user an expert in B, but to plant a few key seeds. Example: a 3D
+          modeler learning the five graphics concepts that explain why their tools
+          behave the way they do.
+        </p>
+      </div>
+    </div>
+    <p>
+      Horizontal paths may be Atlas's most distinctive value. No existing learning
+      platform produces "the graphics knowledge a modeler actually needs" because it
+      does not fit a course format. But for a real learner, it is often the most
+      useful thing.
+    </p>
+  </section>
+
+  <!-- 4. Node Model -->
+  <section>
+    <h2>4. Node Model</h2>
+    <h3>Restorable states, not knowledge labels</h3>
+    <p>
+      A node is not "understands UV unwrapping." It is "can UV unwrap an inorganic
+      object and bake a clean normal map." Any observer — including the learner —
+      can verify whether the state has been reached. Self-declared knowledge claims
+      cannot be verified.
+    </p>
+    <p>Two valid forms of restorable state:</p>
+    <ul style="padding-left:1.5rem; margin-bottom:1rem; color: var(--text);">
+      <li style="margin-bottom:0.4rem"><strong>Artifact</strong> — can produce a physical or digital object that meets a concrete description</li>
+      <li><strong>Transmission</strong> — can explain a concept clearly enough that another person understands it</li>
+    </ul>
+    <p style="color:var(--text-dim); font-size:0.9rem">"I read about it" is neither.</p>
+
+    <h3>Three dependency types</h3>
+    <p>Most assumed hard dependencies are actually soft or parallel:</p>
+    <table class="dep-table">
+      <thead>
+        <tr>
+          <th>Type</th>
+          <th>Meaning</th>
+          <th>Consequence</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td><span class="badge badge-hard">hard</span></td>
+          <td>A is a logical prerequisite for B; reversed order is incoherent</td>
+          <td>Rare; enforced in the path model</td>
+        </tr>
+        <tr>
+          <td><span class="badge badge-soft">soft</span></td>
+          <td>A makes B significantly easier, but B is reachable without A</td>
+          <td>Common; fork-safe</td>
+        </tr>
+        <tr>
+          <td><span class="badge badge-parallel">parallel</span></td>
+          <td>A and B are independent; ordering is the author's narrative choice</td>
+          <td>Very common; both orderings are valid</td>
+        </tr>
+      </tbody>
+    </table>
+    <p>
+      The scarcity of hard dependencies means fork freedom is high. A path author's
+      ordering choice is itself meaningful: two paths that traverse the same nodes in
+      different orders produce subtly different understanding.
+    </p>
+  </section>
+
+  <!-- 5. Path Emergence -->
+  <section>
+    <h2>5. Path Emergence</h2>
+    <p>
+      A path is primarily a byproduct of the author's own learning process, not a
+      product designed for an audience.
+    </p>
+    <div class="diagram">read pages
+  → leave Lens as reading annotations
+  → Lens accumulate across many pages
+  → author looks back and sees a traversal
+  → author weaves Lens and external resources into a structured path
+  → path is shared, forked, and remixed by others</div>
+    <p>
+      The transition from "consumer" to "creator" is not a deliberate role switch.
+      A person following an existing path will naturally leave Lens at nodes where
+      the path's coverage is thin. Those Lens become the raw material for a fork.
+    </p>
+    <p>
+      The first path in Atlas must be real — not a demonstration. It should record
+      an actual traversal by the author, including where they were confused, what
+      they skipped, and what they wish they had read first.
+    </p>
+  </section>
+
+  <!-- 6. Background Matching -->
+  <section>
+    <h2>6. Background Matching</h2>
+    <h3>Matching is by starting point, not difficulty level</h3>
+    <p>
+      Traditional platforms sort by beginner / intermediate / advanced. Atlas sorts
+      by "where you're coming from." Two paths to the same toy project are not ranked
+      by quality — they are adapted to different incoming knowledge states.
+    </p>
+    <p>
+      The path author's background is metadata, not decoration. A path written by a
+      graphic designer who learned sewing is most useful to other graphic designers
+      learning sewing — not because it is better, but because its blind spots and
+      emphases align with theirs.
+    </p>
+    <h3>User profile</h3>
+    <p>A user's profile is their current set of reached nodes. Profile-building should be lightweight and progressive:</p>
+    <ul style="padding-left:1.5rem; color:var(--text);">
+      <li style="margin-bottom:0.4rem">On entry: quick scan of concrete node descriptions ("can you do X?") rather than abstract domain declarations</li>
+      <li style="margin-bottom:0.4rem">During use: completing a path node automatically adds it to the profile</li>
+      <li>Ongoing: Lens activity and browsing behavior provide implicit signal</li>
+    </ul>
+  </section>
+
+  <!-- 7. Discovery -->
+  <section>
+    <h2>7. Discovery Mechanism</h2>
+    <p>The discovery interface should show users "you are this close":</p>
+    <div class="gap-demo">
+      <div class="line"><span class="key">user reached nodes</span>  <span class="val">{A, B, C}</span></div>
+      <div class="line"><span class="key">toy project X needs</span> <span class="val">{A, B, C, D, E}</span></div>
+      <div class="result">→ "you are two nodes from X"</div>
+    </div>
+    <p>Distance alone is not sufficient — the toy project must also match the user's interests. The recommendation logic:</p>
+    <ol style="padding-left:1.5rem; color:var(--text);">
+      <li style="margin-bottom:0.4rem">Filter by projects the user is likely to find compelling (interests, Lens activity, declared curiosity)</li>
+      <li style="margin-bottom:0.4rem">Within that set, surface the ones with the smallest node gap</li>
+      <li>Show the gap explicitly, not just the destination</li>
+    </ol>
+    <p style="color:var(--text-dim); font-size:0.9rem; margin-top:1rem">
+      Early Atlas should rely on manual discovery, search, and social sharing.
+      Matching algorithms come later, if at all.
+    </p>
+  </section>
+
+  <!-- 8. First Prototype Path -->
+  <section>
+    <h2>8. First Prototype Path</h2>
+    <div class="path-meta">
+      <span class="path-meta-label">title</span>
+      <span>Graph fundamentals for 3D modelers</span>
+      <span class="path-meta-label">type</span>
+      <span>Horizontal (cross-domain)</span>
+      <span class="path-meta-label">audience</span>
+      <span>Someone with meaningful 3D modeling practice who lacks a graphics or mathematics background and cannot explain why their tools behave the way they do</span>
+      <span class="path-meta-label">toy project</span>
+      <span>A modeler who can answer "why" questions that previously felt opaque, and who can diagnose bad normals, UV distortion, and render-time cost from first principles</span>
+    </div>
+
+    <div class="node-list">
+
+      <div class="node">
+        <div class="node-header">
+          <span class="node-number">01</span>
+          <span class="node-title">Why triangles</span>
+        </div>
+        <div class="node-body">
+          <div class="node-field">
+            <span class="node-field-label">state</span>
+            <span class="node-field-value">Can explain why GPUs operate on triangles and why quads must be triangulated before rendering</span>
+          </div>
+          <div class="node-field">
+            <span class="node-field-label">unlocks</span>
+            <span class="node-field-value">Understanding of why topology rules exist, why game and sculpt meshes have different requirements, what "tris count" actually measures</span>
+          </div>
+          <div class="node-field">
+            <span class="node-field-label">dependency</span>
+            <span class="node-field-value node-dep"><span class="badge badge-parallel">none</span> entry node</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="node">
+        <div class="node-header">
+          <span class="node-number">02</span>
+          <span class="node-title">What UV unwrapping solves</span>
+        </div>
+        <div class="node-body">
+          <div class="node-field">
+            <span class="node-field-label">state</span>
+            <span class="node-field-value">Can explain what problem UV unwrapping addresses and why seams and stretch are unavoidable trade-offs rather than software failures</span>
+          </div>
+          <div class="node-field">
+            <span class="node-field-label">unlocks</span>
+            <span class="node-field-value">Principled decisions about seam placement; understanding of why some UV layouts require more texture resolution</span>
+          </div>
+          <div class="node-field">
+            <span class="node-field-label">dependency</span>
+            <span class="node-field-value node-dep"><span class="badge badge-parallel">parallel</span> to node 03 — both depend on 01, not each other</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="node">
+        <div class="node-header">
+          <span class="node-number">03</span>
+          <span class="node-title">What a normal vector is and why lighting uses it</span>
+        </div>
+        <div class="node-body">
+          <div class="node-field">
+            <span class="node-field-label">state</span>
+            <span class="node-field-value">Can explain what a surface normal is and how the rendering pipeline uses it to compute lighting</span>
+          </div>
+          <div class="node-field">
+            <span class="node-field-label">unlocks</span>
+            <span class="node-field-value">Node 04 (normal maps); understanding of shading artifacts caused by bad normals</span>
+          </div>
+          <div class="node-field">
+            <span class="node-field-label">dependency</span>
+            <span class="node-field-value node-dep"><span class="badge badge-parallel">parallel</span> to node 02</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="node">
+        <div class="node-header">
+          <span class="node-number">04</span>
+          <span class="node-title">What a normal map actually contains</span>
+        </div>
+        <div class="node-body">
+          <div class="node-field">
+            <span class="node-field-label">state</span>
+            <span class="node-field-value">Can explain that a normal map is data (direction vectors per texel) stored in image format, not a picture for human eyes; can read color channels as directional data</span>
+          </div>
+          <div class="node-field">
+            <span class="node-field-label">unlocks</span>
+            <span class="node-field-value">Understanding of why normal maps are blue, why baking matters, why normal maps break when meshes are mirrored without adjustment</span>
+          </div>
+          <div class="node-field">
+            <span class="node-field-label">dependency</span>
+            <span class="node-field-value node-dep"><span class="badge badge-hard">hard</span> on node 03</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="node">
+        <div class="node-header">
+          <span class="node-number">05</span>
+          <span class="node-title">The rendering pipeline as a frame for modeling decisions</span>
+        </div>
+        <div class="node-body">
+          <div class="node-field">
+            <span class="node-field-label">state</span>
+            <span class="node-field-value">Can trace a rough path from mesh in the modeling tool to pixels on screen and identify which pipeline stage each modeling concern belongs to</span>
+          </div>
+          <div class="node-field">
+            <span class="node-field-label">unlocks</span>
+            <span class="node-field-value">Intuition for why some effects are "free" and others expensive; understanding of how material parameters map to shading stage behavior</span>
+          </div>
+          <div class="node-field">
+            <span class="node-field-label">dependency</span>
+            <span class="node-field-value node-dep"><span class="badge badge-soft">soft</span> on nodes 01–04 — works best after them, but can serve as a framing node at the start for a different narrative order</span>
+          </div>
+        </div>
+      </div>
+
+    </div>
+
+    <h3>Lens role in this path</h3>
+    <p>The most valuable Lens on this path are not summaries of concepts — textbooks have those. The valuable Lens are only producible by people who have made the crossing:</p>
+    <div class="lens-example">"I was a modeler for three years and never realized this was why X happened."</div>
+    <div class="lens-example">"The explanation in this article is technically correct but misses the intuition; here is the version that clicked for me."</div>
+    <div class="lens-example">"After understanding node 03, I went back to this old project and immediately saw what was wrong with the shading."</div>
+  </section>
+
+  <!-- 9. Open Questions -->
+  <section>
+    <h2>9. Open Questions</h2>
+    <p style="color:var(--text-dim); font-size:0.88rem; margin-bottom:1rem">Unresolved — should not be treated as decisions.</p>
+    <div class="question-list">
+      <div class="question">
+        <span class="question-num">01</span>
+        <div>
+          <div class="question-title">Cold start experience</div>
+          <div class="question-body">Before any paths exist, what does a new user see and do? The first path must be real, but the creation tool's minimum viable form is undefined.</div>
+        </div>
+      </div>
+      <div class="question">
+        <span class="question-num">02</span>
+        <div>
+          <div class="question-title">Node identity and reuse</div>
+          <div class="question-body">If "can UV unwrap an inorganic object" appears in multiple paths, is it the same node or a copy? Shared node identity enables cross-path traversal graphs; copies are simpler to implement but fragment the network.</div>
+        </div>
+      </div>
+      <div class="question">
+        <span class="question-num">03</span>
+        <div>
+          <div class="question-title">Horizontal path discovery</div>
+          <div class="question-body">A modeler does not know to search for "graphics concepts for modelers." How does Atlas surface the cross-domain path to someone who does not know it exists?</div>
+        </div>
+      </div>
+      <div class="question">
+        <span class="question-num">04</span>
+        <div>
+          <div class="question-title">Physical resource layer</div>
+          <div class="question-body">For non-digital toy projects (sewing, cooking, physical electronics), "what to learn" and "what to use" are equally important barriers. Atlas's relationship to shared physical resources — makerspaces, lending tools, local groups — is undefined.</div>
+        </div>
+      </div>
+      <div class="question">
+        <span class="question-num">05</span>
+        <div>
+          <div class="question-title">Salon and offline community</div>
+          <div class="question-body">The original vision includes small-group sharing sessions built around toy projects. The relationship between Atlas digital paths and offline gathering is unexplored.</div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+</div>
+</body>
+</html>

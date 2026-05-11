@@ -58,6 +58,7 @@ North star:
 - Architecture or cross-cutting technical decisions: `docs/ARCHITECTURE.md`.
 - Lens rich content / long reading: `docs/product/lens-reading-design.md`.
 - Ecosystem, Atlas, paths, and toy projects: `docs/product/ecosystem-roadmap.md`.
+- Atlas design thinking and first prototype path: `docs/product/atlas-design.md`.
 - Companion mode: `docs/technical/companion-mode-mvp.md`.
 - Persistent Lounge: `docs/product/persistent-lounge-design.md`.
 - Anchoring: `docs/technical/lens-anchoring.md` and
