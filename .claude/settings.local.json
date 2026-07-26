@@ -6,7 +6,11 @@
       "Bash(dir E:\\\\src\\\\SStree-v2\\\\apps\\\\extension\\\\dist\\\\assets *)",
       "Bash(bun run *)",
       "Bash(echo \"EXIT_CODE:$?\")",
-      "Bash(echo \"EXIT:$?\")"
+      "Bash(echo \"EXIT:$?\")",
+      "Bash(python3 -c \"import sys, json; [print\\(json.dumps\\(json.loads\\(l\\), indent=2\\)[:1000]\\) for l in sys.stdin]\")",
+      "Bash(python3 -c ' *)",
+      "Bash(python3)",
+      "Bash(python3 *)"
     ]
   }
 }
