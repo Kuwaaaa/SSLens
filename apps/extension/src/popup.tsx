@@ -7,16 +7,19 @@ import { API_BASE } from "./shared/config";
 import {
   getSiteHidden,
   getReadingMode,
+  getTheme,
   getToken,
   getUser,
   logout,
   normalizeHost,
   setReadingMode as saveReadingMode,
   setSiteHidden,
+  setTheme as saveTheme,
   setToken,
   setUser,
   type StoredUser,
 } from "./shared/storage";
+import { DEFAULT_THEME_ID, LUMEN_THEME_IDS, LUMEN_THEMES, type LumenThemeId } from "./theme";
 
 const MODES: ReadingMode[] = ["quiet", "thinking", "full"];
 
@@ -39,6 +42,7 @@ function Popup() {
   const [token, setTok] = useState<string | null>(null);
   const [user, setU] = useState<StoredUser | null>(null);
   const [mode, setMode] = useState<ReadingMode>("quiet");
+  const [theme, setTheme] = useState<LumenThemeId>(DEFAULT_THEME_ID);
   const [currentHost, setCurrentHost] = useState<string | null>(null);
   const [siteHidden, setSiteHiddenState] = useState(false);
   const [code, setCode] = useState("");
@@ -48,16 +52,19 @@ function Popup() {
 
   useEffect(() => {
     async function load() {
-      const [nextToken, nextUser, nextMode, tabs] = await Promise.all([
+      const [nextToken, nextUser, nextMode, nextTheme, tabs] = await Promise.all([
         getToken(),
         getUser(),
         getReadingMode(),
+        getTheme(),
         chrome.tabs.query({ active: true, currentWindow: true }),
       ]);
       const host = hostForTabUrl(tabs[0]?.url);
       setTok(nextToken);
       setU(nextUser);
       setMode(nextMode);
+      setTheme(nextTheme);
+      document.documentElement.dataset.lumenTheme = nextTheme;
       setCurrentHost(host);
       if (host) setSiteHiddenState(await getSiteHidden(host));
     }
@@ -96,6 +103,12 @@ function Popup() {
     setMode(m);
   }
 
+  async function onThemeChange(nextTheme: LumenThemeId) {
+    await saveTheme(nextTheme);
+    setTheme(nextTheme);
+    document.documentElement.dataset.lumenTheme = nextTheme;
+  }
+
   async function onSiteHiddenChange(value: boolean) {
     if (!currentHost) return;
     await setSiteHidden(currentHost, value);
@@ -124,6 +137,22 @@ function Popup() {
             ))}
           </div>
           <p className="mode-desc">{MODE_DESCRIPTIONS[mode]} You can also switch this from the page panel.</p>
+        </div>
+
+        <div className="theme-section">
+          <label>UI skin</label>
+          <div className="theme-buttons">
+            {LUMEN_THEME_IDS.map((id) => (
+              <button
+                key={id}
+                className={`theme-btn ${theme === id ? "active" : ""}`}
+                onClick={() => onThemeChange(id)}
+              >
+                <span>{LUMEN_THEMES[id].label}</span>
+              </button>
+            ))}
+          </div>
+          <p className="mode-desc">{LUMEN_THEMES[theme].description}</p>
         </div>
 
         {currentHost && (

@@ -4,6 +4,78 @@
 :host {
   font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
   color: #1a1a1a;
+  --lumen-color-text: #1a1a1a;
+  --lumen-color-heading: #2b153d;
+  --lumen-color-muted: #777;
+  --lumen-color-subtle: #888;
+  --lumen-color-primary: #4a1a7a;
+  --lumen-color-primary-hover: rgba(139, 92, 246, 0.08);
+  --lumen-color-primary-soft: #f1e8ff;
+  --lumen-color-primary-wash: #faf6ff;
+  --lumen-color-accent: #f59e0b;
+  --lumen-color-accent-text: #92400e;
+  --lumen-color-accent-soft: #fffbeb;
+  --lumen-color-danger: #b91c1c;
+  --lumen-color-success: #15803d;
+  --lumen-surface-panel: rgba(255, 255, 255, 0.98);
+  --lumen-surface-solid: #fff;
+  --lumen-surface-control: #fff;
+  --lumen-surface-code: #171321;
+  --lumen-text-code: #f6f0ff;
+  --lumen-border-subtle: rgba(107, 33, 168, 0.18);
+  --lumen-border-strong: rgba(107, 33, 168, 0.3);
+  --lumen-border-control: #d4c4ea;
+  --lumen-border-accent: rgba(245, 158, 11, 0.32);
+  --lumen-radius-control: 6px;
+  --lumen-radius-panel: 14px;
+  --lumen-radius-inner: 8px;
+  --lumen-radius-pill: 999px;
+  --lumen-shadow-control: 0 6px 20px rgba(80, 60, 130, 0.2);
+  --lumen-shadow-panel: 0 20px 50px rgba(80, 60, 130, 0.22);
+  --lumen-shadow-picker: 0 10px 24px rgba(80, 60, 130, 0.16);
+  --lumen-orb-bg: linear-gradient(135deg, #fff, #f1e8ff);
+  --lumen-body-fade: linear-gradient(to bottom, rgba(255, 255, 255, 0), rgba(255, 255, 255, 0.98) 78%);
+  --lumen-chat-bg: linear-gradient(180deg, rgba(241, 232, 255, 0.42), rgba(255, 255, 255, 0));
+  --lumen-tooltip-bg: #1f1630;
+  --lumen-live-dot: #16a34a;
+  --lumen-idle-dot: #aaa;
+  --lumen-motion-enter-duration: 180ms;
+  --lumen-motion-bloom-duration: 720ms;
+}
+
+:host([data-lumen-theme="signal"]) {
+  color: #e5eef3;
+  --lumen-color-text: #dbeafe;
+  --lumen-color-heading: #ecfeff;
+  --lumen-color-muted: #8aa7b5;
+  --lumen-color-subtle: #7f9bad;
+  --lumen-color-primary: #22d3ee;
+  --lumen-color-primary-hover: rgba(34, 211, 238, 0.12);
+  --lumen-color-primary-soft: rgba(34, 211, 238, 0.12);
+  --lumen-color-primary-wash: rgba(8, 47, 73, 0.72);
+  --lumen-color-accent: #f97316;
+  --lumen-color-accent-text: #fed7aa;
+  --lumen-color-accent-soft: rgba(154, 52, 18, 0.48);
+  --lumen-color-danger: #fca5a5;
+  --lumen-color-success: #86efac;
+  --lumen-surface-panel: rgba(8, 18, 28, 0.96);
+  --lumen-surface-solid: #0b1622;
+  --lumen-surface-control: #0f2232;
+  --lumen-surface-code: #050b12;
+  --lumen-text-code: #cffafe;
+  --lumen-border-subtle: rgba(34, 211, 238, 0.22);
+  --lumen-border-strong: rgba(34, 211, 238, 0.42);
+  --lumen-border-control: rgba(125, 211, 252, 0.34);
+  --lumen-border-accent: rgba(249, 115, 22, 0.45);
+  --lumen-shadow-control: 0 8px 24px rgba(3, 12, 22, 0.42), 0 0 0 1px rgba(34, 211, 238, 0.06);
+  --lumen-shadow-panel: 0 22px 58px rgba(2, 6, 23, 0.58), 0 0 36px rgba(34, 211, 238, 0.12);
+  --lumen-shadow-picker: 0 14px 30px rgba(2, 6, 23, 0.48);
+  --lumen-orb-bg: linear-gradient(135deg, rgba(8, 18, 28, 0.98), rgba(12, 74, 110, 0.92));
+  --lumen-body-fade: linear-gradient(to bottom, rgba(8, 18, 28, 0), rgba(8, 18, 28, 0.98) 78%);
+  --lumen-chat-bg: linear-gradient(180deg, rgba(12, 74, 110, 0.35), rgba(8, 18, 28, 0));
+  --lumen-tooltip-bg: #e0f2fe;
+  --lumen-live-dot: #22c55e;
+  --lumen-idle-dot: #486272;
 }
 
 * {
@@ -1715,6 +1787,214 @@ button, input, textarea, select {
   text-decoration: none;
   font-style: italic;
   cursor: not-allowed;
+}
+
+/* --- Theme contract overrides ---
+   Keep old selectors as the Classic baseline, then make the active skin
+   visible across the core overlay surfaces through shared tokens. */
+
+:host([data-lumen-theme]) .orb,
+:host([data-lumen-theme]) .create-button,
+:host([data-lumen-theme]) .restore-tab {
+  border-color: var(--lumen-border-subtle);
+  background: var(--lumen-orb-bg);
+  color: var(--lumen-color-primary);
+  box-shadow: var(--lumen-shadow-control);
+}
+
+:host([data-lumen-theme]) .orb .dot {
+  background: var(--lumen-live-dot);
+}
+
+:host([data-lumen-theme]) .orb .dot.idle {
+  background: var(--lumen-idle-dot);
+}
+
+:host([data-lumen-theme]) .orb .orb-meta,
+:host([data-lumen-theme]) .meta,
+:host([data-lumen-theme]) .ip-header-meta,
+:host([data-lumen-theme]) .ip-label,
+:host([data-lumen-theme]) .ip-hint,
+:host([data-lumen-theme]) .companion-chat-empty,
+:host([data-lumen-theme]) .companion-chat-meta,
+:host([data-lumen-theme]) .orphan-meta,
+:host([data-lumen-theme]) .orphan-quote {
+  color: var(--lumen-color-muted);
+}
+
+:host([data-lumen-theme]) .orb .orb-badge,
+:host([data-lumen-theme]) .cluster-note,
+:host([data-lumen-theme]) .stack-label,
+:host([data-lumen-theme]) .show-more-lens,
+:host([data-lumen-theme]) .jump-anchor,
+:host([data-lumen-theme]) .orphan-action,
+:host([data-lumen-theme]) .reanchor-hint,
+:host([data-lumen-theme]) .ip-action.companion {
+  color: var(--lumen-color-accent-text);
+}
+
+:host([data-lumen-theme]) .orb .orb-badge,
+:host([data-lumen-theme]) .cluster-note,
+:host([data-lumen-theme]) .companion-chat-message.mine .companion-chat-body,
+:host([data-lumen-theme]) .orphan-row,
+:host([data-lumen-theme]) .ip-action.companion {
+  border-color: var(--lumen-border-accent);
+  background: var(--lumen-color-accent-soft);
+}
+
+:host([data-lumen-theme]) .card,
+:host([data-lumen-theme]) .composer,
+:host([data-lumen-theme]) .reanchor-confirm,
+:host([data-lumen-theme]) .info-panel,
+:host([data-lumen-theme]) .no-token-hint {
+  border-color: var(--lumen-border-subtle);
+  border-radius: var(--lumen-radius-panel);
+  background: var(--lumen-surface-panel);
+  color: var(--lumen-color-text);
+  box-shadow: var(--lumen-shadow-panel);
+}
+
+:host([data-lumen-theme]) .card .quote,
+:host([data-lumen-theme]) .composer .quote-preview,
+:host([data-lumen-theme]) .reanchor-confirm .quote-preview,
+:host([data-lumen-theme]) .card .lens-markdown blockquote {
+  border-color: var(--lumen-border-strong);
+  background: var(--lumen-color-primary-wash);
+  color: var(--lumen-color-muted);
+}
+
+:host([data-lumen-theme]) .card .body-fade {
+  background: var(--lumen-body-fade);
+}
+
+:host([data-lumen-theme]) .card .body-read-more,
+:host([data-lumen-theme]) .card .lens-markdown a,
+:host([data-lumen-theme]) .ref-url,
+:host([data-lumen-theme]) .ref-lens,
+:host([data-lumen-theme]) .ip-link-action,
+:host([data-lumen-theme]) .composer .checkbox-row,
+:host([data-lumen-theme]) .composer .overlap-hint button,
+:host([data-lumen-theme]) .composer .ref-insert-toggle,
+:host([data-lumen-theme]) .info-panel .ip-mode-switch button,
+:host([data-lumen-theme]) .info-panel .ip-action,
+:host([data-lumen-theme]) .info-panel .ip-actions button,
+:host([data-lumen-theme]) .companion-chat-form button,
+:host([data-lumen-theme]) .icon-action {
+  color: var(--lumen-color-primary);
+}
+
+:host([data-lumen-theme]) .pill,
+:host([data-lumen-theme]) .ref-lens,
+:host([data-lumen-theme]) .ip-chat-summary span {
+  border-color: var(--lumen-border-subtle);
+  background: var(--lumen-color-primary-soft);
+  color: var(--lumen-color-primary);
+}
+
+:host([data-lumen-theme]) .card .lens-markdown h3,
+:host([data-lumen-theme]) .card .lens-markdown h4,
+:host([data-lumen-theme]) .card .lens-markdown h5 {
+  color: var(--lumen-color-heading);
+}
+
+:host([data-lumen-theme]) .reaction-chip,
+:host([data-lumen-theme]) .reaction-add,
+:host([data-lumen-theme]) .reaction-choice,
+:host([data-lumen-theme]) .reaction-picker,
+:host([data-lumen-theme]) .collapsed-lens,
+:host([data-lumen-theme]) .icon-action,
+:host([data-lumen-theme]) .composer select,
+:host([data-lumen-theme]) .composer textarea,
+:host([data-lumen-theme]) .composer input[type="text"],
+:host([data-lumen-theme]) .composer .ref-insert-toggle,
+:host([data-lumen-theme]) .composer .ref-insert-list,
+:host([data-lumen-theme]) .composer .ref-insert-item,
+:host([data-lumen-theme]) .info-panel .ip-mode-switch,
+:host([data-lumen-theme]) .info-panel .ip-action,
+:host([data-lumen-theme]) .info-panel .ip-actions button,
+:host([data-lumen-theme]) .companion-emoji-button,
+:host([data-lumen-theme]) .companion-chat,
+:host([data-lumen-theme]) .companion-chat-body,
+:host([data-lumen-theme]) .companion-chat-form,
+:host([data-lumen-theme]) .companion-chat-form input,
+:host([data-lumen-theme]) .companion-chat-form button,
+:host([data-lumen-theme]) .ip-debug-body {
+  border-color: var(--lumen-border-subtle);
+  background: var(--lumen-surface-control);
+  color: var(--lumen-color-text);
+}
+
+:host([data-lumen-theme]) .reaction-chip:hover:not(:disabled),
+:host([data-lumen-theme]) .reaction-add:hover,
+:host([data-lumen-theme]) .reaction-choice:hover:not(:disabled),
+:host([data-lumen-theme]) .composer .ref-insert-item:hover,
+:host([data-lumen-theme]) .restore-tab:hover,
+:host([data-lumen-theme]) .icon-action:hover,
+:host([data-lumen-theme]) .info-panel .ip-action:hover,
+:host([data-lumen-theme]) .info-panel .ip-actions button:hover {
+  background: var(--lumen-color-primary-hover);
+}
+
+:host([data-lumen-theme]) .reaction-chip.selected,
+:host([data-lumen-theme]) .show-more-lens:hover,
+:host([data-lumen-theme]) .collapsed-lens:hover,
+:host([data-lumen-theme]) .jump-anchor:hover,
+:host([data-lumen-theme]) .orphan-action:hover:not(:disabled),
+:host([data-lumen-theme]) .info-panel .ip-action.companion:hover {
+  border-color: var(--lumen-border-accent);
+  background: var(--lumen-color-accent-soft);
+  color: var(--lumen-color-accent-text);
+}
+
+:host([data-lumen-theme]) .info-panel .ip-mode-switch button.active,
+:host([data-lumen-theme]) .composer button,
+:host([data-lumen-theme]) .reanchor-confirm button {
+  border-color: var(--lumen-color-primary);
+  background: var(--lumen-color-primary);
+  color: var(--lumen-surface-solid);
+}
+
+:host([data-lumen-theme]) .composer button.cancel,
+:host([data-lumen-theme]) .reanchor-confirm button.cancel {
+  background: var(--lumen-surface-control);
+  color: var(--lumen-color-primary);
+}
+
+:host([data-lumen-theme]) .md-inline-code {
+  border-color: var(--lumen-border-subtle);
+  background: var(--lumen-color-primary-wash);
+  color: var(--lumen-color-heading);
+}
+
+:host([data-lumen-theme]) .md-code-block {
+  border-color: var(--lumen-border-subtle);
+  background: var(--lumen-surface-code);
+  color: var(--lumen-text-code);
+}
+
+:host([data-lumen-theme]) .companion-emoji-burst {
+  border-color: var(--lumen-border-subtle);
+  background: var(--lumen-surface-panel);
+  box-shadow: var(--lumen-shadow-control);
+}
+
+:host([data-lumen-theme]) .info-panel .companion-chat-messages {
+  background: var(--lumen-chat-bg);
+}
+
+:host([data-lumen-theme]) .card .icon-action::after {
+  background: var(--lumen-tooltip-bg);
+  color: var(--lumen-surface-solid);
+}
+
+:host([data-lumen-theme]) .err,
+:host([data-lumen-theme]) .ip-actions .danger,
+:host([data-lumen-theme]) .ip-actions .report {
+  color: var(--lumen-color-danger);
+}
+
+:host([data-lumen-theme]) .ip-actions .success {
+  color: var(--lumen-color-success);
 }
 
 /* --- Universal entrance for popovers --- */

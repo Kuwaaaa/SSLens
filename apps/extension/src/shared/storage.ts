@@ -3,11 +3,13 @@
 // can subscribe to changes via chrome.storage.onChanged.
 
 import type { ReadingMode } from "@lumen/schema";
+import { DEFAULT_THEME_ID, normalizeThemeId, type LumenThemeId } from "../theme";
 
 export const KEY_TOKEN = "lumen.token";
 export const KEY_USER = "lumen.user";
 export const KEY_READING_MODE = "lumen.readingMode";
 export const KEY_HIDDEN_SITES = "lumen.hiddenSites";
+export const KEY_THEME = "lumen.theme";
 
 export interface StoredUser {
   userId: string;
@@ -43,6 +45,15 @@ export async function getReadingMode(): Promise<ReadingMode> {
 
 export async function setReadingMode(mode: ReadingMode): Promise<void> {
   await chrome.storage.local.set({ [KEY_READING_MODE]: mode });
+}
+
+export async function getTheme(): Promise<LumenThemeId> {
+  const r = await chrome.storage.local.get(KEY_THEME);
+  return normalizeThemeId(r[KEY_THEME] ?? DEFAULT_THEME_ID);
+}
+
+export async function setTheme(theme: LumenThemeId): Promise<void> {
+  await chrome.storage.local.set({ [KEY_THEME]: normalizeThemeId(theme) });
 }
 
 export async function getSiteHidden(host: string): Promise<boolean> {
