@@ -44,6 +44,16 @@ Production builds intentionally fail if `VITE_LUMEN_API_BASE` is missing,
 points at `localhost` / `127.0.0.1`, or uses plain HTTP. Temporary no-domain
 HTTP beta builds must set `LUMEN_ALLOW_HTTP_BETA=1` explicitly.
 
+For the current HTTP-only VPS beta, use the pinned helper instead:
+
+```bash
+# from repo root
+bun run build:extension:http-beta
+
+# or from apps/extension
+bun run build:http-beta
+```
+
 The manifest uses broad `http://*/*` and `https://*/*` access so Lumen can run
 on arbitrary webpages. In the Chrome Web Store listing, explain this permission
 as necessary for anchoring Lens cards to the page the user is currently reading.

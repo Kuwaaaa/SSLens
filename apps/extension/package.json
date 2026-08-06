@@ -6,6 +6,7 @@
   "scripts": {
     "dev": "vite",
     "build": "vite build",
+    "build:http-beta": "cmd /c \"set VITE_LUMEN_API_BASE=http://122.51.9.220/lumen&& set LUMEN_ALLOW_HTTP_BETA=1&& vite build\"",
     "preview": "vite preview"
   },
   "dependencies": {

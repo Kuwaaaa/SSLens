@@ -67,7 +67,7 @@ v2 不做：
 - **Invite mode：** 可选 server 设置，用于更紧的小群体。
 - **Anonymous Lens flag：** UI 隐藏作者，但 server 记录真实作者用于 moderation。
 
-这不是 zero-knowledge anonymity system。
+这不是 zero-knowledge anonymity system。当前公开 Lens 房间没有房间级私密成员校验；任何有效 beta 用户只要知道 room id，就可以拉取该房间 Lens。未来私密聊天室应该独立添加房间成员授权，不改变当前公开、页面绑定的 Lens 模型。
 
 ## 6. 和 Atlas 的关系
 

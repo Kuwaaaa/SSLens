@@ -40,7 +40,8 @@ Implemented:
 - Existing handles cannot mint new tokens; lost-token recovery is currently
   operator-assisted.
 - Optional invite-only mode with `LUMEN_INVITES_REQUIRED=1`.
-- Long-lived EdDSA bearer tokens.
+- Long-lived JWT-shaped EdDSA bearer tokens stored by the extension in
+  `chrome.storage.local`.
 - Operator token revocation through `POST /api/admin/revoke-user`.
 - Shared URL canonicalization through `@lumen/url` and server-side roomId
   verification on Lens creation.
@@ -55,13 +56,17 @@ Implemented:
 - WebSocket room subscription for Lens broadcast and presence.
 - WebSocket bearer tokens use a subprotocol instead of query strings for new
   clients; the old query form remains temporarily accepted for beta transition.
+- Public page-bound Lens rooms do not currently have per-room ACLs; future
+  private chat rooms should add their own membership authorization separately.
 - Companion-mode in-memory presence, emoji toss, chat, and short chat history.
 - WebSocket presence refcounts for multi-tab stability.
 - Companion chat/emoji WebSocket throttles and periodic memory pruning.
 - Runtime validation for Lens create/update payloads through `@lumen/schema`.
 - Additive SQLite migrations tracked in `schema_migrations`.
 - Operator-only `/api/status` health details.
-- Admin/test page under `apps/server/public/index.html`.
+- Operator Console under `apps/server/public/index.html`, with reports,
+  Lens search, page activity, user context, insights, and status views backed by
+  operator-only read APIs.
 
 Not implemented yet:
 
@@ -164,7 +169,15 @@ the animation can float over panel UI without blocking clicks.
 The repo contains a simple GitHub Pages docs site:
 
 - `docs/index.html`
+- `docs/roadmap.html`
+- `docs/roadmap.json`
+- `docs/roadmap.md`
 - `docs/privacy.html`
+
+Roadmap is intentionally not part of the Lumen cloud server. `docs/roadmap.json`
+is the static roadmap snapshot, `docs/roadmap.md` is generated for
+fresh-context agents, and `bun run dev:roadmap` starts a local-only preview
+server.
 
 The extension manifest includes generated PNG icons.
 
@@ -249,3 +262,15 @@ Manual smoke tests:
 - Lounge design: `docs/product/persistent-lounge-design.md`.
 - Anchoring: `docs/technical/lens-anchoring.md`.
 - Server scaling: `docs/technical/server-bottlenecks.md`.
+- Public roadmap page and feature-stage progress source:
+  `docs/roadmap.html` and `docs/roadmap.json`.
+- Agent-readable generated roadmap and feature notebooks:
+  `docs/roadmap.md` and `docs/features/`.
+- Roadmap Studio architecture and API plan:
+  `docs/technical/roadmap-studio-design.md`.
+- Reusable Agent Roadmap product and architecture direction:
+  `docs/technical/agent-roadmap-design.md`.
+- Roadmap agent operating procedure:
+  `docs/technical/roadmap-studio-design.md` section 6.
+- Theme system design and roadmap feedback contract:
+  `docs/technical/theme-system-design.md`.

@@ -28,7 +28,7 @@ Everything in this architecture exists to support that accumulation. Anything th
 | DB | SQLite via `bun:sqlite` | One file, microsecond latency, fits the scale |
 | TLS / proxy | Caddy 2 | Auto Let's Encrypt, 5-line config |
 | Host | Hetzner CX22 | €4.5/mo for 2vCPU/4GB/40GB, 20TB traffic |
-| Auth | Paseto v4 bearer token from invite code | No accounts, no passwords |
+| Auth | EdDSA-signed bearer token from handle/invite redemption | No accounts, no passwords |
 | Backup | Litestream → R2 | Streaming SQLite replication |
 | Extension framework | Vite + MV3 + React + TypeScript | Carry over from v1 |
 | WS client (extension) | partysocket | ~3KB reconnecting WS, MV3-safe |
@@ -131,15 +131,22 @@ Litestream replicates the DB file to R2/B2 every ~10s. Companion event traffic i
 
 ### 4.4 Auth
 
-1. Founder generates an invite code via CLI: `bun cli/issue-invite.ts --by founder`
-2. User pastes code into extension; extension POSTs `/api/redeem` with `{code, handle}`
-3. Server creates `users` row, marks invite consumed, returns Paseto v4 bearer token (`sub=user_id`, `exp=+365d`, signed with Ed25519)
+1. Founder optionally generates an invite code via CLI: `bun scripts/issue-invite.ts --by founder`
+2. User chooses a handle in the extension; if invite-only mode is enabled, the extension also POSTs the invite code to `/api/redeem`
+3. Server creates a `users` row, marks the invite consumed when one was supplied, and returns a JWT-shaped bearer token (`sub=user_id`, `iat`, `exp=+365d`, signed with Ed25519/EdDSA)
 4. Extension stores token in `chrome.storage.local`
-5. All API and WS connections include token; server verifies, attaches `user_id` to context
+5. All API and WS connections include token; server verifies the signature, expiry, and revocation cutoff, then attaches `user_id` to context
 
 Optional GitHub OAuth (P1) is layered on top: a `users.github_login` column populated via standard OAuth flow. It is a **badge**, not a login. The bearer token remains the auth credential.
 
 Per-Lens `anonymous: bool` flag: server records true author, client renders as "Anonymous" when set. This is **not zero-knowledge anonymity** — moderation requires us to know who said what. The privacy policy must say so plainly.
+
+Current beta storage boundary:
+
+- The extension stores the long-lived token in `chrome.storage.local`. This is acceptable for the small beta while the main risks are lost tokens and operator-managed abuse, but it means the token is a bearer secret: whoever obtains it can act as that user until expiry or operator revocation.
+- The server does not keep per-device sessions or refresh tokens. Revocation is per user through `token_revocations`, so revoking a user invalidates all tokens whose `iat` is at or before the revocation cutoff.
+- WebSocket clients send the token as a `lumen-token.<token>` subprotocol plus `lumen.v1`; the older `?token=` form remains only as a temporary beta fallback and should be removed once all clients have upgraded.
+- Public Lens rooms currently have no per-room ACL. Any valid beta user may fetch Lens for a known room id. Future private chat rooms can add room membership authorization independently without changing the public page-bound Lens model.
 
 ### 4.5 Deployment
 
@@ -431,7 +438,6 @@ CSS is imported as `?inline` into the content script bundle — **changes requir
 - **Numeric typography** — swap `JetBrains Mono` (or similar) for the orb count, type pills, and ref-chip lens IDs. Body content stays sans (it's user-authored, not UI).
 | Caddy | https://caddyserver.com | 2026-Q1 |
 | Litestream | https://litestream.io | 2026-Q1 |
-| Paseto | https://paseto.io | spec stable |
 | CSS Custom Highlight API (MDN) | https://developer.mozilla.org/en-US/docs/Web/API/CSS_Custom_Highlight_API | Interop 2026 |
 | W3C Web Annotation Data Model | https://www.w3.org/TR/annotation-model/ | REC since 2017 |
 | ClearURLs rules (URL canonicalization) | https://github.com/ClearURLs/Rules | active |

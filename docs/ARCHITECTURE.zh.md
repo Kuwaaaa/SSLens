@@ -28,7 +28,7 @@ v2 MVP 成功的定义——邀请群体经过 ~4 周自由使用之后：
 | 数据库 | SQLite via `bun:sqlite` | 一个文件，微秒级延迟，正合这个量级 |
 | TLS / 反代 | Caddy 2 | 自动 Let's Encrypt，5 行配置 |
 | 主机 | Hetzner CX22 | €4.5/月，2vCPU/4GB/40GB，20TB 流量 |
-| 鉴权 | 邀请码 → Paseto v4 bearer token | 不要账号、不要密码 |
+| 鉴权 | handle/邀请码兑换 → EdDSA 签名 bearer token | 不要账号、不要密码 |
 | 备份 | Litestream → R2 | SQLite 流式复制 |
 | 扩展框架 | Vite + MV3 + React + TypeScript | 沿用 v1 |
 | 扩展 WS 客户端 | partysocket | ~3KB 的重连 WS 库，MV3 兼容 |
@@ -130,15 +130,22 @@ Litestream 每 ~10s 把 DB 文件复制到 R2/B2。同伴事件流量**故意不
 
 ### 4.4 鉴权
 
-1. 创始人通过 CLI 生成邀请码：`bun cli/issue-invite.ts --by founder`
-2. 用户在扩展里粘贴邀请码；扩展 POST `/api/redeem` 带 `{code, handle}`
-3. 服务端创建 `users` 行、标记邀请已消费、返回 Paseto v4 bearer token（`sub=user_id`，`exp=+365d`，Ed25519 签名）
+1. 创始人可选通过 CLI 生成邀请码：`bun scripts/issue-invite.ts --by founder`
+2. 用户在扩展里选择 handle；如果开启 invite-only 模式，扩展也会把邀请码 POST 到 `/api/redeem`
+3. 服务端创建 `users` 行、在提供邀请码时标记邀请已消费，并返回 JWT-shaped bearer token（`sub=user_id`，`iat`，`exp=+365d`，Ed25519/EdDSA 签名）
 4. 扩展把 token 存进 `chrome.storage.local`
-5. 后续所有 API 和 WS 连接都带 token，服务端验签后把 `user_id` 挂到上下文
+5. 后续所有 API 和 WS 连接都带 token，服务端校验签名、过期时间和撤销 cutoff 后把 `user_id` 挂到上下文
 
 可选 GitHub OAuth（P1）叠在上面：`users.github_login` 列通过标准 OAuth 流写入。它是**徽章**，不是登录。bearer token 仍是鉴权凭据。
 
 每条 Lens 的 `anonymous: bool` 字段：服务端记录真实作者，前端在置位时显示为 "Anonymous"。**这不是零知识匿名**——moderation 需要知道谁说了什么。隐私政策必须明说。
+
+当前 beta 的存储边界：
+
+- 扩展把长期 token 存在 `chrome.storage.local`。对小范围 beta 来说可以接受，因为主要风险是 token 丢失和 operator 管理滥用；但它仍然是 bearer secret：谁拿到它，谁就能在过期或 operator 撤销前以该用户身份操作。
+- 服务端当前没有 per-device session 或 refresh token。撤销是按用户写入 `token_revocations`，所以撤销一个用户会让所有 `iat` 小于等于撤销 cutoff 的 token 失效。
+- WebSocket 新客户端通过 `lumen-token.<token>` subprotocol 加 `lumen.v1` 传 token；旧的 `?token=` 形式只作为 beta 过渡兼容，等客户端都升级后应该移除。
+- 公开 Lens 房间现在没有 per-room ACL。任何有效 beta 用户只要知道 room id，就可以拉取该房间 Lens。未来私密聊天室可以独立添加房间成员授权，不需要改变当前公开、页面绑定的 Lens 模型。
 
 ### 4.5 部署
 
@@ -430,7 +437,6 @@ CSS 通过 `?inline` 被打入 content script bundle —— **改 CSS 需要重�
 - **等宽数字字体** —— orb 数字、type pill、ref chip 的 lens id 用 `JetBrains Mono` 之类。body 内容保持 sans（是用户写的话，不是 UI）。
 | Caddy | https://caddyserver.com | 2026-Q1 |
 | Litestream | https://litestream.io | 2026-Q1 |
-| Paseto | https://paseto.io | spec 稳定 |
 | CSS Custom Highlight API（MDN） | https://developer.mozilla.org/en-US/docs/Web/API/CSS_Custom_Highlight_API | Interop 2026 |
 | W3C Web Annotation Data Model | https://www.w3.org/TR/annotation-model/ | 2017 起为 REC |
 | ClearURLs 规则（URL 规范化） | https://github.com/ClearURLs/Rules | 活跃 |

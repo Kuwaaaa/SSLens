@@ -86,7 +86,10 @@ The current identity model is intentionally small:
 - **Anonymous Lens flag:** hides the author in UI, but the server records the
   real author for moderation.
 
-This is not a zero-knowledge anonymity system.
+This is not a zero-knowledge anonymity system. Current public Lens rooms do not
+have per-room private membership checks; any valid beta user can fetch Lens for
+a known room id. Future private chat rooms should add their own room membership
+authorization without changing the public page-bound Lens model.
 
 ## 6. Relationship To Atlas
 
