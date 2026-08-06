@@ -255,6 +255,354 @@ export function handleListLenses(req: Request, user: TokenPayload): Response {
   });
 }
 
+// --- GET /api/admin/* read models ------------------------------------------
+
+function parseJsonArray(value: string): unknown[] {
+  try {
+    const parsed = JSON.parse(value);
+    return Array.isArray(parsed) ? parsed : [];
+  } catch {
+    return [];
+  }
+}
+
+function parseJsonObject(value: string): Record<string, unknown> {
+  try {
+    const parsed = JSON.parse(value);
+    return parsed && typeof parsed === "object" && !Array.isArray(parsed)
+      ? parsed as Record<string, unknown>
+      : {};
+  } catch {
+    return {};
+  }
+}
+
+function boundedLimit(url: URL, fallback = 100, max = 500): number {
+  const raw = Number(url.searchParams.get("limit") ?? fallback);
+  if (!Number.isFinite(raw)) return fallback;
+  return Math.max(1, Math.min(Math.trunc(raw), max));
+}
+
+function likeTerm(value: string): string {
+  return `%${value}%`;
+}
+
+interface AdminLensRow extends LensRow {
+  reaction_count: number;
+  report_count: number;
+  open_report_count: number;
+}
+
+function rowToAdminLens(row: AdminLensRow) {
+  return {
+    id: row.id,
+    type: row.type,
+    tags: parseJsonArray(row.tags),
+    refs: parseJsonArray(row.refs),
+    anchor: parseJsonObject(row.anchor),
+    body: row.body,
+    anonymous: row.anonymous === 1,
+    author: { id: row.author_id, handle: row.handle, githubLogin: row.github_login },
+    url: row.url,
+    roomId: row.room_id,
+    createdAt: row.created_at,
+    reactionCount: row.reaction_count,
+    reportCount: row.report_count,
+    openReportCount: row.open_report_count,
+  };
+}
+
+export function handleAdminListLenses(req: Request, user: TokenPayload): Response {
+  if (!isOperatorUser(user.sub)) return json({ error: "forbidden" }, 403);
+
+  const url = new URL(req.url);
+  const limit = boundedLimit(url);
+  const where: string[] = [];
+  const params: (string | number)[] = [];
+
+  const room = url.searchParams.get("room")?.trim();
+  if (room) {
+    if (!/^[a-f0-9]{64}$/.test(room)) return json({ error: "invalid room" }, 400);
+    where.push("l.room_id = ?");
+    params.push(room);
+  }
+
+  const author = url.searchParams.get("author")?.trim();
+  if (author) {
+    where.push("(l.author_id = ? OR u.handle LIKE ?)");
+    params.push(author, likeTerm(author));
+  }
+
+  const q = url.searchParams.get("q")?.trim();
+  if (q) {
+    where.push("(l.id = ? OR l.body LIKE ? OR l.url LIKE ? OR l.type LIKE ?)");
+    params.push(q, likeTerm(q), likeTerm(q), likeTerm(q));
+  }
+
+  const type = url.searchParams.get("type")?.trim();
+  if (type) {
+    where.push("l.type = ?");
+    params.push(type);
+  }
+
+  const reported = url.searchParams.get("reported");
+  if (reported === "1" || reported === "true") {
+    where.push("EXISTS (SELECT 1 FROM reports r WHERE r.lens_id = l.id)");
+  }
+
+  params.push(limit);
+  const rows = db.query<AdminLensRow, (string | number)[]>(`
+    SELECT
+      l.*,
+      u.handle,
+      u.github_login,
+      COUNT(DISTINCT reactions.user_id || ':' || reactions.kind) AS reaction_count,
+      COUNT(DISTINCT reports.id) AS report_count,
+      COUNT(DISTINCT open_reports.id) AS open_report_count
+    FROM lenses l
+    JOIN users u ON u.id = l.author_id
+    LEFT JOIN reactions ON reactions.lens_id = l.id
+    LEFT JOIN reports ON reports.lens_id = l.id
+    LEFT JOIN reports open_reports ON open_reports.lens_id = l.id AND open_reports.status = 'open'
+    ${where.length ? `WHERE ${where.join(" AND ")}` : ""}
+    GROUP BY l.id
+    ORDER BY l.created_at DESC
+    LIMIT ?
+  `).all(...params);
+
+  return json({ lenses: rows.map(rowToAdminLens) });
+}
+
+interface AdminPageRow {
+  room_id: string;
+  url: string;
+  lens_count: number;
+  author_count: number;
+  anonymous_count: number;
+  reaction_count: number;
+  report_count: number;
+  open_report_count: number;
+  first_lens_at: number;
+  last_lens_at: number;
+}
+
+function rowToAdminPage(row: AdminPageRow) {
+  return {
+    roomId: row.room_id,
+    url: row.url,
+    lensCount: row.lens_count,
+    authorCount: row.author_count,
+    anonymousCount: row.anonymous_count,
+    reactionCount: row.reaction_count,
+    reportCount: row.report_count,
+    openReportCount: row.open_report_count,
+    firstLensAt: row.first_lens_at,
+    lastLensAt: row.last_lens_at,
+  };
+}
+
+export function handleAdminListPages(req: Request, user: TokenPayload): Response {
+  if (!isOperatorUser(user.sub)) return json({ error: "forbidden" }, 403);
+
+  const url = new URL(req.url);
+  const limit = boundedLimit(url, 50, 200);
+  const where: string[] = [];
+  const params: (string | number)[] = [];
+
+  const q = url.searchParams.get("q")?.trim();
+  if (q) {
+    where.push("(l.url LIKE ? OR l.room_id = ?)");
+    params.push(likeTerm(q), q);
+  }
+
+  params.push(limit);
+  const rows = db.query<AdminPageRow, (string | number)[]>(`
+    SELECT
+      l.room_id,
+      MIN(l.url) AS url,
+      COUNT(DISTINCT l.id) AS lens_count,
+      COUNT(DISTINCT l.author_id) AS author_count,
+      SUM(CASE WHEN l.anonymous = 1 THEN 1 ELSE 0 END) AS anonymous_count,
+      COUNT(DISTINCT reactions.lens_id || ':' || reactions.user_id || ':' || reactions.kind) AS reaction_count,
+      COUNT(DISTINCT reports.id) AS report_count,
+      COUNT(DISTINCT open_reports.id) AS open_report_count,
+      MIN(l.created_at) AS first_lens_at,
+      MAX(l.created_at) AS last_lens_at
+    FROM lenses l
+    LEFT JOIN reactions ON reactions.lens_id = l.id
+    LEFT JOIN reports ON reports.lens_id = l.id
+    LEFT JOIN reports open_reports ON open_reports.lens_id = l.id AND open_reports.status = 'open'
+    ${where.length ? `WHERE ${where.join(" AND ")}` : ""}
+    GROUP BY l.room_id
+    ORDER BY last_lens_at DESC
+    LIMIT ?
+  `).all(...params);
+
+  return json({ pages: rows.map(rowToAdminPage) });
+}
+
+interface AdminUserRow {
+  id: string;
+  handle: string;
+  github_login: string | null;
+  invited_by: string | null;
+  created_at: number;
+  revoked_before: number | null;
+  lens_count: number;
+  anonymous_lens_count: number;
+  reaction_count: number;
+  reports_made_count: number;
+  reports_received_count: number;
+  last_lens_at: number | null;
+}
+
+function rowToAdminUser(row: AdminUserRow) {
+  return {
+    id: row.id,
+    handle: row.handle,
+    githubLogin: row.github_login,
+    invitedBy: row.invited_by,
+    createdAt: row.created_at,
+    revokedBefore: row.revoked_before,
+    lensCount: row.lens_count,
+    anonymousLensCount: row.anonymous_lens_count,
+    reactionCount: row.reaction_count,
+    reportsMadeCount: row.reports_made_count,
+    reportsReceivedCount: row.reports_received_count,
+    lastLensAt: row.last_lens_at,
+  };
+}
+
+export function handleAdminListUsers(req: Request, user: TokenPayload): Response {
+  if (!isOperatorUser(user.sub)) return json({ error: "forbidden" }, 403);
+
+  const url = new URL(req.url);
+  const limit = boundedLimit(url, 100, 500);
+  const where: string[] = [];
+  const params: (string | number)[] = [];
+
+  const q = url.searchParams.get("q")?.trim();
+  if (q) {
+    where.push("(u.id = ? OR u.handle LIKE ? OR u.github_login LIKE ?)");
+    params.push(q, likeTerm(q), likeTerm(q));
+  }
+
+  params.push(limit);
+  const rows = db.query<AdminUserRow, (string | number)[]>(`
+    SELECT
+      u.id,
+      u.handle,
+      u.github_login,
+      u.invited_by,
+      u.created_at,
+      tr.revoked_before,
+      (SELECT COUNT(*) FROM lenses l WHERE l.author_id = u.id) AS lens_count,
+      (SELECT COUNT(*) FROM lenses l WHERE l.author_id = u.id AND l.anonymous = 1) AS anonymous_lens_count,
+      (SELECT COUNT(*) FROM reactions r WHERE r.user_id = u.id) AS reaction_count,
+      (SELECT COUNT(*) FROM reports r WHERE r.reporter_id = u.id) AS reports_made_count,
+      (
+        SELECT COUNT(*)
+        FROM reports r
+        JOIN lenses l ON l.id = r.lens_id
+        WHERE l.author_id = u.id
+      ) AS reports_received_count,
+      (SELECT MAX(l.created_at) FROM lenses l WHERE l.author_id = u.id) AS last_lens_at
+    FROM users u
+    LEFT JOIN token_revocations tr ON tr.user_id = u.id
+    ${where.length ? `WHERE ${where.join(" AND ")}` : ""}
+    ORDER BY COALESCE(last_lens_at, u.created_at) DESC
+    LIMIT ?
+  `).all(...params);
+
+  return json({ users: rows.map(rowToAdminUser) });
+}
+
+function countRows(sql: string): number {
+  return db.query<{ count: number }, []>(sql).get()?.count ?? 0;
+}
+
+export function handleAdminAnalytics(req: Request, user: TokenPayload): Response {
+  if (!isOperatorUser(user.sub)) return json({ error: "forbidden" }, 403);
+
+  const url = new URL(req.url);
+  const days = Math.max(1, Math.min(Number(url.searchParams.get("days") ?? 30), 365));
+  const since = Date.now() - days * 24 * 60 * 60 * 1000;
+
+  const lensTypeRows = db.query<{ type: string; count: number }, [number]>(`
+    SELECT type, COUNT(*) AS count
+    FROM lenses
+    WHERE created_at >= ?
+    GROUP BY type
+    ORDER BY count DESC, type ASC
+  `).all(since);
+
+  const dailyLensRows = db.query<{ day: string; count: number }, [number]>(`
+    SELECT strftime('%Y-%m-%d', created_at / 1000, 'unixepoch') AS day, COUNT(*) AS count
+    FROM lenses
+    WHERE created_at >= ?
+    GROUP BY day
+    ORDER BY day ASC
+  `).all(since);
+
+  const reportStatusRows = db.query<{ status: string; count: number }, []>(`
+    SELECT status, COUNT(*) AS count
+    FROM reports
+    GROUP BY status
+    ORDER BY status ASC
+  `).all();
+
+  const topPages = db.query<AdminPageRow, [number]>(`
+    SELECT
+      l.room_id,
+      MIN(l.url) AS url,
+      COUNT(DISTINCT l.id) AS lens_count,
+      COUNT(DISTINCT l.author_id) AS author_count,
+      SUM(CASE WHEN l.anonymous = 1 THEN 1 ELSE 0 END) AS anonymous_count,
+      COUNT(DISTINCT reactions.lens_id || ':' || reactions.user_id || ':' || reactions.kind) AS reaction_count,
+      COUNT(DISTINCT reports.id) AS report_count,
+      COUNT(DISTINCT open_reports.id) AS open_report_count,
+      MIN(l.created_at) AS first_lens_at,
+      MAX(l.created_at) AS last_lens_at
+    FROM lenses l
+    LEFT JOIN reactions ON reactions.lens_id = l.id
+    LEFT JOIN reports ON reports.lens_id = l.id
+    LEFT JOIN reports open_reports ON open_reports.lens_id = l.id AND open_reports.status = 'open'
+    WHERE l.created_at >= ?
+    GROUP BY l.room_id
+    ORDER BY lens_count DESC, last_lens_at DESC
+    LIMIT 10
+  `).all(since);
+
+  return json({
+    windowDays: days,
+    totals: {
+      lenses: countRows("SELECT COUNT(*) AS count FROM lenses"),
+      users: countRows("SELECT COUNT(*) AS count FROM users"),
+      reactions: countRows("SELECT COUNT(*) AS count FROM reactions"),
+      reports: countRows("SELECT COUNT(*) AS count FROM reports"),
+      openReports: countRows("SELECT COUNT(*) AS count FROM reports WHERE status = 'open'"),
+      anonymousLenses: countRows("SELECT COUNT(*) AS count FROM lenses WHERE anonymous = 1"),
+      lensesWithRefs: countRows("SELECT COUNT(*) AS count FROM lenses WHERE refs != '[]'"),
+    },
+    lensTypes: lensTypeRows,
+    dailyLenses: dailyLensRows,
+    reportStatuses: reportStatusRows,
+    topPages: topPages.map(rowToAdminPage),
+    eventModel: {
+      implemented: ["lens_created", "lens_reacted", "lens_reported", "lens_deleted"],
+      planned: [
+        "lens_marker_seen",
+        "lens_card_opened",
+        "lens_card_closed",
+        "lens_body_expanded",
+        "lens_ref_clicked",
+        "lens_anchor_failed",
+        "lens_anchor_recovered",
+      ],
+    },
+  });
+}
+
 // --- POST /api/lenses -------------------------------------------------------
 
 const insertLens = db.query<

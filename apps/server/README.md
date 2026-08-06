@@ -34,6 +34,10 @@ bun run issue-invite -- --by founder
 | POST | `/api/reports` | bearer | `{ lensId, reason? }` | `{ reportId, lensId }` |
 | GET | `/api/admin/reports` | bearer + operator | `?status=open\|reviewed\|dismissed\|all` | `{ reports: [...] }` |
 | PATCH | `/api/admin/reports/:id` | bearer + operator | `{ status, note? }` | `{ reportId, status, reviewed }` |
+| GET | `/api/admin/lenses` | bearer + operator | `?q=&room=&author=&type=&reported=&limit=` | `{ lenses: [...] }` |
+| GET | `/api/admin/pages` | bearer + operator | `?q=&limit=` | `{ pages: [...] }` |
+| GET | `/api/admin/users` | bearer + operator | `?q=&limit=` | `{ users: [...] }` |
+| GET | `/api/admin/analytics` | bearer + operator | `?days=30` | Lens, report, reaction, page, and event-model aggregates |
 | GET | `/api/status` | bearer + operator | - | uptime, DB, WS, and error counters |
 | POST | `/api/admin/revoke-user` | bearer + operator | `{ userId }` | `{ userId, revokedBefore, revoked }` |
 
@@ -42,6 +46,9 @@ the canonical URL in `url`. `PATCH /api/lenses/:id/anchor` is limited to the
 original Lens author or an operator. `DELETE /api/lenses/:id` is operator-only
 and also removes reports/reactions for that Lens. Configure operators with
 comma-separated `LUMEN_OPERATOR_USER_IDS` or `LUMEN_OPERATOR_HANDLES`.
+Roadmap is intentionally not part of the Lumen server. Use `bun run
+dev:roadmap` for local roadmap preview and `docs/roadmap.json` as the roadmap
+snapshot.
 
 Write routes have a small in-memory rate limiter as beta abuse protection.
 Companion chat and emoji also have per-user WebSocket throttles. These limits
@@ -110,6 +117,10 @@ Bearer tokens are JWT-shaped
 Keys live in `data/keys.json` (private + public JWKs). Tokens last 365 days.
 Operators can revoke existing tokens for a user with
 `POST /api/admin/revoke-user`.
+
+The `/admin` page is the lightweight operator console. It uses the operator
+read APIs above for Reports, Lenses, Pages, Users, Insights, and Status, and
+keeps destructive moderation actions behind the existing server routes.
 
 Signup mode:
 

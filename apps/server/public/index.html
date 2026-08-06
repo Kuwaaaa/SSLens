@@ -3,401 +3,980 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Lumen v2 operator console</title>
+<title>Lumen Operator Console</title>
 <style>
-  :root { --bg: #fafafa; --card: #fff; --border: #e0e0e0; --muted: #666; --fg: #1a1a1a; --accent: #1a1a1a; --ok: #16a34a; --err: #ef4444; }
+  :root {
+    --bg: #f6f3ee;
+    --surface: #fffdf9;
+    --surface-2: #f1f7f4;
+    --ink: #202124;
+    --muted: #666d75;
+    --line: #ddd6cc;
+    --accent: #375f58;
+    --accent-2: #6f4f7a;
+    --danger: #a33d36;
+    --warn: #996f19;
+    --ok: #2f7659;
+    --shadow: 0 16px 40px rgba(48, 42, 36, 0.12);
+  }
+
   * { box-sizing: border-box; }
-  body { font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif; max-width: 920px; margin: 0 auto; padding: 28px 22px 64px; color: var(--fg); background: var(--bg); }
-  h1 { font-size: 22px; margin: 0 0 6px; }
-  .sub { color: var(--muted); font-size: 13px; margin-bottom: 22px; }
-  section { background: var(--card); border: 1px solid var(--border); border-radius: 8px; padding: 18px 22px; margin-bottom: 14px; }
-  h2 { font-size: 15px; margin: 0 0 12px; color: #444; font-weight: 600; }
-  label { display: block; margin: 10px 0 4px; font-size: 12px; color: var(--muted); }
-  input, textarea, button, select { font: inherit; padding: 7px 10px; border: 1px solid #d0d0d0; border-radius: 8px; background: white; color: var(--fg); }
-  input, textarea, select { width: 100%; }
-  textarea { resize: vertical; font-family: ui-monospace, monospace; font-size: 13px; }
-  button { cursor: pointer; background: var(--accent); color: white; border-color: var(--accent); padding: 7px 14px; font-weight: 500; }
-  button:hover:not(:disabled) { opacity: 0.9; }
-  button.secondary { background: white; color: var(--fg); }
-  button:disabled { opacity: 0.4; cursor: not-allowed; }
-  pre { background: #f4f4f4; padding: 10px 12px; border-radius: 8px; font-size: 11px; overflow: auto; max-height: 220px; margin: 8px 0 0; font-family: ui-monospace, monospace; }
-  .row { display: flex; gap: 8px; align-items: end; }
-  .row > * { flex: 1; }
-  .row > button { flex: 0 0 auto; white-space: nowrap; }
-  .pill { display: inline-block; padding: 2px 8px; border-radius: 999px; background: #eee; font-size: 11px; color: #333; }
-  .pill.live { background: var(--ok); color: white; }
-  .pill.error { background: var(--err); color: white; }
-  .lens, .report-item { padding: 10px 12px; border: 1px solid #eee; border-radius: 8px; margin-bottom: 8px; font-size: 13px; }
-  .lens .meta, .report-item .meta { color: #888; font-size: 11px; margin-bottom: 4px; display: flex; gap: 6px; flex-wrap: wrap; align-items: center; }
-  .lens .quote { color: #666; font-style: italic; margin: 4px 0; font-size: 12px; }
-  .report-actions { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 8px; }
-  .log { background: #111; color: #d0d0d0; padding: 10px 12px; border-radius: 8px; font-family: ui-monospace, monospace; font-size: 11px; max-height: 240px; overflow-y: auto; margin-top: 8px; }
-  .log .l { padding: 1px 0; }
-  .log .l.send { color: #7dd3fc; }
-  .log .l.recv { color: #86efac; }
-  .log .l.err { color: #fca5a5; }
-  .helprow { color: var(--muted); font-size: 12px; margin-top: 6px; }
+
+  body {
+    margin: 0;
+    min-height: 100vh;
+    color: var(--ink);
+    background: var(--bg);
+    font-family: Inter, ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+    letter-spacing: 0;
+  }
+
+  button, input, select, textarea {
+    font: inherit;
+    letter-spacing: 0;
+  }
+
+  button {
+    border: 1px solid var(--accent);
+    border-radius: 8px;
+    background: var(--accent);
+    color: #fff;
+    padding: 7px 11px;
+    cursor: pointer;
+    font-weight: 650;
+  }
+
+  button.secondary {
+    background: transparent;
+    color: var(--accent);
+  }
+
+  button.danger {
+    border-color: var(--danger);
+    background: var(--danger);
+  }
+
+  button.ghost {
+    border-color: transparent;
+    background: transparent;
+    color: var(--muted);
+  }
+
+  button:disabled {
+    opacity: 0.45;
+    cursor: not-allowed;
+  }
+
+  input, select, textarea {
+    width: 100%;
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    background: #fff;
+    color: var(--ink);
+    padding: 8px 10px;
+  }
+
+  textarea {
+    min-height: 80px;
+    resize: vertical;
+  }
+
+  .app {
+    min-height: 100vh;
+    display: grid;
+    grid-template-columns: 228px 1fr;
+  }
+
+  .side {
+    position: sticky;
+    top: 0;
+    height: 100vh;
+    border-right: 1px solid var(--line);
+    background: #eee8df;
+    padding: 22px 16px;
+  }
+
+  .brand {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 22px;
+  }
+
+  .mark {
+    width: 28px;
+    height: 28px;
+    border-radius: 8px;
+    background: linear-gradient(135deg, var(--accent), var(--accent-2));
+  }
+
+  .brand-title {
+    font-size: 15px;
+    font-weight: 760;
+  }
+
+  .brand-sub {
+    color: var(--muted);
+    font-size: 12px;
+  }
+
+  .nav {
+    display: grid;
+    gap: 5px;
+  }
+
+  .nav button {
+    width: 100%;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    border-color: transparent;
+    background: transparent;
+    color: var(--ink);
+    padding: 9px 10px;
+    text-align: left;
+  }
+
+  .nav button.active {
+    border-color: rgba(55, 95, 88, 0.22);
+    background: rgba(255, 253, 249, 0.9);
+    color: var(--accent);
+  }
+
+  .auth-box {
+    margin-top: 24px;
+    display: grid;
+    gap: 8px;
+  }
+
+  .auth-line {
+    color: var(--muted);
+    font-size: 12px;
+    overflow-wrap: anywhere;
+  }
+
+  main {
+    min-width: 0;
+    padding: 24px;
+  }
+
+  .topbar {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 16px;
+    margin-bottom: 18px;
+  }
+
+  h1 {
+    margin: 0 0 4px;
+    font-size: 22px;
+    line-height: 1.2;
+  }
+
+  .lede {
+    margin: 0;
+    color: var(--muted);
+    font-size: 13px;
+  }
+
+  .grid {
+    display: grid;
+    gap: 14px;
+  }
+
+  .stats {
+    grid-template-columns: repeat(6, minmax(110px, 1fr));
+  }
+
+  .panel {
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    background: var(--surface);
+    box-shadow: var(--shadow);
+    overflow: hidden;
+  }
+
+  .panel-head {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 12px;
+    padding: 14px 16px;
+    border-bottom: 1px solid var(--line);
+    background: rgba(255, 253, 249, 0.8);
+  }
+
+  .panel-title {
+    font-size: 14px;
+    font-weight: 760;
+  }
+
+  .panel-body {
+    padding: 16px;
+  }
+
+  .stat {
+    padding: 14px;
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    background: var(--surface);
+  }
+
+  .stat-label {
+    color: var(--muted);
+    font-size: 11px;
+    text-transform: uppercase;
+  }
+
+  .stat-value {
+    margin-top: 5px;
+    font-size: 22px;
+    font-weight: 780;
+  }
+
+  .filters {
+    display: grid;
+    grid-template-columns: repeat(5, minmax(120px, 1fr));
+    gap: 10px;
+    align-items: end;
+  }
+
+  .field label {
+    display: block;
+    margin-bottom: 5px;
+    color: var(--muted);
+    font-size: 12px;
+  }
+
+  .table-wrap {
+    overflow: auto;
+  }
+
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    min-width: 840px;
+  }
+
+  th, td {
+    padding: 10px 12px;
+    border-bottom: 1px solid var(--line);
+    text-align: left;
+    vertical-align: top;
+    font-size: 13px;
+  }
+
+  th {
+    color: var(--muted);
+    font-size: 11px;
+    text-transform: uppercase;
+    background: #faf7f1;
+  }
+
+  tr:hover td {
+    background: rgba(241, 247, 244, 0.62);
+  }
+
+  .muted {
+    color: var(--muted);
+  }
+
+  .mono {
+    font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    font-size: 12px;
+  }
+
+  .pill-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 5px;
+  }
+
+  .pill {
+    display: inline-flex;
+    align-items: center;
+    max-width: 240px;
+    min-height: 21px;
+    padding: 2px 7px;
+    border: 1px solid var(--line);
+    border-radius: 999px;
+    background: #fff;
+    color: var(--muted);
+    font-size: 11px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .pill.ok {
+    border-color: rgba(47, 118, 89, 0.3);
+    background: rgba(47, 118, 89, 0.09);
+    color: var(--ok);
+  }
+
+  .pill.warn {
+    border-color: rgba(153, 111, 25, 0.35);
+    background: rgba(153, 111, 25, 0.1);
+    color: var(--warn);
+  }
+
+  .pill.danger {
+    border-color: rgba(163, 61, 54, 0.28);
+    background: rgba(163, 61, 54, 0.09);
+    color: var(--danger);
+  }
+
+  .body-snippet {
+    max-width: 420px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 7px;
+  }
+
+  .split {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) 360px;
+    gap: 14px;
+  }
+
+  .drawer {
+    position: sticky;
+    top: 24px;
+    align-self: start;
+  }
+
+  pre {
+    margin: 0;
+    max-height: 480px;
+    overflow: auto;
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    background: #201f1d;
+    color: #efece6;
+    padding: 12px;
+    font-size: 12px;
+  }
+
+  .empty {
+    padding: 24px;
+    color: var(--muted);
+    text-align: center;
+  }
+
+  .view {
+    display: none;
+  }
+
+  .view.active {
+    display: block;
+  }
+
+  .bar {
+    height: 8px;
+    border-radius: 999px;
+    background: #e4ded5;
+    overflow: hidden;
+  }
+
+  .bar > span {
+    display: block;
+    height: 100%;
+    background: linear-gradient(90deg, var(--accent), var(--accent-2));
+  }
+
+  @media (max-width: 980px) {
+    .app { grid-template-columns: 1fr; }
+    .side {
+      position: static;
+      height: auto;
+      border-right: 0;
+      border-bottom: 1px solid var(--line);
+    }
+    .nav { grid-template-columns: repeat(3, 1fr); }
+    .stats { grid-template-columns: repeat(2, 1fr); }
+    .filters { grid-template-columns: 1fr 1fr; }
+    .split { grid-template-columns: 1fr; }
+    .drawer { position: static; }
+  }
 </style>
 </head>
 <body>
-<h1>Lumen v2 operator console</h1>
-<div class="sub">Local dev tool for testing the backend. State in this page is stored in localStorage. <a href="/privacy">Privacy policy</a>.</div>
+<div class="app">
+  <aside class="side">
+    <div class="brand">
+      <div class="mark"></div>
+      <div>
+        <div class="brand-title">Lumen Operator</div>
+        <div class="brand-sub">Lens, rooms, reports</div>
+      </div>
+    </div>
 
-<section>
-  <h2>Status</h2>
-  <div>Server: <span class="pill" id="health-pill">checking</span></div>
-  <div id="auth-status" style="margin-top:10px;">Not logged in</div>
-  <button class="secondary" id="logout-btn" style="margin-top:10px; display:none;">Logout</button>
-</section>
+    <nav class="nav" id="nav"></nav>
 
-<section>
-  <h2>1. Redeem invite</h2>
-  <div class="helprow">Mint a code via terminal: <code>bun run issue-invite</code>. Then paste below.</div>
-  <div class="row" style="margin-top:6px;">
-    <div>
-      <label>Invite code</label>
-      <input id="code-input" placeholder="e.g. UDC6PP6A">
+    <div class="auth-box">
+      <input id="handle-input" placeholder="handle">
+      <input id="code-input" placeholder="invite code">
+      <button id="redeem-btn">Redeem</button>
+      <button class="secondary" id="logout-btn">Logout</button>
+      <div class="auth-line" id="auth-status">Not signed in</div>
     </div>
-    <div>
-      <label>Handle</label>
-      <input id="handle-input" placeholder="e.g. alice">
-    </div>
-    <button id="redeem-btn">Redeem</button>
-  </div>
-  <pre id="redeem-result" style="display:none;"></pre>
-</section>
+  </aside>
 
-<section>
-  <h2>2. Resolve room</h2>
-  <div class="row">
-    <div>
-      <label>URL</label>
-      <input id="url-input" value="https://paulgraham.com/ds.html">
+  <main>
+    <div class="topbar">
+      <div>
+        <h1 id="view-title">Reports</h1>
+        <p class="lede" id="view-lede">Open moderation queue and Lens context.</p>
+      </div>
+      <div class="actions">
+        <button class="secondary" id="refresh-btn">Refresh</button>
+        <a href="/privacy" class="pill" id="privacy-link">Privacy</a>
+      </div>
     </div>
-    <button id="resolve-btn" class="secondary">Resolve</button>
-    <button id="load-lens-btn">Load lens</button>
-  </div>
-  <pre id="resolve-result" style="display:none;"></pre>
-  <div id="lens-list" style="margin-top:10px;"></div>
-</section>
 
-<section>
-  <h2>3. Create Lens</h2>
-  <label>Quote</label>
-  <input id="lens-quote" value="Manual work is a feature.">
-  <div class="row" style="margin-top:6px;">
-    <div>
-      <label>Type</label>
-      <select id="lens-type">
-        <option>quick</option><option>fun</option><option>question</option>
-        <option>poll</option><option>knowledge</option><option>challenge</option>
-      </select>
-    </div>
-    <div>
-      <label>Tags (comma-separated)</label>
-      <input id="lens-tags" value="startup">
-    </div>
-  </div>
-  <label>Body (Markdown; supports <code>[[lens:id]]</code> and <code>[[url:...]]</code>)</label>
-  <textarea id="lens-body" rows="3">A quick observation about this passage.</textarea>
-  <label style="display:flex; align-items:center; gap:6px;">
-    <input type="checkbox" id="lens-anonymous" style="width:auto;"> Post anonymously
-  </label>
-  <div style="margin-top:10px;"><button id="create-lens-btn">Create</button></div>
-  <pre id="create-result" style="display:none;"></pre>
-</section>
+    <section id="view-reports" class="view active">
+      <div class="panel">
+        <div class="panel-head">
+          <div class="panel-title">Report Queue</div>
+          <div class="actions">
+            <select id="report-status">
+              <option value="open">open</option>
+              <option value="reviewed">reviewed</option>
+              <option value="dismissed">dismissed</option>
+              <option value="all">all</option>
+            </select>
+          </div>
+        </div>
+        <div class="table-wrap"><table id="reports-table"></table></div>
+      </div>
+    </section>
 
-<section>
-  <h2>4. WebSocket</h2>
-  <div class="helprow">Connect, subscribe to the current room, watch Lens and presence events arrive.</div>
-  <div class="row" style="margin-top:6px;">
-    <button id="ws-connect-btn">Connect</button>
-    <button id="ws-disconnect-btn" class="secondary" disabled>Disconnect</button>
-  </div>
-  <div id="ws-status" style="margin: 8px 0;"><span class="pill">disconnected</span></div>
-  <div id="ws-log" class="log"></div>
-</section>
+    <section id="view-lenses" class="view">
+      <div class="grid">
+        <div class="panel">
+          <div class="panel-body filters">
+            <div class="field"><label>Search</label><input id="lens-q" placeholder="body, url, id"></div>
+            <div class="field"><label>Room</label><input id="lens-room" placeholder="room id"></div>
+            <div class="field"><label>Author</label><input id="lens-author" placeholder="handle or id"></div>
+            <div class="field"><label>Type</label><input id="lens-type" placeholder="question"></div>
+            <div class="field"><label>Reported</label><select id="lens-reported"><option value="">any</option><option value="1">reported</option></select></div>
+          </div>
+        </div>
+        <div class="split">
+          <div class="panel">
+            <div class="panel-head"><div class="panel-title">Lenses</div></div>
+            <div class="table-wrap"><table id="lenses-table"></table></div>
+          </div>
+          <div class="panel drawer">
+            <div class="panel-head"><div class="panel-title">Lens Detail</div></div>
+            <div class="panel-body"><pre id="detail-json">{}</pre></div>
+          </div>
+        </div>
+      </div>
+    </section>
 
-<section>
-  <h2>5. Moderation</h2>
-  <div class="helprow">Operator-only cleanup. Configure operators with <code>LUMEN_OPERATOR_USER_IDS</code> or <code>LUMEN_OPERATOR_HANDLES</code>.</div>
-  <div class="row" style="margin-top:6px;">
-    <div>
-      <label>Lens ID</label>
-      <input id="delete-lens-id" placeholder="01...">
-    </div>
-    <button id="delete-lens-btn">Delete lens</button>
-  </div>
-  <pre id="delete-result" style="display:none;"></pre>
-  <div class="row" style="margin-top:14px;">
-    <div>
-      <label>Report status</label>
-      <select id="report-status">
-        <option value="open">open</option>
-        <option value="reviewed">reviewed</option>
-        <option value="dismissed">dismissed</option>
-        <option value="all">all</option>
-      </select>
-    </div>
-    <button id="load-reports-btn" class="secondary">Load reports</button>
-  </div>
-  <div id="report-list" style="margin-top:10px;"></div>
-</section>
+    <section id="view-pages" class="view">
+      <div class="grid">
+        <div class="panel">
+          <div class="panel-body filters">
+            <div class="field"><label>URL or room</label><input id="page-q" placeholder="https://..."></div>
+            <div class="field"><label>Limit</label><input id="page-limit" value="50"></div>
+            <button id="pages-load">Load</button>
+          </div>
+        </div>
+        <div class="panel">
+          <div class="panel-head"><div class="panel-title">Pages</div></div>
+          <div class="table-wrap"><table id="pages-table"></table></div>
+        </div>
+      </div>
+    </section>
+
+    <section id="view-users" class="view">
+      <div class="grid">
+        <div class="panel">
+          <div class="panel-body filters">
+            <div class="field"><label>User</label><input id="user-q" placeholder="handle, github, id"></div>
+            <div class="field"><label>Limit</label><input id="user-limit" value="100"></div>
+            <button id="users-load">Load</button>
+          </div>
+        </div>
+        <div class="panel">
+          <div class="panel-head"><div class="panel-title">Users</div></div>
+          <div class="table-wrap"><table id="users-table"></table></div>
+        </div>
+      </div>
+    </section>
+
+    <section id="view-insights" class="view">
+      <div class="grid">
+        <div class="panel">
+          <div class="panel-body filters">
+            <div class="field"><label>Window days</label><input id="analytics-days" value="30"></div>
+            <button id="analytics-load">Load</button>
+          </div>
+        </div>
+        <div class="grid stats" id="analytics-stats"></div>
+        <div class="split">
+          <div class="panel">
+            <div class="panel-head"><div class="panel-title">Lens Types</div></div>
+            <div class="panel-body" id="lens-type-bars"></div>
+          </div>
+          <div class="panel">
+            <div class="panel-head"><div class="panel-title">Event Model</div></div>
+            <div class="panel-body" id="event-model"></div>
+          </div>
+        </div>
+        <div class="panel">
+          <div class="panel-head"><div class="panel-title">Active Pages</div></div>
+          <div class="table-wrap"><table id="analytics-pages-table"></table></div>
+        </div>
+      </div>
+    </section>
+
+    <section id="view-status" class="view">
+      <div class="grid stats" id="status-stats"></div>
+      <div class="panel">
+        <div class="panel-head"><div class="panel-title">Raw Status</div></div>
+        <div class="panel-body"><pre id="status-json">{}</pre></div>
+      </div>
+    </section>
+  </main>
+</div>
 
 <script>
-const API = location.origin;
+const BASE_PATH = (() => {
+  const path = location.pathname.replace(/\/+$/, "");
+  if (!path || path === "/admin") return "";
+  if (path.endsWith("/admin")) return path.slice(0, -"/admin".length);
+  return path;
+})();
+const API = location.origin + BASE_PATH;
 const $ = (id) => document.getElementById(id);
-
+const views = [
+  ["reports", "Reports", "Open moderation queue and Lens context."],
+  ["lenses", "Lenses", "Search Lens cards and inspect anchor data."],
+  ["pages", "Pages", "Page-bound room activity and health."],
+  ["users", "Users", "Operator-only user context."],
+  ["insights", "Insights", "Existing Lens, report, and reaction aggregates."],
+  ["status", "Status", "Server, database, and WebSocket health."],
+];
 let token = localStorage.getItem("lumen_token");
 let userInfo = JSON.parse(localStorage.getItem("lumen_user") || "null");
-let currentRoom = JSON.parse(localStorage.getItem("lumen_room") || "null");
-let ws = null;
+let currentView = localStorage.getItem("lumen_admin_view") || "reports";
+let selectedLens = null;
 
-function escapeHtml(s) {
-  return String(s).replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+$("privacy-link").href = `${BASE_PATH || ""}/privacy`;
+
+function esc(value) {
+  return String(value ?? "").replace(/[&<>"']/g, (c) => ({
+    "&": "&amp;",
+    "<": "&lt;",
+    ">": "&gt;",
+    '"': "&quot;",
+    "'": "&#39;",
+  }[c]));
 }
 
-function refreshAuthStatus() {
-  if (token && userInfo) {
-    $("auth-status").innerHTML = `Logged in as <strong>${escapeHtml(userInfo.handle)}</strong> <span class="pill">${escapeHtml(userInfo.userId.slice(0, 8))}</span>`;
-    $("logout-btn").style.display = "inline-block";
-  } else {
-    $("auth-status").textContent = "Not logged in";
-    $("logout-btn").style.display = "none";
+function fmtTime(value) {
+  if (!value) return "never";
+  return new Date(value).toLocaleString();
+}
+
+function shortId(id) {
+  return id ? `${id.slice(0, 10)}...` : "";
+}
+
+function hostFor(value) {
+  try {
+    return new URL(value).hostname;
+  } catch {
+    return value;
   }
 }
 
-$("logout-btn").onclick = () => {
-  localStorage.removeItem("lumen_token");
-  localStorage.removeItem("lumen_user");
-  token = null; userInfo = null;
-  refreshAuthStatus();
-};
+function query(params) {
+  const out = new URLSearchParams();
+  for (const [key, value] of Object.entries(params)) {
+    if (value !== undefined && value !== null && String(value).trim() !== "") {
+      out.set(key, String(value).trim());
+    }
+  }
+  const s = out.toString();
+  return s ? `?${s}` : "";
+}
 
 async function fetchJson(path, opts = {}) {
   const headers = { "Content-Type": "application/json", ...(opts.headers || {}) };
   if (token) headers.Authorization = `Bearer ${token}`;
   const res = await fetch(API + path, { ...opts, headers });
   const text = await res.text();
-  let data; try { data = JSON.parse(text); } catch { data = text; }
-  return { status: res.status, data };
+  let data;
+  try { data = JSON.parse(text); } catch { data = { raw: text }; }
+  if (!res.ok) throw new Error(data.error || `${res.status}`);
+  return data;
 }
 
-fetchJson("/api/health").then(({ data }) => {
-  const ok = data && data.ok;
-  $("health-pill").textContent = ok ? "ok" : "down";
-  $("health-pill").className = "pill " + (ok ? "live" : "error");
-}).catch(() => {
-  $("health-pill").textContent = "down"; $("health-pill").className = "pill error";
-});
-
-$("redeem-btn").onclick = async () => {
-  const code = $("code-input").value.trim();
-  const handle = $("handle-input").value.trim();
-  if (!handle) return;
-  const { status, data } = await fetchJson("/api/redeem", {
-    method: "POST",
-    body: JSON.stringify({ ...(code ? { code } : {}), handle }),
+function renderNav() {
+  $("nav").innerHTML = views.map(([id, label]) =>
+    `<button class="${id === currentView ? "active" : ""}" data-view="${id}">
+      <span>${esc(label)}</span><span class="muted">/</span>
+    </button>`
+  ).join("");
+  $("nav").querySelectorAll("button").forEach((button) => {
+    button.onclick = () => setView(button.dataset.view);
   });
-  $("redeem-result").style.display = "block";
-  $("redeem-result").textContent = JSON.stringify(data, null, 2);
-  if (status === 200 && data.token) {
-    token = data.token;
-    userInfo = { userId: data.userId, handle: data.handle };
-    localStorage.setItem("lumen_token", token);
-    localStorage.setItem("lumen_user", JSON.stringify(userInfo));
-    refreshAuthStatus();
-  }
-};
-
-async function resolveCurrentRoom() {
-  const inputUrl = $("url-input").value.trim();
-  if (!inputUrl) return null;
-  const { status, data } = await fetchJson(`/api/room?url=${encodeURIComponent(inputUrl)}`);
-  if (status !== 200) {
-    currentRoom = null;
-    $("resolve-result").style.display = "block";
-    $("resolve-result").textContent = JSON.stringify(data, null, 2);
-    return null;
-  }
-  currentRoom = data;
-  localStorage.setItem("lumen_room", JSON.stringify(currentRoom));
-  return currentRoom;
 }
 
-$("resolve-btn").onclick = async () => {
-  const r = await resolveCurrentRoom();
-  if (!r) return;
-  $("resolve-result").style.display = "block";
-  $("resolve-result").textContent = JSON.stringify(r, null, 2);
-};
+function setView(id) {
+  currentView = id;
+  localStorage.setItem("lumen_admin_view", id);
+  for (const [viewId, title, lede] of views) {
+    $(`view-${viewId}`).classList.toggle("active", viewId === id);
+    if (viewId === id) {
+      $("view-title").textContent = title;
+      $("view-lede").textContent = lede;
+    }
+  }
+  renderNav();
+  refreshCurrent();
+}
 
-async function loadLens() {
-  if (!token) { alert("Redeem/sign in first"); return; }
-  const r = await resolveCurrentRoom();
-  if (!r) return;
-  $("resolve-result").style.display = "block";
-  $("resolve-result").textContent = JSON.stringify(r, null, 2);
-  const { status, data } = await fetchJson(`/api/lenses?room=${r.roomId}`);
-  const list = $("lens-list");
-  list.innerHTML = "";
-  if (status !== 200 || !data.lenses) {
-    list.innerHTML = `<div class="pill error">${escapeHtml(JSON.stringify(data))}</div>`;
-    return;
-  }
-  if (data.lenses.length === 0) {
-    list.innerHTML = `<div style="color:#888; padding:8px 0;">No lens in this room yet.</div>`;
-    return;
-  }
-  for (const lens of data.lenses) {
-    const div = document.createElement("div");
-    div.className = "lens";
-    const tags = (lens.tags || []).map(t => `<span class="pill">${escapeHtml(t)}</span>`).join(" ");
-    const quote = lens.anchor && lens.anchor.quote && lens.anchor.quote.exact ? lens.anchor.quote.exact : "";
-    div.innerHTML = `
-      <div class="meta">
-        <span class="pill">${escapeHtml(lens.type)}</span>
-        ${tags}
-        <span>@${escapeHtml(lens.author.handle)} - ${new Date(lens.createdAt).toLocaleString()}</span>
-      </div>
-      ${quote ? `<div class="quote">"${escapeHtml(quote.slice(0, 120))}"</div>` : ""}
-      <div>${escapeHtml(lens.body)}</div>
-    `;
-    list.appendChild(div);
+function refreshAuthStatus() {
+  if (token && userInfo) {
+    $("auth-status").innerHTML = `Signed in as <strong>${esc(userInfo.handle)}</strong><br><span class="mono">${esc(userInfo.userId)}</span>`;
+    $("logout-btn").disabled = false;
+  } else {
+    $("auth-status").textContent = "Not signed in";
+    $("logout-btn").disabled = true;
   }
 }
 
-$("load-lens-btn").onclick = loadLens;
+function emptyTable(id, message) {
+  $(id).innerHTML = `<tbody><tr><td><div class="empty">${esc(message)}</div></td></tr></tbody>`;
+}
 
-$("create-lens-btn").onclick = async () => {
-  if (!token) { alert("Redeem/sign in first"); return; }
-  const r = await resolveCurrentRoom();
-  if (!r) return;
-  const quote = $("lens-quote").value.trim();
-  const body = {
-    roomId: r.roomId,
-    url: r.canonical,
-    type: $("lens-type").value,
-    tags: $("lens-tags").value.split(",").map(s => s.trim()).filter(Boolean),
-    body: $("lens-body").value,
-    anchor: { quote: { exact: quote } },
-    anonymous: $("lens-anonymous").checked,
-  };
-  const { status, data } = await fetchJson("/api/lenses", {
-    method: "POST",
-    body: JSON.stringify(body),
-  });
-  $("create-result").style.display = "block";
-  $("create-result").textContent = JSON.stringify(data, null, 2);
-  if (status === 201) await loadLens();
-};
+function errorTable(id, err) {
+  $(id).innerHTML = `<tbody><tr><td><div class="empty">${esc(err.message || err)}</div></td></tr></tbody>`;
+}
 
-$("delete-lens-btn").onclick = async () => {
-  if (!token) { alert("Redeem/sign in first"); return; }
-  const lensId = $("delete-lens-id").value.trim();
-  if (!lensId) return;
-  if (!confirm(`Delete Lens ${lensId}?`)) return;
-  const { status, data } = await fetchJson(`/api/lenses/${encodeURIComponent(lensId)}`, {
-    method: "DELETE",
-  });
-  $("delete-result").style.display = "block";
-  $("delete-result").textContent = JSON.stringify(data, null, 2);
-  if (status === 200) await loadLens();
-};
-
-async function updateReport(reportId, status) {
-  const note = prompt(`Optional note for ${status}:`) || "";
-  const { data } = await fetchJson(`/api/admin/reports/${encodeURIComponent(reportId)}`, {
-    method: "PATCH",
-    body: JSON.stringify({ status, note }),
-  });
-  $("delete-result").style.display = "block";
-  $("delete-result").textContent = JSON.stringify(data, null, 2);
-  await loadReports();
+function renderStats(id, stats) {
+  $(id).innerHTML = stats.map(([label, value, tone]) =>
+    `<div class="stat">
+      <div class="stat-label">${esc(label)}</div>
+      <div class="stat-value ${tone || ""}">${esc(value)}</div>
+    </div>`
+  ).join("");
 }
 
 async function loadReports() {
-  if (!token) { alert("Redeem/sign in first"); return; }
-  const reportStatus = $("report-status").value;
-  const { status, data } = await fetchJson(`/api/admin/reports?status=${encodeURIComponent(reportStatus)}`);
-  const list = $("report-list");
-  list.innerHTML = "";
-  if (status !== 200 || !data.reports) {
-    list.innerHTML = `<div class="pill error">${escapeHtml(JSON.stringify(data))}</div>`;
-    return;
+  try {
+    const status = $("report-status").value;
+    const data = await fetchJson(`/api/admin/reports${query({ status })}`);
+    const rows = data.reports || [];
+    if (!rows.length) return emptyTable("reports-table", "No reports.");
+    $("reports-table").innerHTML = `
+      <thead><tr><th>Status</th><th>Lens</th><th>Reporter</th><th>Created</th><th>Actions</th></tr></thead>
+      <tbody>${rows.map((report) => `
+        <tr>
+          <td><span class="pill ${report.status === "open" ? "warn" : "ok"}">${esc(report.status)}</span><div class="muted">${esc(report.reason)}</div></td>
+          <td>
+            <div class="body-snippet">${esc(report.lens.body)}</div>
+            <div class="pill-row">
+              <span class="pill">${esc(report.lens.type)}</span>
+              <span class="pill">@${esc(report.lens.author.handle)}</span>
+              <span class="pill">${esc(hostFor(report.lens.url))}</span>
+            </div>
+          </td>
+          <td>@${esc(report.reporter.handle)}</td>
+          <td>${esc(fmtTime(report.createdAt))}</td>
+          <td>
+            <div class="actions">
+              <button class="secondary" data-action="reviewed" data-id="${esc(report.id)}">Reviewed</button>
+              <button class="secondary" data-action="dismissed" data-id="${esc(report.id)}">Dismiss</button>
+              <button class="danger" data-action="delete-lens" data-lens="${esc(report.lens.id)}">Delete</button>
+            </div>
+          </td>
+        </tr>
+      `).join("")}</tbody>`;
+    $("reports-table").querySelectorAll("button").forEach((button) => {
+      button.onclick = async () => {
+        if (button.dataset.action === "delete-lens") {
+          await deleteLens(button.dataset.lens);
+          await loadReports();
+          return;
+        }
+        await updateReport(button.dataset.id, button.dataset.action);
+      };
+    });
+  } catch (err) {
+    errorTable("reports-table", err);
   }
-  if (data.reports.length === 0) {
-    list.innerHTML = `<div style="color:#888; padding:8px 0;">No reports.</div>`;
-    return;
+}
+
+async function updateReport(reportId, status) {
+  const note = prompt(`Review note for ${status}`) || "";
+  await fetchJson(`/api/admin/reports/${encodeURIComponent(reportId)}`, {
+    method: "PATCH",
+    body: JSON.stringify({ status, note }),
+  });
+  await loadReports();
+}
+
+async function deleteLens(lensId) {
+  if (!lensId) return;
+  if (!confirm(`Delete Lens ${lensId}?`)) return;
+  await fetchJson(`/api/lenses/${encodeURIComponent(lensId)}`, { method: "DELETE" });
+}
+
+async function loadLenses() {
+  try {
+    const data = await fetchJson(`/api/admin/lenses${query({
+      q: $("lens-q").value,
+      room: $("lens-room").value,
+      author: $("lens-author").value,
+      type: $("lens-type").value,
+      reported: $("lens-reported").value,
+      limit: 150,
+    })}`);
+    const rows = data.lenses || [];
+    if (!rows.length) return emptyTable("lenses-table", "No lenses.");
+    $("lenses-table").innerHTML = `
+      <thead><tr><th>Lens</th><th>Page</th><th>Author</th><th>Signals</th><th>Actions</th></tr></thead>
+      <tbody>${rows.map((lens, index) => `
+        <tr>
+          <td>
+            <div class="body-snippet">${esc(lens.body)}</div>
+            <div class="pill-row">
+              <span class="pill">${esc(lens.type)}</span>
+              ${lens.anonymous ? '<span class="pill warn">anonymous</span>' : ""}
+              ${(lens.tags || []).map((tag) => `<span class="pill">${esc(tag)}</span>`).join("")}
+            </div>
+            <div class="mono muted">${esc(shortId(lens.id))}</div>
+          </td>
+          <td><div class="body-snippet">${esc(lens.url)}</div><div class="mono muted">${esc(shortId(lens.roomId))}</div></td>
+          <td>@${esc(lens.author.handle)}</td>
+          <td>
+            <span class="pill">${esc(lens.reactionCount)} reactions</span>
+            <span class="pill ${lens.openReportCount ? "danger" : ""}">${esc(lens.reportCount)} reports</span>
+          </td>
+          <td><div class="actions">
+            <button class="secondary" data-detail="${index}">Inspect</button>
+            <button class="secondary" data-room="${esc(lens.roomId)}">Room</button>
+            <button class="danger" data-delete="${esc(lens.id)}">Delete</button>
+          </div></td>
+        </tr>
+      `).join("")}</tbody>`;
+    $("lenses-table").querySelectorAll("button").forEach((button) => {
+      button.onclick = async () => {
+        if ("detail" in button.dataset) {
+          selectedLens = rows[Number(button.dataset.detail)];
+          $("detail-json").textContent = JSON.stringify(selectedLens, null, 2);
+        }
+        if (button.dataset.room) {
+          $("page-q").value = button.dataset.room;
+          setView("pages");
+        }
+        if (button.dataset.delete) {
+          await deleteLens(button.dataset.delete);
+          await loadLenses();
+        }
+      };
+    });
+  } catch (err) {
+    errorTable("lenses-table", err);
   }
-  for (const report of data.reports) {
-    const div = document.createElement("div");
-    div.className = "report-item";
-    div.innerHTML = `
-      <div class="meta">
-        <span class="pill">${escapeHtml(report.status)}</span>
-        <span>${escapeHtml(report.reason)}</span>
-        <span>by @${escapeHtml(report.reporter.handle)} - ${new Date(report.createdAt).toLocaleString()}</span>
+}
+
+async function loadPages() {
+  try {
+    const data = await fetchJson(`/api/admin/pages${query({ q: $("page-q").value, limit: $("page-limit").value })}`);
+    const rows = data.pages || [];
+    if (!rows.length) return emptyTable("pages-table", "No pages.");
+    $("pages-table").innerHTML = `
+      <thead><tr><th>Page</th><th>Lens</th><th>Signals</th><th>Activity</th><th>Actions</th></tr></thead>
+      <tbody>${rows.map((page) => `
+        <tr>
+          <td><div class="body-snippet">${esc(page.url)}</div><div class="mono muted">${esc(shortId(page.roomId))}</div></td>
+          <td>${esc(page.lensCount)} Lens<br><span class="muted">${esc(page.authorCount)} authors</span></td>
+          <td>
+            <span class="pill">${esc(page.reactionCount)} reactions</span>
+            <span class="pill ${page.openReportCount ? "danger" : ""}">${esc(page.reportCount)} reports</span>
+          </td>
+          <td>${esc(fmtTime(page.lastLensAt))}</td>
+          <td><button class="secondary" data-room="${esc(page.roomId)}">Lenses</button></td>
+        </tr>
+      `).join("")}</tbody>`;
+    $("pages-table").querySelectorAll("button").forEach((button) => {
+      button.onclick = () => {
+        $("lens-room").value = button.dataset.room;
+        setView("lenses");
+      };
+    });
+  } catch (err) {
+    errorTable("pages-table", err);
+  }
+}
+
+async function loadUsers() {
+  try {
+    const data = await fetchJson(`/api/admin/users${query({ q: $("user-q").value, limit: $("user-limit").value })}`);
+    const rows = data.users || [];
+    if (!rows.length) return emptyTable("users-table", "No users.");
+    $("users-table").innerHTML = `
+      <thead><tr><th>User</th><th>Lens</th><th>Moderation</th><th>Last Lens</th><th>Actions</th></tr></thead>
+      <tbody>${rows.map((user) => `
+        <tr>
+          <td>@${esc(user.handle)}<div class="mono muted">${esc(shortId(user.id))}</div>${user.revokedBefore ? '<span class="pill danger">revoked</span>' : ""}</td>
+          <td>${esc(user.lensCount)} Lens<br><span class="muted">${esc(user.anonymousLensCount)} anonymous</span></td>
+          <td>${esc(user.reportsReceivedCount)} received<br><span class="muted">${esc(user.reportsMadeCount)} made</span></td>
+          <td>${esc(fmtTime(user.lastLensAt))}</td>
+          <td><div class="actions">
+            <button class="secondary" data-author="${esc(user.id)}">Lenses</button>
+            <button class="danger" data-revoke="${esc(user.id)}">Revoke</button>
+          </div></td>
+        </tr>
+      `).join("")}</tbody>`;
+    $("users-table").querySelectorAll("button").forEach((button) => {
+      button.onclick = async () => {
+        if (button.dataset.author) {
+          $("lens-author").value = button.dataset.author;
+          setView("lenses");
+        }
+        if (button.dataset.revoke) {
+          await revokeUser(button.dataset.revoke);
+          await loadUsers();
+        }
+      };
+    });
+  } catch (err) {
+    errorTable("users-table", err);
+  }
+}
+
+async function revokeUser(userId) {
+  if (!confirm(`Revoke tokens for ${userId}?`)) return;
+  await fetchJson("/api/admin/revoke-user", {
+    method: "POST",
+    body: JSON.stringify({ userId }),
+  });
+}
+
+async function loadAnalytics() {
+  try {
+    const data = await fetchJson(`/api/admin/analytics${query({ days: $("analytics-days").value })}`);
+    const totals = data.totals || {};
+    renderStats("analytics-stats", [
+      ["Lens", totals.lenses ?? 0],
+      ["Users", totals.users ?? 0],
+      ["Reactions", totals.reactions ?? 0],
+      ["Reports", totals.reports ?? 0],
+      ["Open Reports", totals.openReports ?? 0],
+      ["With Refs", totals.lensesWithRefs ?? 0],
+    ]);
+    const maxType = Math.max(1, ...(data.lensTypes || []).map((row) => row.count));
+    $("lens-type-bars").innerHTML = (data.lensTypes || []).map((row) => `
+      <div style="margin-bottom:10px;">
+        <div style="display:flex;justify-content:space-between;margin-bottom:5px;"><strong>${esc(row.type)}</strong><span>${esc(row.count)}</span></div>
+        <div class="bar"><span style="width:${Math.round(row.count / maxType * 100)}%"></span></div>
       </div>
-      <div><strong>${escapeHtml(report.lens.type)}</strong> by @${escapeHtml(report.lens.author.handle)}</div>
-      <div style="margin-top:4px;">${escapeHtml(report.lens.body.slice(0, 240))}</div>
-      <div class="report-actions">
-        <button class="secondary" data-action="reviewed">Mark reviewed</button>
-        <button class="secondary" data-action="dismissed">Dismiss</button>
-        <button data-action="delete">Delete lens</button>
-      </div>
+    `).join("") || '<div class="empty">No Lens in this window.</div>';
+    $("event-model").innerHTML = `
+      <div class="pill-row">${(data.eventModel.implemented || []).map((name) => `<span class="pill ok">${esc(name)}</span>`).join("")}</div>
+      <div style="height:10px"></div>
+      <div class="pill-row">${(data.eventModel.planned || []).map((name) => `<span class="pill warn">${esc(name)}</span>`).join("")}</div>
     `;
-    div.querySelector('[data-action="reviewed"]').onclick = () => updateReport(report.id, "reviewed");
-    div.querySelector('[data-action="dismissed"]').onclick = () => updateReport(report.id, "dismissed");
-    div.querySelector('[data-action="delete"]').onclick = async () => {
-      if (!confirm(`Delete Lens ${report.lens.id}?`)) return;
-      $("delete-lens-id").value = report.lens.id;
-      await $("delete-lens-btn").onclick();
-      await loadReports();
-    };
-    list.appendChild(div);
+    renderPagesTable("analytics-pages-table", data.topPages || []);
+  } catch (err) {
+    $("analytics-stats").innerHTML = `<div class="empty">${esc(err.message || err)}</div>`;
   }
 }
 
-$("load-reports-btn").onclick = loadReports;
-
-function logWs(s, cls) {
-  const div = document.createElement("div");
-  div.className = "l" + (cls ? " " + cls : "");
-  div.textContent = `[${new Date().toLocaleTimeString()}] ${s}`;
-  $("ws-log").appendChild(div);
-  $("ws-log").scrollTop = $("ws-log").scrollHeight;
+function renderPagesTable(id, rows) {
+  if (!rows.length) return emptyTable(id, "No pages.");
+  $(id).innerHTML = `
+    <thead><tr><th>Page</th><th>Lens</th><th>Authors</th><th>Reports</th><th>Last Lens</th></tr></thead>
+    <tbody>${rows.map((page) => `
+      <tr>
+        <td><div class="body-snippet">${esc(page.url)}</div></td>
+        <td>${esc(page.lensCount)}</td>
+        <td>${esc(page.authorCount)}</td>
+        <td>${esc(page.reportCount)}</td>
+        <td>${esc(fmtTime(page.lastLensAt))}</td>
+      </tr>
+    `).join("")}</tbody>`;
 }
 
-$("ws-connect-btn").onclick = async () => {
-  if (!token) { alert("Redeem/sign in first"); return; }
-  const proto = location.protocol === "https:" ? "wss:" : "ws:";
-  ws = new WebSocket(`${proto}//${location.host}/ws?token=${encodeURIComponent(token)}`);
-  ws.onopen = async () => {
-    $("ws-status").innerHTML = `<span class="pill live">connected</span>`;
-    $("ws-connect-btn").disabled = true;
-    $("ws-disconnect-btn").disabled = false;
-    logWs("OPEN");
-    const r = await resolveCurrentRoom();
-    if (r) {
-      ws.send(JSON.stringify({ type: "subscribe", roomId: r.roomId }));
-      logWs(`>> subscribe ${r.roomId.slice(0, 12)}...`, "send");
-    }
-  };
-  ws.onmessage = (e) => logWs(`<< ${e.data}`, "recv");
-  ws.onerror = () => logWs("ERR (see browser console)", "err");
-  ws.onclose = () => {
-    $("ws-status").innerHTML = `<span class="pill">disconnected</span>`;
-    $("ws-connect-btn").disabled = false;
-    $("ws-disconnect-btn").disabled = true;
-    logWs("CLOSE");
-  };
+async function loadStatus() {
+  try {
+    const data = await fetchJson("/api/status");
+    renderStats("status-stats", [
+      ["OK", data.ok ? "yes" : "no", data.ok ? "ok" : "danger"],
+      ["DB Writable", data.dbWritable ? "yes" : "no"],
+      ["Uptime", `${Math.round((data.uptimeMs || 0) / 1000)}s`],
+      ["Errors", data.recentErrorCount ?? 0],
+      ["WS Rooms", data.ws?.roomCount ?? 0],
+      ["WS Connections", data.ws?.connectionCount ?? 0],
+    ]);
+    $("status-json").textContent = JSON.stringify(data, null, 2);
+  } catch (err) {
+    $("status-json").textContent = err.message || String(err);
+  }
+}
+
+function refreshCurrent() {
+  if (!token && currentView !== "reports") return;
+  if (currentView === "reports") loadReports();
+  if (currentView === "lenses") loadLenses();
+  if (currentView === "pages") loadPages();
+  if (currentView === "users") loadUsers();
+  if (currentView === "insights") loadAnalytics();
+  if (currentView === "status") loadStatus();
+}
+
+$("redeem-btn").onclick = async () => {
+  const handle = $("handle-input").value.trim();
+  const code = $("code-input").value.trim();
+  if (!handle) return;
+  const data = await fetchJson("/api/redeem", {
+    method: "POST",
+    body: JSON.stringify({ handle, ...(code ? { code } : {}) }),
+  });
+  token = data.token;
+  userInfo = { userId: data.userId, handle: data.handle };
+  localStorage.setItem("lumen_token", token);
+  localStorage.setItem("lumen_user", JSON.stringify(userInfo));
+  refreshAuthStatus();
+  refreshCurrent();
 };
 
-$("ws-disconnect-btn").onclick = () => { if (ws) ws.close(); };
+$("logout-btn").onclick = () => {
+  token = null;
+  userInfo = null;
+  localStorage.removeItem("lumen_token");
+  localStorage.removeItem("lumen_user");
+  refreshAuthStatus();
+};
 
+$("refresh-btn").onclick = refreshCurrent;
+$("report-status").onchange = loadReports;
+["lens-q", "lens-room", "lens-author", "lens-type", "lens-reported"].forEach((id) => {
+  $(id).onchange = loadLenses;
+  $(id).onkeydown = (event) => { if (event.key === "Enter") loadLenses(); };
+});
+$("pages-load").onclick = loadPages;
+$("users-load").onclick = loadUsers;
+$("analytics-load").onclick = loadAnalytics;
+
+renderNav();
 refreshAuthStatus();
-if (currentRoom) $("url-input").value = currentRoom.url;
+setView(currentView);
 </script>
 </body>
 </html>

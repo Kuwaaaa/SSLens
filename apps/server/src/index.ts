@@ -11,6 +11,10 @@ import {
   handleListReports,
   handleUpdateReport,
   handleRevokeUserTokens,
+  handleAdminAnalytics,
+  handleAdminListLenses,
+  handleAdminListPages,
+  handleAdminListUsers,
   isOperator,
 } from "./routes.ts";
 import { handleUpgrade, websocket, setServerRef, pruneWsMemory, wsStats } from "./ws.ts";
@@ -124,6 +128,22 @@ const server = Bun.serve({
 
       if (url.pathname === "/api/admin/reports" && req.method === "GET") {
         return handleListReports(req, user);
+      }
+
+      if (url.pathname === "/api/admin/lenses" && req.method === "GET") {
+        return handleAdminListLenses(req, user);
+      }
+
+      if (url.pathname === "/api/admin/pages" && req.method === "GET") {
+        return handleAdminListPages(req, user);
+      }
+
+      if (url.pathname === "/api/admin/users" && req.method === "GET") {
+        return handleAdminListUsers(req, user);
+      }
+
+      if (url.pathname === "/api/admin/analytics" && req.method === "GET") {
+        return handleAdminAnalytics(req, user);
       }
 
       const reportMatch = url.pathname.match(/^\/api\/admin\/reports\/([^/]+)$/);

@@ -1,5 +1,5 @@
 {
-  "updatedAt": "2026-08-03",
+  "updatedAt": "2026-08-06",
   "statusOrder": [
     "now",
     "next",
@@ -223,14 +223,15 @@
       "summary": "Switch complete Lumen UI styles through a shared theme contract, CSS variables, and generated motion profiles.",
       "why": "Lumen will keep adding UI and motion; a theme contract prevents future components from hardcoding one visual style.",
       "notePath": "./features/theme-system.md",
-      "resumePoint": "Theme switching foundation is committed on codex/theme-switching at 9776f67. Continue by adding a compact specimen or manual visual checklist, then reduce the CSS override layer by moving core components to direct token consumption.",
+      "resumePoint": "Theme switching foundation is committed on codex/theme-switching at 9776f67. Current follow-up is a narrow quality pass: add specimen/manual visual QA, keep theme runtime concerns behind storage and Shadow-host adapters, and only extract UI/runtime/surface boundaries when they reduce theme coupling or testing risk.",
       "nextActions": [
-        "Add specimen coverage or a manual visual QA checklist for orb, card, composer, InfoPanel, marker, and bloom states",
-        "Run the normal extension dev loop and inspect Classic and Signal on real pages",
-        "Refactor theme runtime application out of content.tsx only if another theme-related behavior is added",
-        "Progressively replace the post-hoc CSS override layer with direct token consumption in component styles"
+        "Add specimen coverage or a manual visual QA checklist for orb, card, composer, InfoPanel, marker, bloom, popup selector, and reduced-motion states",
+        "Run the normal extension dev loop and inspect Classic and Signal on real pages without reloading the extension unless manifest or service-worker code changes",
+        "Keep theme persistence, theme application, and generated visual profiles separated from content overlay orchestration",
+        "Progressively replace the post-hoc CSS override layer with direct token consumption in component styles",
+        "Extract UI/runtime/surface modules from content.tsx only at behavior-preserving seams that clarify ownership"
       ],
-      "lastWorkedAt": "2026-08-03",
+      "lastWorkedAt": "2026-08-06",
       "scope": [
         "Core theme contract",
         "Extension CSS token extraction",
@@ -287,7 +288,7 @@
           "id": "specimen",
           "title": "Specimen coverage",
           "status": "now",
-          "updatedAt": "2026-08-03"
+          "updatedAt": "2026-08-06"
         },
         {
           "id": "qa",
@@ -305,6 +306,11 @@
           "date": "2026-08-03",
           "kind": "implementation",
           "text": "Committed theme switching foundation on codex/theme-switching at 9776f67: added theme profiles, stored theme preference, popup skin selector, Shadow host theme attributes, theme-aware marker styles, and theme-aware bloom generation with Classic and Signal skins."
+        },
+        {
+          "date": "2026-08-06",
+          "kind": "planning",
+          "text": "Re-reviewed the theme-system follow-up through the single-responsibility lens. Next work should stay focused on specimen/manual visual QA and gradual token cleanup; theme storage/application/generated visuals should remain separate from content overlay orchestration, and content.tsx extraction should happen only where it preserves behavior and reduces coupling."
         }
       ],
       "links": [
@@ -313,7 +319,178 @@
           "href": "./technical/theme-system-design.md"
         }
       ],
-      "updatedAt": "2026-08-03"
+      "updatedAt": "2026-08-06"
+    },
+    {
+      "id": "operator-console",
+      "title": "Operator Console",
+      "status": "next",
+      "phase": "Beta Operations",
+      "progress": 32,
+      "currentStage": "First-pass console implemented",
+      "summary": "Turn the current server admin/test page into a small operator console for reviewing Lens cards, reports, pages, users, and health without direct database edits.",
+      "why": "Before inviting more beta users, operators need a product-shaped moderation and diagnostics surface that preserves Lumen's page-bound Lens center and avoids unsafe raw SQLite editing.",
+      "resumePoint": "First-pass Operator Console is implemented with operator-only read endpoints for Lenses, Pages, Users, and Analytics, plus a server-served console shell for Reports, Lenses, Pages, Users, Insights, and Status. Continue by hardening moderation workflow details, adding audit logging, then defining durable analytics events for impressions, opens, dwell, ref clicks, and anchor health.",
+      "nextActions": [
+        "Harden report review and Lens delete flows with clearer notes and confirmation states",
+        "Add audit logging for delete, report review, dismiss, revoke, and future cluster review actions",
+        "Define and implement durable analytics event capture for marker seen, card open/close, dwell, ref click, reaction, report, and anchor health",
+        "Define Lens semantic text from body, type, tags, refs, anchor quote, page title, URL/domain, and page context",
+        "Prototype room-level semantic clustering before cross-page clustering"
+      ],
+      "lastWorkedAt": "2026-08-06",
+      "scope": [
+        "Operator-only web console served by the Lumen server",
+        "Reports queue with reviewed and dismissed workflow",
+        "Lens search and detail views for body, URL, author, anonymity flag, tags, refs, reactions, reports, and anchor JSON",
+        "Page/room view for all Lens on a canonical page",
+        "User view for moderation context, recent Lens, reports, and token revocation",
+        "Status view backed by /api/status",
+        "Analytics view for Lens creation, impressions, opens, click-through, dwell time, reactions, reports, anchor recovery, and page-level activity",
+        "Classification views for Lens type/content shape, page/domain/category, and cautious operator-only user cohorts",
+        "Semantic clustering for room-level Lens groups, cross-page topic candidates, cluster review, and future Atlas candidate preparation",
+        "Audit log for destructive or security-sensitive operator actions",
+        "No direct database writes from the browser UI"
+      ],
+      "outOfScope": [
+        "General-purpose SQL editor in production",
+        "Public analytics dashboard",
+        "Reputation, karma, leaderboards, author ranking, or user scoring",
+        "Optimization for total Lens count as a product goal",
+        "Visible AI-authored moderation decisions",
+        "Atlas or knowledge graph UI",
+        "Editing user-authored Lens body text",
+        "Cross-site tracking beyond what is needed for Lumen operator diagnostics"
+      ],
+      "stages": [
+        {
+          "id": "plan",
+          "title": "Panel plan",
+          "status": "done",
+          "updatedAt": "2026-08-06"
+        },
+        {
+          "id": "read-model",
+          "title": "Operator read APIs",
+          "status": "done",
+          "updatedAt": "2026-08-06"
+        },
+        {
+          "id": "console-shell",
+          "title": "Console shell and navigation",
+          "status": "done",
+          "updatedAt": "2026-08-06"
+        },
+        {
+          "id": "analytics-model",
+          "title": "Analytics event and metric model",
+          "status": "planned",
+          "updatedAt": "2026-08-06"
+        },
+        {
+          "id": "semantic-text",
+          "title": "Lens semantic text and embedding input",
+          "status": "planned",
+          "updatedAt": "2026-08-06"
+        },
+        {
+          "id": "room-clustering",
+          "title": "Room-level semantic clustering",
+          "status": "planned",
+          "updatedAt": "2026-08-06"
+        },
+        {
+          "id": "cluster-review",
+          "title": "Cluster review workflow",
+          "status": "planned",
+          "updatedAt": "2026-08-06"
+        },
+        {
+          "id": "cross-page-clustering",
+          "title": "Cross-page cluster candidates",
+          "status": "planned",
+          "updatedAt": "2026-08-06"
+        },
+        {
+          "id": "graph-layer",
+          "title": "Lens/Page/User/Ref/Cluster graph persistence",
+          "status": "planned",
+          "updatedAt": "2026-08-06"
+        },
+        {
+          "id": "atlas-candidates",
+          "title": "Atlas candidate promotion",
+          "status": "planned",
+          "updatedAt": "2026-08-06"
+        },
+        {
+          "id": "moderation-workflow",
+          "title": "Report and Lens moderation workflow",
+          "status": "now",
+          "updatedAt": "2026-08-06"
+        },
+        {
+          "id": "diagnostics",
+          "title": "Page, user, anchor, and status diagnostics",
+          "status": "planned"
+        },
+        {
+          "id": "audit-log",
+          "title": "Operator audit log",
+          "status": "planned"
+        }
+      ],
+      "updates": [
+        {
+          "date": "2026-08-06",
+          "kind": "planning",
+          "text": "Recorded the Operator Console plan as a Beta Operations feature. The console should be a product-shaped moderation and diagnostics surface, not a generic production database editor."
+        },
+        {
+          "date": "2026-08-06",
+          "kind": "planning",
+          "text": "Reviewed AGENTS.md routing, docs/project-status.md, Roadmap Studio guidance, server moderation routes, and the existing public admin/test page. The accepted direction is a Lumen Operator Console: operator-only Reports, Lenses, Pages, Users, Status, and audit workflows, with all writes routed through server APIs rather than direct SQLite editing."
+        },
+        {
+          "date": "2026-08-06",
+          "kind": "planning",
+          "text": "Expanded the Operator Console roadmap into an implementation plan covering analytics events, Lens semantic text, embedding inputs, room-level clustering, cluster review, cross-page cluster candidates, graph persistence, and Atlas candidate promotion. The design remains internal/operator-only and avoids public rankings, reputation, default AI moderation, or user-visible Atlas UI in v2."
+        },
+        {
+          "date": "2026-08-06",
+          "kind": "progress",
+          "text": "Started implementation and wired the first operator read-model endpoints: /api/admin/lenses, /api/admin/pages, /api/admin/users, and /api/admin/analytics. The analytics endpoint only aggregates existing Lens/reaction/report data for this pass; impression, open, dwell, ref-click, and anchor-health events remain planned."
+        },
+        {
+          "date": "2026-08-06",
+          "kind": "progress",
+          "text": "Replaced the old server admin/test page with a first-pass Operator Console shell: Reports, Lenses, Pages, Users, Insights, and Status views backed by the new operator read endpoints and existing moderation actions."
+        },
+        {
+          "date": "2026-08-06",
+          "kind": "verification",
+          "text": "Verified the first-pass implementation with bun run typecheck, bun run test, apps/server TypeScript check, and direct route-handler smoke calls for /api/admin/lenses, /api/admin/pages, /api/admin/users, and /api/admin/analytics. A temporary HTTP server smoke was skipped because the local PowerShell policy blocked the background Start-Process command."
+        }
+      ],
+      "links": [
+        {
+          "label": "Project status",
+          "href": "./project-status.md"
+        },
+        {
+          "label": "Server README",
+          "href": "../apps/server/README.md"
+        },
+        {
+          "label": "Server bottlenecks",
+          "href": "./technical/server-bottlenecks.md"
+        },
+        {
+          "label": "Operator Console Insights design",
+          "href": "./technical/operator-console-insights-design.zh.md"
+        }
+      ],
+      "updatedAt": "2026-08-06"
     },
     {
       "id": "composer-markdown-preview",
