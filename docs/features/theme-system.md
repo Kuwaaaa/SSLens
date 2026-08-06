@@ -1,17 +1,17 @@
 # Theme System
 
 Status: now
-Progress: 72
+Progress: 80
 Current stage: Specimen coverage and visual QA
-Last worked: 2026-08-06
+Last worked: 2026-08-07
 
 ## Resume Point
 
-Theme switching foundation is committed on `codex/theme-switching` at
-`9776f67`. Current follow-up is a narrow quality pass: add compact specimen
-coverage or a manual visual QA checklist, keep theme runtime concerns behind
-storage and Shadow-host adapters, then reduce the CSS override layer by moving
-core components to direct token consumption.
+Theme switching is merged into `main` with Classic and Signal skins available
+from both the extension popup and the webpage InfoPanel. Continue with
+specimen/manual visual QA across orb, card, composer, InfoPanel, markers, bloom,
+popup selector, and reduced-motion states before replacing more CSS overrides
+with direct token consumption.
 
 ## Goal
 
@@ -44,6 +44,7 @@ Initial implementation is complete:
 - `apps/extension/src/theme.ts` defines `classic` and `signal` theme profiles.
 - `apps/extension/src/shared/storage.ts` persists `lumen.theme`.
 - `apps/extension/src/popup.tsx` exposes a UI skin selector.
+- `apps/extension/src/content.tsx` exposes a webpage InfoPanel UI skin selector.
 - `apps/extension/src/content.tsx` applies theme attributes to the Shadow host.
 - `apps/extension/src/marker.ts` updates Custom Highlight marker colors by theme.
 - `apps/extension/src/shapes.tsx` uses theme-aware bloom colors and counts.
@@ -54,10 +55,8 @@ Initial implementation is complete:
 
 - Add specimen coverage or a manual visual QA checklist for orb, card, composer,
   InfoPanel, marker, bloom, popup selector, and reduced-motion states.
-- Run the normal extension dev loop and inspect Classic and Signal on real
-  pages. Reload the extension only when manifest or service-worker code changes.
-- Keep theme persistence, theme application, and generated visual profiles
-  separated from content overlay orchestration.
+- Run the normal extension dev loop and inspect Classic and Signal on real pages
+  from both popup and webpage InfoPanel entry points.
 - Progressively replace the post-hoc CSS override layer with direct token
   consumption in component styles.
 - Extract UI/runtime/surface modules from `content.tsx` only at

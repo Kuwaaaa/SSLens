@@ -134,12 +134,12 @@ Links:
 Feature ID: `theme-system`
 Status: `now`
 Phase: Beta Quality
-Progress: 72
+Progress: 80
 Current stage: Specimen coverage and visual QA
-Last worked: 2026-08-06
+Last worked: 2026-08-07
 
 Resume point:
-Theme switching foundation is committed on codex/theme-switching at 9776f67. Current follow-up is a narrow quality pass: add specimen/manual visual QA, keep theme runtime concerns behind storage and Shadow-host adapters, and only extract UI/runtime/surface boundaries when they reduce theme coupling or testing risk.
+Theme switching is merged into main with Classic and Signal skins available from both the extension popup and the webpage InfoPanel. Continue with specimen/manual visual QA across orb, card, composer, InfoPanel, markers, bloom, popup selector, and reduced-motion states before replacing more CSS overrides with direct token consumption.
 
 Summary:
 Switch complete Lumen UI styles through a shared theme contract, CSS variables, and generated motion profiles.
@@ -149,8 +149,7 @@ Lumen will keep adding UI and motion; a theme contract prevents future component
 
 Next actions:
 - Add specimen coverage or a manual visual QA checklist for orb, card, composer, InfoPanel, marker, bloom, popup selector, and reduced-motion states
-- Run the normal extension dev loop and inspect Classic and Signal on real pages without reloading the extension unless manifest or service-worker code changes
-- Keep theme persistence, theme application, and generated visual profiles separated from content overlay orchestration
+- Run the normal extension dev loop and inspect Classic and Signal on real pages from both popup and webpage InfoPanel entry points
 - Progressively replace the post-hoc CSS override layer with direct token consumption in component styles
 - Extract UI/runtime/surface modules from content.tsx only at behavior-preserving seams that clarify ownership
 
@@ -180,6 +179,7 @@ Stages:
 - planned: Visual QA
 
 Recent updates:
+- 2026-08-07 implementation: Merged theme switching into main and added the webpage InfoPanel UI skin switcher, so Classic and Signal can be changed from the page overlay as well as the extension popup.
 - 2026-08-06 planning: Re-reviewed the theme-system follow-up through the single-responsibility lens. Next work should stay focused on specimen/manual visual QA and gradual token cleanup; theme storage/application/generated visuals should remain separate from content overlay orchestration, and content.tsx extraction should happen only where it preserves behavior and reduces coupling.
 - 2026-08-03 implementation: Committed theme switching foundation on codex/theme-switching at 9776f67: added theme profiles, stored theme preference, popup skin selector, Shadow host theme attributes, theme-aware marker styles, and theme-aware bloom generation with Classic and Signal skins.
 - 2026-07-27 design: Theme system design documented with a roadmap feedback contract for future implementation stages.

@@ -218,20 +218,19 @@
       "title": "Theme System",
       "status": "now",
       "phase": "Beta Quality",
-      "progress": 72,
+      "progress": 80,
       "currentStage": "Specimen coverage and visual QA",
       "summary": "Switch complete Lumen UI styles through a shared theme contract, CSS variables, and generated motion profiles.",
       "why": "Lumen will keep adding UI and motion; a theme contract prevents future components from hardcoding one visual style.",
       "notePath": "./features/theme-system.md",
-      "resumePoint": "Theme switching foundation is committed on codex/theme-switching at 9776f67. Current follow-up is a narrow quality pass: add specimen/manual visual QA, keep theme runtime concerns behind storage and Shadow-host adapters, and only extract UI/runtime/surface boundaries when they reduce theme coupling or testing risk.",
+      "resumePoint": "Theme switching is merged into main with Classic and Signal skins available from both the extension popup and the webpage InfoPanel. Continue with specimen/manual visual QA across orb, card, composer, InfoPanel, markers, bloom, popup selector, and reduced-motion states before replacing more CSS overrides with direct token consumption.",
       "nextActions": [
         "Add specimen coverage or a manual visual QA checklist for orb, card, composer, InfoPanel, marker, bloom, popup selector, and reduced-motion states",
-        "Run the normal extension dev loop and inspect Classic and Signal on real pages without reloading the extension unless manifest or service-worker code changes",
-        "Keep theme persistence, theme application, and generated visual profiles separated from content overlay orchestration",
+        "Run the normal extension dev loop and inspect Classic and Signal on real pages from both popup and webpage InfoPanel entry points",
         "Progressively replace the post-hoc CSS override layer with direct token consumption in component styles",
         "Extract UI/runtime/surface modules from content.tsx only at behavior-preserving seams that clarify ownership"
       ],
-      "lastWorkedAt": "2026-08-06",
+      "lastWorkedAt": "2026-08-07",
       "scope": [
         "Core theme contract",
         "Extension CSS token extraction",
@@ -311,6 +310,11 @@
           "date": "2026-08-06",
           "kind": "planning",
           "text": "Re-reviewed the theme-system follow-up through the single-responsibility lens. Next work should stay focused on specimen/manual visual QA and gradual token cleanup; theme storage/application/generated visuals should remain separate from content overlay orchestration, and content.tsx extraction should happen only where it preserves behavior and reduces coupling."
+        },
+        {
+          "date": "2026-08-07",
+          "kind": "implementation",
+          "text": "Merged theme switching into main and added the webpage InfoPanel UI skin switcher, so Classic and Signal can be changed from the page overlay as well as the extension popup."
         }
       ],
       "links": [
@@ -319,7 +323,7 @@
           "href": "./technical/theme-system-design.md"
         }
       ],
-      "updatedAt": "2026-08-06"
+      "updatedAt": "2026-08-07"
     },
     {
       "id": "operator-console",
