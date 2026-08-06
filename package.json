@@ -2,6 +2,9 @@
   "name": "lumen",
   "private": true,
   "version": "0.2.0",
+  "bin": {
+    "lumen-roadmap-mcp": "scripts/roadmap-mcp-bin.js"
+  },
   "description": "Lumen v2 — social Lens layer for the web",
   "workspaces": [
     "apps/*",
@@ -10,11 +13,13 @@
   "scripts": {
     "dev:server": "bun --hot apps/server/src/index.ts",
     "start:server": "bun apps/server/src/index.ts",
+    "dev:roadmap": "bun scripts/serve-roadmap.ts",
+    "mcp:roadmap": "bun scripts/roadmap-mcp.ts",
     "dev:extension": "cd apps/extension && bun run dev",
     "build:extension": "cd apps/extension && bun run build",
     "keygen": "bun scripts/keygen.ts",
     "issue-invite": "bun scripts/issue-invite.ts",
-    "typecheck": "bunx tsc -p packages/schema/tsconfig.json --noEmit && bunx tsc -p packages/url/tsconfig.json --noEmit && bunx tsc -p packages/anchoring/tsconfig.json --noEmit && bunx tsc -p apps/extension/tsconfig.json --noEmit && bunx tsc -p apps/server/tsconfig.json --noEmit",
+    "typecheck": "bun x tsc -p packages/schema/tsconfig.json --noEmit && bun x tsc -p packages/url/tsconfig.json --noEmit && bun x tsc -p packages/anchoring/tsconfig.json --noEmit && bun x tsc -p apps/extension/tsconfig.json --noEmit && bun x tsc -p apps/server/tsconfig.json --noEmit",
     "test:canonicalize": "bun scripts/canonicalize-url.test.ts",
     "test:anchoring": "bun packages/anchoring/src/anchoring.test.ts",
     "test:schema": "bun packages/schema/src/validation.test.ts",

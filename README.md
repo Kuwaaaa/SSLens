@@ -18,6 +18,8 @@ bun install
 bun run keygen
 bun run dev:server
 bun run dev:extension
+bun run dev:roadmap
+bun run mcp:roadmap
 ```
 
 ## Workspaces
@@ -32,6 +34,16 @@ bun run dev:extension
 
 - `AGENTS.md` - AI assistant rules and document routing.
 - `docs/project-status.md` - current implementation snapshot and near-term plan.
+- `docs/roadmap.html` + `docs/roadmap.json` - public feature roadmap and
+  stage-level progress source.
+- `docs/roadmap.md` + `docs/features/` - generated agent-readable roadmap and
+  per-feature resume notes.
+- `bun run mcp:roadmap` - local-only stdio MCP server for roadmap resources and
+  feature-stage update tools.
+- `docs/technical/agent-roadmap-design.md` - reusable Agent Roadmap product and
+  architecture direction.
+- `docs/technical/roadmap-studio-design.md` - Roadmap Studio architecture and
+  API plan.
 - `docs/PROJECT_OVERVIEW.md` - stable product overview.
 - `docs/ARCHITECTURE.md` - stable technical architecture and rationale.
 - `docs/Chat.md` - original Chinese conception.
