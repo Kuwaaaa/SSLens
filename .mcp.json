@@ -1,0 +1,16 @@
+{
+  "mcpServers": {
+    "lumen-roadmap": {
+      "command": "npx",
+      "args": [
+        "-y",
+        "--cache",
+        "E:/src/SSLens/.npm-cache",
+        "--package",
+        "E:/src/SSLens",
+        "lumen-roadmap-mcp"
+      ],
+      "env": {}
+    }
+  }
+}

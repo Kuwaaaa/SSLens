@@ -57,6 +57,12 @@ North star:
 - Original Chinese conception and ecosystem vision: `docs/Chat.md`.
 - Architecture or cross-cutting technical decisions: `docs/ARCHITECTURE.md`.
 - Lens rich content / long reading: `docs/product/lens-reading-design.md`.
+- Roadmap or feature-stage coordination:
+  `docs/technical/agent-roadmap-design.md`, then
+  `docs/technical/roadmap-studio-design.md`, then `docs/roadmap.md` for
+  agent-readable feature context, then `docs/roadmap.json`. When an MCP client
+  is configured, `bun run mcp:roadmap` exposes the same local roadmap files
+  through stdio MCP resources and tools.
 - Ecosystem, Atlas, paths, and toy projects: `docs/product/ecosystem-roadmap.md`.
 - Atlas design thinking and first prototype path: `docs/product/atlas-design.md`.
 - Companion mode: `docs/technical/companion-mode-mvp.md`.

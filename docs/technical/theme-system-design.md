@@ -450,7 +450,95 @@ they are layout-specific and not part of the theme.
 8. Add a UI specimen page or debug surface showing all major states.
 9. Use the same contract when introducing PDF or future web surfaces.
 
-## 13. Specimen Coverage
+## 13. Roadmap Feedback Contract
+
+Theme switching is the first feature that should continuously report its
+development state back to the public roadmap.
+
+The roadmap source is the local/static snapshot:
+
+```text
+docs/roadmap.json
+```
+
+The generated agent-readable roadmap is:
+
+```text
+docs/roadmap.md
+```
+
+The rendered human page is:
+
+```text
+docs/roadmap.html
+```
+
+Any agent implementing theme switching must update the `theme-system` roadmap
+entry at feature-stage boundaries. Do not update the roadmap for every small CSS
+or code edit. Update it when a meaningful stage starts, completes, gets blocked,
+or is intentionally cut.
+
+Recommended theme-system stages:
+
+```text
+design
+tokens
+runtime
+switcher
+second-theme
+motion
+specimen
+qa
+```
+
+Stage status values:
+
+```text
+planned
+next
+now
+done
+blocked
+cut
+```
+
+When starting a stage:
+
+- set that stage to `now`,
+- move the previous active stage to `done` or `blocked`,
+- update `currentStage`,
+- update `progress`,
+- append a concise item to `updates`,
+- update `updatedAt`.
+
+When completing a stage:
+
+- set that stage to `done`,
+- move the next stage to `next` or `now`,
+- update `currentStage`,
+- update `progress`,
+- add verification notes to `updates` when useful,
+- update `updatedAt`.
+
+Theme work should only edit the `theme-system` entry in `docs/roadmap.json`
+unless the roadmap schema itself must change. Run `bun scripts/export-roadmap.ts`
+after roadmap edits so `docs/roadmap.md` stays current for agents.
+
+Suggested progress checkpoints:
+
+```text
+10  design contract documented
+25  CSS token extraction started
+40  overlay uses theme variables
+55  runtime storage and Shadow host application
+65  popup switcher
+75  second theme validates the contract
+85  bloom and generated motion are theme-aware
+95  specimen coverage and QA
+100 shipped
+```
+
+## 14. Specimen Coverage
 
 Create or reuse a local debug surface that shows:
 
@@ -479,7 +567,7 @@ Create or reuse a local debug surface that shows:
 Every theme should be checked against this specimen before being considered
 ready.
 
-## 14. Summary
+## 15. Summary
 
 The theme system should answer this question:
 

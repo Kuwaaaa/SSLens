@@ -1,0 +1,484 @@
+{
+  "updatedAt": "2026-08-03",
+  "statusOrder": [
+    "now",
+    "next",
+    "planned",
+    "exploring",
+    "deferred",
+    "shipped"
+  ],
+  "stageStatusOrder": [
+    "planned",
+    "next",
+    "now",
+    "done",
+    "blocked",
+    "cut"
+  ],
+  "features": [
+    {
+      "id": "beta-stabilization",
+      "title": "Beta Stabilization",
+      "status": "now",
+      "phase": "Phase A",
+      "progress": 62,
+      "currentStage": "Dogfood and verification",
+      "summary": "Keep the current page-bound Lens loop stable before inviting more users.",
+      "why": "The v2 hypothesis depends on reliable Lens creation, anchoring, reading modes, and companion opt-in behavior.",
+      "notePath": "./features/beta-stabilization.md",
+      "resumePoint": "Continue with manual smoke testing and backup/observability review before inviting more beta users.",
+      "nextActions": [
+        "Run focused automated tests",
+        "Run the manual smoke checklist from project status",
+        "Review open reports",
+        "Decide the backup and observability minimum for broader beta use"
+      ],
+      "lastWorkedAt": "2026-05-06",
+      "scope": [
+        "Keep production API-base build guard working",
+        "Keep canonicalization tests passing",
+        "Re-test companion mode after service-worker or WebSocket changes",
+        "Review open reports through the operator queue",
+        "Back up local and server data before broader beta use"
+      ],
+      "outOfScope": [
+        "Durable Lounge history",
+        "Atlas UI",
+        "Public reputation systems"
+      ],
+      "stages": [
+        {
+          "id": "current-loop",
+          "title": "Current Lens loop",
+          "status": "done",
+          "updatedAt": "2026-05-06"
+        },
+        {
+          "id": "manual-smoke",
+          "title": "Manual smoke tests",
+          "status": "now",
+          "updatedAt": "2026-07-27"
+        },
+        {
+          "id": "backup",
+          "title": "Backup and observability review",
+          "status": "next"
+        }
+      ],
+      "updates": [
+        {
+          "date": "2026-05-06",
+          "kind": "status",
+          "text": "Project status moved to pre-release beta stabilization."
+        },
+        {
+          "date": "2026-07-27",
+          "kind": "roadmap",
+          "text": "Added to the public roadmap as the active stabilization track."
+        }
+      ],
+      "links": [
+        {
+          "label": "Project status",
+          "href": "./project-status.md"
+        }
+      ],
+      "updatedAt": "2026-07-27"
+    },
+    {
+      "id": "roadmap-page",
+      "title": "Roadmap Page",
+      "status": "now",
+      "phase": "Project Communication",
+      "progress": 100,
+      "currentStage": "Local MCP available",
+      "summary": "Expose current, next, planned, exploring, deferred, and shipped feature tracks as a lightweight docs page.",
+      "why": "A public roadmap helps beta users and future agents see what is moving without turning planning into a heavy project-management system.",
+      "notePath": "./features/roadmap-page.md",
+      "resumePoint": "Roadmap is local/static-first, has a local stdio MCP server, and should stay out of the Lumen cloud server boundary.",
+      "nextActions": [
+        "Review roadmap wording in the browser",
+        "Configure bun run mcp:roadmap in the MCP client that should read the roadmap",
+        "Keep Lumen deployment free of Roadmap runtime"
+      ],
+      "lastWorkedAt": "2026-07-29",
+      "scope": [
+        "Roadmap JSON source of truth",
+        "Static docs page renderer",
+        "Feature stages and progress",
+        "Recent updates per feature",
+        "Homepage entry point",
+        "Generated agent Markdown",
+        "Feature notebook notes",
+        "Local-only roadmap preview server",
+        "Local stdio MCP server"
+      ],
+      "outOfScope": [
+        "GitHub issue synchronization",
+        "Automatic changelog generation",
+        "A full project-management dashboard"
+      ],
+      "stages": [
+        {
+          "id": "schema",
+          "title": "Roadmap schema",
+          "status": "done",
+          "updatedAt": "2026-07-27"
+        },
+        {
+          "id": "page",
+          "title": "Roadmap page",
+          "status": "done",
+          "updatedAt": "2026-07-27"
+        },
+        {
+          "id": "crud-api",
+          "title": "Feature CRUD API",
+          "status": "cut",
+          "updatedAt": "2026-07-28"
+        },
+        {
+          "id": "sqlite",
+          "title": "Roadmap SQLite persistence",
+          "status": "cut",
+          "updatedAt": "2026-07-28"
+        },
+        {
+          "id": "agent-export",
+          "title": "Feature notebook and agent export",
+          "status": "done",
+          "updatedAt": "2026-07-28"
+        },
+        {
+          "id": "service-separation",
+          "title": "Separate from Lumen server",
+          "status": "done",
+          "updatedAt": "2026-07-28"
+        },
+        {
+          "id": "mcp",
+          "title": "Local Roadmap MCP",
+          "status": "done",
+          "updatedAt": "2026-07-29"
+        },
+        {
+          "id": "review",
+          "title": "Content review",
+          "status": "now",
+          "updatedAt": "2026-07-28"
+        }
+      ],
+      "updates": [
+        {
+          "date": "2026-07-27",
+          "kind": "implementation",
+          "text": "Initial roadmap data model and static page implementation started."
+        },
+        {
+          "date": "2026-07-27",
+          "kind": "api",
+          "text": "Added operator-only CRUD API design and implementation for roadmap features."
+        },
+        {
+          "date": "2026-07-27",
+          "kind": "api",
+          "text": "Roadmap Studio plan saved; public API, SQLite persistence, and operator feature CRUD moved into active development."
+        },
+        {
+          "date": "2026-07-28",
+          "kind": "agent",
+          "text": "Added feature notebooks and generated docs/roadmap.md so fresh-context agents can resume feature work."
+        },
+        {
+          "date": "2026-07-28",
+          "kind": "architecture",
+          "text": "Removed Roadmap from the Lumen server boundary and kept it as a local/static project notebook."
+        },
+        {
+          "date": "2026-07-29",
+          "kind": "mcp",
+          "text": "Added a local stdio MCP server for roadmap resources and feature-stage update tools."
+        }
+      ],
+      "links": [
+        {
+          "label": "Roadmap page",
+          "href": "./roadmap.html"
+        },
+        {
+          "label": "Roadmap Studio design",
+          "href": "./technical/roadmap-studio-design.md"
+        }
+      ],
+      "updatedAt": "2026-07-27"
+    },
+    {
+      "id": "theme-system",
+      "title": "Theme System",
+      "status": "now",
+      "phase": "Beta Quality",
+      "progress": 72,
+      "currentStage": "Specimen coverage and visual QA",
+      "summary": "Switch complete Lumen UI styles through a shared theme contract, CSS variables, and generated motion profiles.",
+      "why": "Lumen will keep adding UI and motion; a theme contract prevents future components from hardcoding one visual style.",
+      "notePath": "./features/theme-system.md",
+      "resumePoint": "Theme switching foundation is committed on codex/theme-switching at 9776f67. Continue by adding a compact specimen or manual visual checklist, then reduce the CSS override layer by moving core components to direct token consumption.",
+      "nextActions": [
+        "Add specimen coverage or a manual visual QA checklist for orb, card, composer, InfoPanel, marker, and bloom states",
+        "Run the normal extension dev loop and inspect Classic and Signal on real pages",
+        "Refactor theme runtime application out of content.tsx only if another theme-related behavior is added",
+        "Progressively replace the post-hoc CSS override layer with direct token consumption in component styles"
+      ],
+      "lastWorkedAt": "2026-08-03",
+      "scope": [
+        "Core theme contract",
+        "Extension CSS token extraction",
+        "Stored theme preference",
+        "Shadow host theme application",
+        "Popup theme selector",
+        "A second built-in theme",
+        "Theme-aware bloom and generated motion",
+        "Specimen coverage for major states"
+      ],
+      "outOfScope": [
+        "User-created custom themes",
+        "Theme marketplace",
+        "Replacing reading modes with theme choices"
+      ],
+      "stages": [
+        {
+          "id": "design",
+          "title": "Design contract",
+          "status": "done",
+          "updatedAt": "2026-07-27"
+        },
+        {
+          "id": "tokens",
+          "title": "Extract CSS tokens",
+          "status": "done",
+          "updatedAt": "2026-08-03"
+        },
+        {
+          "id": "runtime",
+          "title": "Persist and apply theme preference",
+          "status": "done",
+          "updatedAt": "2026-08-03"
+        },
+        {
+          "id": "switcher",
+          "title": "Popup theme switcher",
+          "status": "done",
+          "updatedAt": "2026-08-03"
+        },
+        {
+          "id": "second-theme",
+          "title": "Second built-in theme",
+          "status": "done",
+          "updatedAt": "2026-08-03"
+        },
+        {
+          "id": "motion",
+          "title": "Theme-aware bloom and motion",
+          "status": "done",
+          "updatedAt": "2026-08-03"
+        },
+        {
+          "id": "specimen",
+          "title": "Specimen coverage",
+          "status": "now",
+          "updatedAt": "2026-08-03"
+        },
+        {
+          "id": "qa",
+          "title": "Visual QA",
+          "status": "planned"
+        }
+      ],
+      "updates": [
+        {
+          "date": "2026-07-27",
+          "kind": "design",
+          "text": "Theme system design documented with a roadmap feedback contract for future implementation stages."
+        },
+        {
+          "date": "2026-08-03",
+          "kind": "implementation",
+          "text": "Committed theme switching foundation on codex/theme-switching at 9776f67: added theme profiles, stored theme preference, popup skin selector, Shadow host theme attributes, theme-aware marker styles, and theme-aware bloom generation with Classic and Signal skins."
+        }
+      ],
+      "links": [
+        {
+          "label": "Theme system design",
+          "href": "./technical/theme-system-design.md"
+        }
+      ],
+      "updatedAt": "2026-08-03"
+    },
+    {
+      "id": "composer-markdown-preview",
+      "title": "Composer Markdown Preview",
+      "status": "planned",
+      "phase": "Phase B",
+      "progress": 0,
+      "currentStage": "Not started",
+      "summary": "Let Lens authors preview Markdown before publishing when longer Lens content makes that useful.",
+      "why": "Markdown support is already useful for reading; preview may reduce publishing friction for knowledge and challenge Lens.",
+      "scope": [
+        "Preview toggle inside composer",
+        "Use the same lightweight Markdown renderer as Lens cards",
+        "Keep quick Lens creation fast"
+      ],
+      "outOfScope": [
+        "Full rich-text editor",
+        "Image uploads",
+        "Tables unless real usage asks for them"
+      ],
+      "stages": [],
+      "updates": [],
+      "links": [
+        {
+          "label": "Lens reading design",
+          "href": "./product/lens-reading-design.md"
+        }
+      ],
+      "updatedAt": "2026-07-27"
+    },
+    {
+      "id": "cross-page-lens-lookup",
+      "title": "Cross-page Lens Reference Lookup",
+      "status": "planned",
+      "phase": "Post-stabilization",
+      "progress": 0,
+      "currentStage": "Not started",
+      "summary": "Resolve `[[lens:id]]` references when the referenced Lens is not on the current page.",
+      "why": "Lens references are first-class; cross-page lookup makes the reference graph more useful without exposing Atlas UI.",
+      "scope": [
+        "Server lookup route",
+        "Disabled and loading chip states",
+        "Small referenced Lens preview"
+      ],
+      "outOfScope": [
+        "Visible knowledge graph UI",
+        "Atlas node editor",
+        "Recommendation feed"
+      ],
+      "stages": [],
+      "updates": [],
+      "links": [],
+      "updatedAt": "2026-07-27"
+    },
+    {
+      "id": "pdf-lens-surface",
+      "title": "PDF Lens Surface",
+      "status": "exploring",
+      "phase": "Future Surface",
+      "progress": 5,
+      "currentStage": "Product and runtime boundary notes",
+      "summary": "Explore a PDF.js-based Lens surface for text-based PDFs using document identity and page-rectangle anchors.",
+      "why": "PDFs are a natural reading surface for papers, manuals, and exported books, but they need a surface adapter instead of PDF branches throughout the webpage content script.",
+      "scope": [
+        "Document-level identity first",
+        "Text quote and page rectangle anchors",
+        "PDF.js reader direction",
+        "Surface adapter boundary"
+      ],
+      "outOfScope": [
+        "OCR for scanned PDFs",
+        "Automatic cross-PDF merging",
+        "EPUB support",
+        "Book graph UI"
+      ],
+      "stages": [
+        {
+          "id": "design-notes",
+          "title": "Design notes",
+          "status": "done",
+          "updatedAt": "2026-05-06"
+        },
+        {
+          "id": "surface-boundary",
+          "title": "Surface boundary extraction",
+          "status": "planned"
+        }
+      ],
+      "updates": [
+        {
+          "date": "2026-05-06",
+          "kind": "design",
+          "text": "PDF Lens direction captured in the Lens product design and extension runtime boundary notes."
+        }
+      ],
+      "links": [
+        {
+          "label": "Lens product design",
+          "href": "./product/lens-design.md"
+        },
+        {
+          "label": "Extension runtime notes",
+          "href": "https://github.com/Kuwaaaa/SSLens/blob/main/apps/extension/README.md"
+        }
+      ],
+      "updatedAt": "2026-07-27"
+    },
+    {
+      "id": "persistent-lounge",
+      "title": "Persistent Lounge",
+      "status": "deferred",
+      "phase": "Future Ecosystem",
+      "progress": 0,
+      "currentStage": "Deferred",
+      "summary": "A durable social space may exist later, but page-bound Lens cards remain the v2 center.",
+      "why": "Durable Lounge history could compete with Lens as the page memory before the core participation loop is validated.",
+      "scope": [
+        "Keep product thinking available",
+        "Revisit only after page Lens participation is stable"
+      ],
+      "outOfScope": [
+        "Durable Lounge chat in v2",
+        "Replacing Lens cards as page memory"
+      ],
+      "stages": [],
+      "updates": [],
+      "links": [
+        {
+          "label": "Persistent Lounge design",
+          "href": "./product/persistent-lounge-design.md"
+        }
+      ],
+      "updatedAt": "2026-07-27"
+    },
+    {
+      "id": "atlas-ui",
+      "title": "Atlas UI",
+      "status": "deferred",
+      "phase": "Future Ecosystem",
+      "progress": 0,
+      "currentStage": "Deferred",
+      "summary": "Atlas remains a long-term ecosystem direction, not a visible Lumen v2 UI surface.",
+      "why": "v2 should validate contextual Lens participation before introducing knowledge graph interfaces.",
+      "scope": [
+        "Keep Lens data compatible with future node candidates",
+        "Avoid exposing graph UI in v2"
+      ],
+      "outOfScope": [
+        "Knowledge graph UI",
+        "Skill tree UI",
+        "Public reputation or canonical node workflows"
+      ],
+      "stages": [],
+      "updates": [],
+      "links": [
+        {
+          "label": "Atlas design",
+          "href": "./product/atlas-design.md"
+        },
+        {
+          "label": "Ecosystem roadmap",
+          "href": "./product/ecosystem-roadmap.md"
+        }
+      ],
+      "updatedAt": "2026-07-27"
+    }
+  ]
+}

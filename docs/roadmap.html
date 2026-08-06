@@ -1,0 +1,640 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Lumen Roadmap</title>
+    <style>
+      :root {
+        color: #201629;
+        background: #fffdf8;
+        font-family: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+        --primary: #4a1a7a;
+        --primary-soft: #f1e8ff;
+        --accent: #c8762d;
+        --teal: #24515c;
+        --text: #201629;
+        --muted: #6f6578;
+        --line: rgba(74, 26, 122, 0.16);
+        --panel: rgba(255, 255, 255, 0.86);
+        --shadow: 0 12px 34px rgba(74, 26, 122, 0.08);
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      body {
+        margin: 0;
+        line-height: 1.55;
+      }
+
+      a {
+        color: var(--primary);
+        font-weight: 750;
+        text-decoration-color: rgba(74, 26, 122, 0.28);
+        text-underline-offset: 4px;
+      }
+
+      main {
+        width: min(1120px, calc(100% - 40px));
+        margin: 0 auto;
+        padding: 48px 0 72px;
+      }
+
+      .topbar {
+        display: flex;
+        justify-content: space-between;
+        gap: 16px;
+        align-items: center;
+        margin-bottom: 40px;
+      }
+
+      .brand {
+        color: var(--primary);
+        font-size: 14px;
+        font-weight: 850;
+        text-decoration: none;
+      }
+
+      .hero {
+        max-width: 780px;
+        margin-bottom: 34px;
+      }
+
+      h1 {
+        margin: 0 0 14px;
+        color: var(--primary);
+        font-size: clamp(38px, 8vw, 72px);
+        line-height: 0.96;
+        letter-spacing: 0;
+      }
+
+      .lede {
+        margin: 0;
+        color: #44364f;
+        font-size: clamp(18px, 2.4vw, 22px);
+      }
+
+      .meta-row {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+        margin-top: 22px;
+      }
+
+      .meta-pill,
+      .status-pill,
+      .stage-status {
+        display: inline-flex;
+        align-items: center;
+        min-height: 24px;
+        border: 1px solid var(--line);
+        border-radius: 999px;
+        background: #fff;
+        color: var(--muted);
+        font-size: 12px;
+        font-weight: 750;
+        line-height: 1;
+      }
+
+      .meta-pill {
+        padding: 0 10px;
+      }
+
+      .roadmap {
+        display: grid;
+        gap: 26px;
+      }
+
+      .lane {
+        display: grid;
+        gap: 12px;
+      }
+
+      .lane-header {
+        display: flex;
+        justify-content: space-between;
+        gap: 16px;
+        align-items: end;
+        padding-bottom: 8px;
+        border-bottom: 1px solid var(--line);
+      }
+
+      .lane-title {
+        margin: 0;
+        color: var(--text);
+        font-size: 22px;
+        letter-spacing: 0;
+      }
+
+      .lane-desc {
+        margin: 3px 0 0;
+        color: var(--muted);
+        font-size: 13px;
+      }
+
+      .count {
+        color: var(--muted);
+        font-size: 12px;
+        font-weight: 750;
+        white-space: nowrap;
+      }
+
+      .cards {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+        gap: 14px;
+      }
+
+      .feature {
+        display: grid;
+        gap: 12px;
+        min-width: 0;
+        padding: 18px;
+        border: 1px solid var(--line);
+        border-radius: 8px;
+        background: var(--panel);
+        box-shadow: var(--shadow);
+      }
+
+      .feature-head {
+        display: flex;
+        justify-content: space-between;
+        align-items: start;
+        gap: 12px;
+      }
+
+      .feature h3 {
+        margin: 0;
+        color: var(--text);
+        font-size: 18px;
+        line-height: 1.2;
+        letter-spacing: 0;
+      }
+
+      .phase {
+        margin-top: 4px;
+        color: var(--muted);
+        font-size: 12px;
+        font-weight: 700;
+      }
+
+      .status-pill {
+        flex: 0 0 auto;
+        padding: 0 9px;
+        color: var(--primary);
+        background: var(--primary-soft);
+      }
+
+      .status-now .status-pill {
+        color: #7c2d12;
+        background: #fffbeb;
+        border-color: rgba(200, 118, 45, 0.28);
+      }
+
+      .status-shipped .status-pill {
+        color: #166534;
+        background: #ecfdf3;
+        border-color: rgba(22, 101, 52, 0.18);
+      }
+
+      .status-deferred .status-pill {
+        color: #62566b;
+        background: #f5f1f7;
+      }
+
+      .summary,
+      .why,
+      .empty {
+        margin: 0;
+        color: #44364f;
+        font-size: 14px;
+      }
+
+      .why {
+        color: var(--muted);
+      }
+
+      .memory {
+        display: grid;
+        gap: 8px;
+        padding: 10px 12px;
+        border: 1px solid rgba(36, 81, 92, 0.16);
+        border-radius: 8px;
+        background: rgba(234, 245, 243, 0.48);
+      }
+
+      .memory-line {
+        margin: 0;
+        color: #35525a;
+        font-size: 13px;
+      }
+
+      .memory-line strong {
+        color: var(--teal);
+      }
+
+      .next-actions {
+        margin-top: 2px;
+      }
+
+      .progress-wrap {
+        display: grid;
+        gap: 6px;
+      }
+
+      .progress-label {
+        display: flex;
+        justify-content: space-between;
+        gap: 12px;
+        color: var(--muted);
+        font-size: 12px;
+        font-weight: 750;
+      }
+
+      .progress {
+        height: 8px;
+        overflow: hidden;
+        border-radius: 999px;
+        background: rgba(74, 26, 122, 0.08);
+      }
+
+      .progress span {
+        display: block;
+        height: 100%;
+        border-radius: inherit;
+        background: linear-gradient(90deg, var(--primary), var(--accent));
+      }
+
+      .cols {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 12px;
+      }
+
+      .mini h4 {
+        margin: 0 0 5px;
+        color: var(--teal);
+        font-size: 12px;
+        text-transform: uppercase;
+        letter-spacing: 0;
+      }
+
+      ul {
+        margin: 0;
+        padding-left: 18px;
+      }
+
+      li {
+        margin: 3px 0;
+        color: #44364f;
+        font-size: 13px;
+      }
+
+      details {
+        border-top: 1px solid rgba(74, 26, 122, 0.1);
+        padding-top: 10px;
+      }
+
+      summary {
+        color: var(--primary);
+        cursor: pointer;
+        font-size: 13px;
+        font-weight: 800;
+      }
+
+      .stages {
+        display: grid;
+        gap: 7px;
+        margin-top: 10px;
+      }
+
+      .stage {
+        display: grid;
+        grid-template-columns: auto 1fr auto;
+        gap: 8px;
+        align-items: center;
+        min-width: 0;
+        color: #44364f;
+        font-size: 13px;
+      }
+
+      .stage-dot {
+        width: 8px;
+        height: 8px;
+        border-radius: 999px;
+        background: #d8cfe0;
+      }
+
+      .stage-status {
+        min-height: 20px;
+        padding: 0 7px;
+        font-size: 10px;
+        text-transform: uppercase;
+      }
+
+      .stage-now .stage-dot,
+      .stage-next .stage-dot {
+        background: var(--accent);
+      }
+
+      .stage-done .stage-dot {
+        background: #15803d;
+      }
+
+      .stage-blocked .stage-dot {
+        background: #b91c1c;
+      }
+
+      .updates {
+        display: grid;
+        gap: 8px;
+        margin-top: 10px;
+      }
+
+      .update {
+        padding: 8px 10px;
+        border-radius: 8px;
+        background: rgba(241, 232, 255, 0.46);
+        color: #44364f;
+        font-size: 12px;
+      }
+
+      .update strong {
+        color: var(--primary);
+      }
+
+      .links {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+      }
+
+      .links a {
+        display: inline-flex;
+        align-items: center;
+        min-height: 28px;
+        padding: 0 10px;
+        border: 1px solid var(--line);
+        border-radius: 999px;
+        background: #fff;
+        font-size: 12px;
+        text-decoration: none;
+      }
+
+      .note {
+        margin-top: 32px;
+        padding: 14px 16px;
+        border: 1px solid rgba(36, 81, 92, 0.18);
+        border-radius: 8px;
+        background: rgba(234, 245, 243, 0.54);
+        color: #35525a;
+        font-size: 13px;
+      }
+
+      @media (max-width: 720px) {
+        main {
+          width: min(100% - 28px, 1120px);
+          padding-top: 28px;
+        }
+
+        .topbar,
+        .lane-header,
+        .feature-head,
+        .progress-label {
+          align-items: start;
+          flex-direction: column;
+        }
+
+        .cols {
+          grid-template-columns: 1fr;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <main>
+      <nav class="topbar" aria-label="Roadmap navigation">
+        <a class="brand" href="./index.html">Lumen v2</a>
+        <a href="https://github.com/Kuwaaaa/SSLens">GitHub Repository</a>
+      </nav>
+
+      <header class="hero">
+        <h1>Roadmap</h1>
+        <p class="lede">
+          A lightweight view of what is being stabilized, built, explored, and
+          intentionally deferred while Lumen v2 keeps Lens cards at the center.
+        </p>
+        <div class="meta-row" id="roadmap-meta">
+          <span class="meta-pill">Loading roadmap</span>
+        </div>
+      </header>
+
+      <section id="roadmap" class="roadmap" aria-live="polite">
+        <p class="empty">Loading roadmap data...</p>
+      </section>
+
+      <p class="note">
+        Roadmap entries are updated at feature-stage boundaries, not every
+        commit. Detailed implementation status and verification remain in
+        <a href="./project-status.md">project status</a>.
+      </p>
+    </main>
+
+    <script>
+      const statusLabels = {
+        now: "Now",
+        next: "Next",
+        planned: "Planned",
+        exploring: "Exploring",
+        deferred: "Deferred",
+        shipped: "Shipped"
+      };
+
+      const statusDescriptions = {
+        now: "Currently being built, stabilized, or actively reviewed.",
+        next: "Likely to follow after the current active work settles.",
+        planned: "Direction is accepted, but implementation is not active yet.",
+        exploring: "Promising, but not committed as v2 implementation work.",
+        deferred: "Intentionally held back to protect the page-bound Lens loop.",
+        shipped: "Completed and kept here for continuity."
+      };
+
+      const roadmapEl = document.querySelector("#roadmap");
+      const metaEl = document.querySelector("#roadmap-meta");
+
+      function escapeHtml(value) {
+        return String(value)
+          .replaceAll("&", "&amp;")
+          .replaceAll("<", "&lt;")
+          .replaceAll(">", "&gt;")
+          .replaceAll('"', "&quot;");
+      }
+
+      function listItems(items) {
+        if (!items || items.length === 0) return '<p class="empty">None listed.</p>';
+        return `<ul>${items.map((item) => `<li>${escapeHtml(item)}</li>`).join("")}</ul>`;
+      }
+
+      function renderStages(stages) {
+        if (!stages || stages.length === 0) return "";
+        return `
+          <details>
+            <summary>Stages</summary>
+            <div class="stages">
+              ${stages.map((stage) => `
+                <div class="stage stage-${escapeHtml(stage.status)}">
+                  <span class="stage-dot" aria-hidden="true"></span>
+                  <span>${escapeHtml(stage.title)}</span>
+                  <span class="stage-status">${escapeHtml(stage.status)}</span>
+                </div>
+              `).join("")}
+            </div>
+          </details>
+        `;
+      }
+
+      function renderUpdates(updates) {
+        if (!updates || updates.length === 0) return "";
+        return `
+          <details>
+            <summary>Recent updates</summary>
+            <div class="updates">
+              ${updates.slice(-3).reverse().map((update) => `
+                <div class="update">
+                  <strong>${escapeHtml(update.date)} - ${escapeHtml(update.kind)}</strong>
+                  <div>${escapeHtml(update.text)}</div>
+                </div>
+              `).join("")}
+            </div>
+          </details>
+        `;
+      }
+
+      function renderLinks(links) {
+        if (!links || links.length === 0) return "";
+        return `
+          <div class="links">
+            ${links.map((link) => `
+              <a href="${escapeHtml(link.href)}">${escapeHtml(link.label)}</a>
+            `).join("")}
+          </div>
+        `;
+      }
+
+      function renderMemory(feature) {
+        const hasResume = Boolean(feature.resumePoint);
+        const hasNext = Array.isArray(feature.nextActions) && feature.nextActions.length > 0;
+        const hasLastWorked = Boolean(feature.lastWorkedAt);
+        if (!hasResume && !hasNext && !hasLastWorked && !feature.notePath) return "";
+        return `
+          <div class="memory">
+            ${hasLastWorked ? `<p class="memory-line"><strong>Last worked:</strong> ${escapeHtml(feature.lastWorkedAt)}</p>` : ""}
+            ${hasResume ? `<p class="memory-line"><strong>Resume:</strong> ${escapeHtml(feature.resumePoint)}</p>` : ""}
+            ${hasNext ? `
+              <div class="mini next-actions">
+                <h4>Next actions</h4>
+                ${listItems(feature.nextActions)}
+              </div>
+            ` : ""}
+            ${feature.notePath ? `<p class="memory-line"><a href="${escapeHtml(feature.notePath)}">Open feature note</a></p>` : ""}
+          </div>
+        `;
+      }
+
+      function renderFeature(feature) {
+        const progress = Math.max(0, Math.min(100, Number(feature.progress) || 0));
+        return `
+          <article class="feature status-${escapeHtml(feature.status)}">
+            <div class="feature-head">
+              <div>
+                <h3>${escapeHtml(feature.title)}</h3>
+                <div class="phase">${escapeHtml(feature.phase || "Unphased")}</div>
+              </div>
+              <span class="status-pill">${escapeHtml(statusLabels[feature.status] || feature.status)}</span>
+            </div>
+            <p class="summary">${escapeHtml(feature.summary)}</p>
+            <p class="why">${escapeHtml(feature.why)}</p>
+            <div class="progress-wrap">
+              <div class="progress-label">
+                <span>${escapeHtml(feature.currentStage || "Not started")}</span>
+                <span>${progress}%</span>
+              </div>
+              <div class="progress" aria-label="${escapeHtml(feature.title)} progress">
+                <span style="width: ${progress}%"></span>
+              </div>
+            </div>
+            ${renderMemory(feature)}
+            <div class="cols">
+              <div class="mini">
+                <h4>Scope</h4>
+                ${listItems(feature.scope)}
+              </div>
+              <div class="mini">
+                <h4>Out of scope</h4>
+                ${listItems(feature.outOfScope)}
+              </div>
+            </div>
+            ${renderStages(feature.stages)}
+            ${renderUpdates(feature.updates)}
+            ${renderLinks(feature.links)}
+          </article>
+        `;
+      }
+
+      function renderRoadmap(data) {
+        const order = data.statusOrder || Object.keys(statusLabels);
+        const features = Array.isArray(data.features) ? data.features : [];
+        metaEl.innerHTML = `
+          <span class="meta-pill">Updated ${escapeHtml(data.updatedAt || "unknown")}</span>
+          <span class="meta-pill">${features.length} feature tracks</span>
+          <span class="meta-pill">Source: roadmap.json</span>
+        `;
+        roadmapEl.innerHTML = order.map((status) => {
+          const laneFeatures = features.filter((feature) => feature.status === status);
+          if (laneFeatures.length === 0) return "";
+          return `
+            <section class="lane" aria-labelledby="lane-${escapeHtml(status)}">
+              <div class="lane-header">
+                <div>
+                  <h2 id="lane-${escapeHtml(status)}" class="lane-title">${escapeHtml(statusLabels[status] || status)}</h2>
+                  <p class="lane-desc">${escapeHtml(statusDescriptions[status] || "")}</p>
+                </div>
+                <div class="count">${laneFeatures.length} tracks</div>
+              </div>
+              <div class="cards">
+                ${laneFeatures.map(renderFeature).join("")}
+              </div>
+            </section>
+          `;
+        }).join("");
+      }
+
+      function loadRoadmap() {
+        if (window.location.protocol === "file:") {
+          return fetch("./roadmap.json", { cache: "no-store" });
+        }
+        return fetch("/api/roadmap", { cache: "no-store" })
+          .then((response) => (response.ok ? response : fetch("./roadmap.json", { cache: "no-store" })));
+      }
+
+      loadRoadmap()
+        .then((response) => {
+          if (!response.ok) throw new Error(`Roadmap request failed: ${response.status}`);
+          return response.json();
+        })
+        .then(renderRoadmap)
+        .catch((error) => {
+          roadmapEl.innerHTML = `
+            <p class="empty">
+              Roadmap data could not be loaded. Open <a href="./roadmap.json">roadmap.json</a>
+              directly or view this page through a local/static server.
+            </p>
+          `;
+          metaEl.innerHTML = '<span class="meta-pill">Roadmap unavailable</span>';
+          console.error(error);
+        });
+    </script>
+  </body>
+</html>
