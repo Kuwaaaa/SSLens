@@ -1250,9 +1250,9 @@ button, input, textarea, select {
   margin-bottom: 7px;
 }
 
-.info-panel .ip-mode-switch {
+.info-panel .ip-mode-switch,
+.info-panel .ip-theme-switch {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 4px;
   padding: 3px;
   border: 1px solid rgba(107, 33, 168, 0.16);
@@ -1260,7 +1260,16 @@ button, input, textarea, select {
   background: rgba(250, 246, 255, 0.7);
 }
 
-.info-panel .ip-mode-switch button {
+.info-panel .ip-mode-switch {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.info-panel .ip-theme-switch {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.info-panel .ip-mode-switch button,
+.info-panel .ip-theme-switch button {
   min-width: 0;
   height: 28px;
   border: 0;
@@ -1274,14 +1283,29 @@ button, input, textarea, select {
   text-transform: capitalize;
 }
 
-.info-panel .ip-mode-switch button:hover {
+.info-panel .ip-theme-switch button span {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.info-panel .ip-mode-switch button:hover,
+.info-panel .ip-theme-switch button:hover {
   background: rgba(139, 92, 246, 0.1);
 }
 
-.info-panel .ip-mode-switch button.active {
+.info-panel .ip-mode-switch button.active,
+.info-panel .ip-theme-switch button.active {
   background: #4a1a7a;
   color: #fff;
   box-shadow: 0 3px 8px rgba(74, 26, 122, 0.18);
+}
+
+.info-panel .ip-theme-desc {
+  margin-top: 5px;
+  color: #888;
+  font-size: 10px;
+  line-height: 1.35;
 }
 
 .info-panel .ip-stat-grid {
@@ -1815,6 +1839,7 @@ button, input, textarea, select {
 :host([data-lumen-theme]) .ip-header-meta,
 :host([data-lumen-theme]) .ip-label,
 :host([data-lumen-theme]) .ip-hint,
+:host([data-lumen-theme]) .ip-theme-desc,
 :host([data-lumen-theme]) .companion-chat-empty,
 :host([data-lumen-theme]) .companion-chat-meta,
 :host([data-lumen-theme]) .orphan-meta,
@@ -1876,6 +1901,7 @@ button, input, textarea, select {
 :host([data-lumen-theme]) .composer .overlap-hint button,
 :host([data-lumen-theme]) .composer .ref-insert-toggle,
 :host([data-lumen-theme]) .info-panel .ip-mode-switch button,
+:host([data-lumen-theme]) .info-panel .ip-theme-switch button,
 :host([data-lumen-theme]) .info-panel .ip-action,
 :host([data-lumen-theme]) .info-panel .ip-actions button,
 :host([data-lumen-theme]) .companion-chat-form button,
@@ -1910,6 +1936,7 @@ button, input, textarea, select {
 :host([data-lumen-theme]) .composer .ref-insert-list,
 :host([data-lumen-theme]) .composer .ref-insert-item,
 :host([data-lumen-theme]) .info-panel .ip-mode-switch,
+:host([data-lumen-theme]) .info-panel .ip-theme-switch,
 :host([data-lumen-theme]) .info-panel .ip-action,
 :host([data-lumen-theme]) .info-panel .ip-actions button,
 :host([data-lumen-theme]) .companion-emoji-button,
@@ -1931,6 +1958,7 @@ button, input, textarea, select {
 :host([data-lumen-theme]) .restore-tab:hover,
 :host([data-lumen-theme]) .icon-action:hover,
 :host([data-lumen-theme]) .info-panel .ip-action:hover,
+:host([data-lumen-theme]) .info-panel .ip-theme-switch button:hover,
 :host([data-lumen-theme]) .info-panel .ip-actions button:hover {
   background: var(--lumen-color-primary-hover);
 }
@@ -1947,6 +1975,7 @@ button, input, textarea, select {
 }
 
 :host([data-lumen-theme]) .info-panel .ip-mode-switch button.active,
+:host([data-lumen-theme]) .info-panel .ip-theme-switch button.active,
 :host([data-lumen-theme]) .composer button,
 :host([data-lumen-theme]) .reanchor-confirm button {
   border-color: var(--lumen-color-primary);

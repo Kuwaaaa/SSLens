@@ -29,6 +29,7 @@ import {
   logout,
   normalizeHost,
   setReadingMode as saveReadingMode,
+  setTheme as saveTheme,
   type StoredUser,
 } from "./shared/storage";
 import { fetchLensesForRoom, createLens, reportLens, toggleReaction, updateLensAnchor } from "./shared/api-proxy";
@@ -44,7 +45,7 @@ import {
 } from "./marker";
 import { parseBody, RenderBody } from "./refs";
 import { BloomLayer, makeBloomSpec, type BloomIntent, type BloomSpec } from "./shapes";
-import { DEFAULT_THEME_ID, normalizeThemeId, type LumenThemeId } from "./theme";
+import { DEFAULT_THEME_ID, LUMEN_THEME_IDS, LUMEN_THEMES, normalizeThemeId, type LumenThemeId } from "./theme";
 
 import overlayCss from "./styles.css?inline";
 
@@ -1073,6 +1074,11 @@ function Overlay({ url, roomId, canonical }: { url: string; roomId: string; cano
     setReadingMode(mode);
   }
 
+  async function changeTheme(theme: LumenThemeId) {
+    await saveTheme(theme);
+    setThemeId(theme);
+  }
+
   return (
     <>
       <Orb
@@ -1087,6 +1093,7 @@ function Overlay({ url, roomId, canonical }: { url: string; roomId: string; cano
       {panelOpen && (
         <InfoPanel
           mode={readingMode}
+          theme={themeId}
           visible={visibleLenses.length}
           hidden={hiddenCount}
           orphanLenses={lenses.filter((l) => orphanIds.has(l.id))}
@@ -1102,6 +1109,7 @@ function Overlay({ url, roomId, canonical }: { url: string; roomId: string; cano
           companionMessages={companionMessages}
           currentUserId={currentUser?.userId ?? null}
           onModeChange={(mode) => void changeReadingMode(mode)}
+          onThemeChange={(theme) => void changeTheme(theme)}
           onClose={() => setPanelOpen(false)}
           onHideTab={() => setTabHidden(true)}
           onFindCompanion={findCompanion}
@@ -1234,6 +1242,7 @@ function ClusterHeatOverlay({ rects }: { rects: ClusterHeatRect[] }) {
 
 function InfoPanel({
   mode,
+  theme,
   visible,
   hidden,
   orphanLenses,
@@ -1249,6 +1258,7 @@ function InfoPanel({
   companionMessages,
   currentUserId,
   onModeChange,
+  onThemeChange,
   onClose,
   onHideTab,
   onFindCompanion,
@@ -1261,6 +1271,7 @@ function InfoPanel({
   onCancelReanchor,
 }: {
   mode: ReadingMode;
+  theme: LumenThemeId;
   visible: number;
   hidden: number;
   orphanLenses: Lens[];
@@ -1276,6 +1287,7 @@ function InfoPanel({
   companionMessages: CompanionChatMessage[];
   currentUserId: string | null;
   onModeChange: (mode: ReadingMode) => void;
+  onThemeChange: (theme: LumenThemeId) => void;
   onClose: () => void;
   onHideTab: () => void;
   onFindCompanion: () => void;
@@ -1354,6 +1366,7 @@ function InfoPanel({
       {chatFocused && (
         <div className="ip-chat-summary">
           <span>{mode}</span>
+          <span>{LUMEN_THEMES[theme].label}</span>
           <span>{visible} visible</span>
           <span>{companionConnected ? "Companion live" : "Companion offline"}</span>
         </div>
@@ -1376,6 +1389,26 @@ function InfoPanel({
             </button>
           ))}
         </div>
+      </div>
+
+      <div className={`ip-section ip-control-section ${chatFocused ? "soft-collapsed" : ""}`}>
+        <div className="ip-section-head">
+          <span className="ip-label">UI skin</span>
+          <span className="pill">{LUMEN_THEMES[theme].label}</span>
+        </div>
+        <div className="ip-theme-switch" role="group" aria-label="UI skin">
+          {LUMEN_THEME_IDS.map((id) => (
+            <button
+              key={id}
+              className={theme === id ? "active" : ""}
+              onClick={() => onThemeChange(id)}
+              aria-pressed={theme === id}
+            >
+              <span>{LUMEN_THEMES[id].label}</span>
+            </button>
+          ))}
+        </div>
+        <div className="ip-theme-desc">{LUMEN_THEMES[theme].description}</div>
       </div>
 
       <div className={`ip-section ip-lens-status ${chatFocused ? "soft-collapsed" : ""}`}>
