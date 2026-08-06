@@ -1,6 +1,8 @@
 // CSS Custom Highlight API rendering. No DOM mutation.
 // All Lens markers share a single `lumen-marker` highlight; one Range per lens.
 
+import { LUMEN_THEMES, type LumenThemeId } from "./theme";
+
 const HIGHLIGHT_NAME = "lumen-marker";
 
 const lensRanges = new Map<string, Range>();
@@ -86,35 +88,50 @@ export function clearAllClusterHighlights(): void {
   clusterHeatRanges.clear();
 }
 
+export function setMarkerTheme(themeId: LumenThemeId): void {
+  const style = document.getElementById("lumen-marker-style") ?? document.createElement("style");
+  const theme = LUMEN_THEMES[themeId];
+  if (!style.id) {
+    style.id = "lumen-marker-style";
+    document.head.appendChild(style);
+  }
+  style.textContent = markerStyleText(theme.marker);
+}
+
 // Inject the global stylesheet that draws the dotted-underline on highlights.
 // Called once on content-script init.
-export function injectMarkerStyles(): void {
-  if (document.getElementById("lumen-marker-style")) return;
-  const style = document.createElement("style");
-  style.id = "lumen-marker-style";
-  style.textContent = `
+export function injectMarkerStyles(themeId: LumenThemeId): void {
+  setMarkerTheme(themeId);
+}
+
+function markerStyleText(marker: {
+  primary: string;
+  cluster2: string;
+  cluster3: string;
+  cluster4: string;
+}): string {
+  return `
     ::highlight(${HIGHLIGHT_NAME}) {
-      text-decoration: underline dotted #6b21a8;
+      text-decoration: underline dotted ${marker.primary};
       text-decoration-thickness: 2px;
       text-underline-offset: 3px;
     }
     ::highlight(${clusterHeatName(2)}) {
-      text-decoration: underline dotted #b45309;
+      text-decoration: underline dotted ${marker.cluster2};
       text-decoration-thickness: 2px;
       text-underline-offset: 3px;
     }
     ::highlight(${clusterHeatName(3)}) {
-      text-decoration: underline dotted #b45309;
+      text-decoration: underline dotted ${marker.cluster3};
       text-decoration-thickness: 2px;
       text-underline-offset: 3px;
     }
     ::highlight(${clusterHeatName(4)}) {
-      text-decoration: underline dotted #92400e;
+      text-decoration: underline dotted ${marker.cluster4};
       text-decoration-thickness: 2px;
       text-underline-offset: 3px;
     }
   `;
-  document.head.appendChild(style);
 }
 
 // Find which lenses (if any) cover the given client-coord point. Used to

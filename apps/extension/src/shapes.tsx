@@ -17,12 +17,9 @@
 // emission so no two card-opens look identical.
 
 import { useEffect } from "react";
+import { LUMEN_THEMES, type LumenThemeId, type LumenThemeProfile } from "./theme";
 
 type ShapeKind = "circle" | "triangle" | "square" | "plus" | "arc";
-
-const PURPLE = "#8b5cf6";
-const PURPLE_DEEP = "#7c3aed";
-const AMBER = "#f59e0b";
 
 interface BloomShape {
   id: string;
@@ -50,13 +47,8 @@ const ALL_SHAPES: ShapeKind[] = ["circle", "triangle", "square", "plus", "arc"];
 const r = () => Math.random();
 const pickShape = (): ShapeKind => ALL_SHAPES[Math.floor(r() * ALL_SHAPES.length)];
 
-// 45% mid purple, 20% deep purple, 35% amber. Bias toward purple keeps the
-// product's primary color dominant; amber acts as accent.
-function pickColor(): string {
-  const x = r();
-  if (x < 0.45) return PURPLE;
-  if (x < 0.65) return PURPLE_DEEP;
-  return AMBER;
+function pickColor(colors: string[]): string {
+  return colors[Math.floor(r() * colors.length)] ?? LUMEN_THEMES.classic.bloom.colors[0];
 }
 const pickOutlined = (): boolean => r() > 0.4;
 
@@ -70,6 +62,7 @@ function emit(
   baseDy: number,
   delay: number,
   size: number,
+  colors: string[],
 ): BloomShape {
   const jitter = (r() - 0.5) * 0.7; // ±20°
   const cos = Math.cos(jitter);
@@ -77,7 +70,7 @@ function emit(
   return {
     id,
     kind: pickShape(),
-    color: pickColor(),
+    color: pickColor(colors),
     outlined: pickOutlined(),
     size,
     startX,
@@ -89,14 +82,21 @@ function emit(
   };
 }
 
-export function makeBloomSpec(rect: DOMRect, intent: BloomIntent): BloomSpec {
+export function makeBloomSpec(
+  rect: DOMRect,
+  intent: BloomIntent,
+  themeId: LumenThemeId = "classic",
+): BloomSpec {
   const shapes: BloomShape[] = [];
+  const bloom: LumenThemeProfile["bloom"] = LUMEN_THEMES[themeId].bloom;
 
   if (intent === "card-open") {
     // 4 + 4 + 2 + 2 = 12 emission points along the card outline.
     // Stagger flows clockwise from top, so the burst "rolls" around.
-    const TOP_N = 4, BOTTOM_N = 4, SIDE_N = 2;
-    const SPREAD = 55; // base px shapes travel from the edge
+    const TOP_N = bloom.cardOpenCount.top;
+    const BOTTOM_N = bloom.cardOpenCount.bottom;
+    const SIDE_N = bloom.cardOpenCount.side;
+    const SPREAD = bloom.spread; // base px shapes travel from the edge
 
     for (let i = 0; i < TOP_N; i++) {
       const t = (i + 0.5) / TOP_N + (r() - 0.5) * 0.04;
@@ -104,7 +104,7 @@ export function makeBloomSpec(rect: DOMRect, intent: BloomIntent): BloomSpec {
       const y = rect.top;
       const dist = SPREAD + r() * 30;
       const size = 9 + Math.floor(r() * 6);
-      shapes.push(emit(`t${i}`, x, y, 0, -dist, Math.floor(i * 25 + r() * 15), size));
+      shapes.push(emit(`t${i}`, x, y, 0, -dist, Math.floor(i * 25 + r() * 15), size, bloom.colors));
     }
     for (let i = 0; i < SIDE_N; i++) {
       const t = (i + 0.5) / SIDE_N + (r() - 0.5) * 0.04;
@@ -112,7 +112,7 @@ export function makeBloomSpec(rect: DOMRect, intent: BloomIntent): BloomSpec {
       const y = rect.top + rect.height * t;
       const dist = SPREAD + r() * 30;
       const size = 9 + Math.floor(r() * 6);
-      shapes.push(emit(`r${i}`, x, y, dist, 0, Math.floor(60 + i * 30), size));
+      shapes.push(emit(`r${i}`, x, y, dist, 0, Math.floor(60 + i * 30), size, bloom.colors));
     }
     for (let i = 0; i < BOTTOM_N; i++) {
       const t = (i + 0.5) / BOTTOM_N + (r() - 0.5) * 0.04;
@@ -120,7 +120,7 @@ export function makeBloomSpec(rect: DOMRect, intent: BloomIntent): BloomSpec {
       const y = rect.bottom;
       const dist = SPREAD + r() * 30;
       const size = 9 + Math.floor(r() * 6);
-      shapes.push(emit(`b${i}`, x, y, 0, dist, Math.floor(100 + i * 25 + r() * 15), size));
+      shapes.push(emit(`b${i}`, x, y, 0, dist, Math.floor(100 + i * 25 + r() * 15), size, bloom.colors));
     }
     for (let i = 0; i < SIDE_N; i++) {
       const t = (i + 0.5) / SIDE_N + (r() - 0.5) * 0.04;
@@ -128,14 +128,14 @@ export function makeBloomSpec(rect: DOMRect, intent: BloomIntent): BloomSpec {
       const y = rect.bottom - rect.height * t; // reverse, continuing the flow
       const dist = SPREAD + r() * 30;
       const size = 9 + Math.floor(r() * 6);
-      shapes.push(emit(`l${i}`, x, y, -dist, 0, Math.floor(160 + i * 30), size));
+      shapes.push(emit(`l${i}`, x, y, -dist, 0, Math.floor(160 + i * 30), size, bloom.colors));
     }
 
     return { shapes };
   }
 
   // marker: smaller, fewer shapes, mostly upward (article line below)
-  const COUNT = 4;
+  const COUNT = bloom.markerCount;
   for (let i = 0; i < COUNT; i++) {
     const t = (i + 0.5) / COUNT + (r() - 0.5) * 0.08;
     const x = rect.left + rect.width * t;
@@ -143,7 +143,7 @@ export function makeBloomSpec(rect: DOMRect, intent: BloomIntent): BloomSpec {
     const dist = 22 + r() * 18;
     const size = 6 + Math.floor(r() * 4);
     const sideways = (r() - 0.5) * 18;
-    shapes.push(emit(`m${i}`, x, y, sideways, -dist, Math.floor(i * 35), size));
+    shapes.push(emit(`m${i}`, x, y, sideways, -dist, Math.floor(i * 35), size, bloom.colors));
   }
   return { shapes };
 }

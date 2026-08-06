@@ -18,15 +18,18 @@ import { canonicalizeUrl, canonicalUrlFromDocument, roomIdFor } from "./shared/c
 import {
   getReadingMode,
   getSiteHidden,
+  getTheme,
   getToken,
   getUser,
   KEY_HIDDEN_SITES,
   KEY_READING_MODE,
+  KEY_THEME,
   KEY_TOKEN,
   KEY_USER,
   logout,
   normalizeHost,
   setReadingMode as saveReadingMode,
+  setTheme as saveTheme,
   type StoredUser,
 } from "./shared/storage";
 import { fetchLensesForRoom, createLens, reportLens, toggleReaction, updateLensAnchor } from "./shared/api-proxy";
@@ -38,9 +41,11 @@ import {
   clearAllHighlights,
   injectMarkerStyles,
   lensIdsAtPoint,
+  setMarkerTheme,
 } from "./marker";
 import { parseBody, RenderBody } from "./refs";
 import { BloomLayer, makeBloomSpec, type BloomIntent, type BloomSpec } from "./shapes";
+import { DEFAULT_THEME_ID, LUMEN_THEME_IDS, LUMEN_THEMES, normalizeThemeId, type LumenThemeId } from "./theme";
 
 import overlayCss from "./styles.css?inline";
 
@@ -272,6 +277,7 @@ function Overlay({ url, roomId, canonical }: { url: string; roomId: string; cano
   const [token, setToken] = useState<string | null>(null);
   const [currentUser, setCurrentUser] = useState<StoredUser | null>(null);
   const [readingMode, setReadingMode] = useState<ReadingMode>("quiet");
+  const [themeId, setThemeId] = useState<LumenThemeId>(DEFAULT_THEME_ID);
   const [siteHidden, setSiteHiddenState] = useState(false);
   const [tabHidden, setTabHidden] = useState(false);
   const [settingsReady, setSettingsReady] = useState(false);
@@ -296,9 +302,9 @@ function Overlay({ url, roomId, canonical }: { url: string; roomId: string; cano
   const triggerBloom = useCallback(
     (rect: DOMRect, intent: BloomIntent) => {
       const id = `b-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
-      setBlooms((b) => [...b, { id, spec: makeBloomSpec(rect, intent) }]);
+      setBlooms((b) => [...b, { id, spec: makeBloomSpec(rect, intent, themeId) }]);
     },
-    [],
+    [themeId],
   );
   const removeBloom = useCallback((id: string) => {
     setBlooms((b) => b.filter((x) => x.id !== id));
@@ -330,15 +336,16 @@ function Overlay({ url, roomId, canonical }: { url: string; roomId: string; cano
     companionActiveRef.current = companionActive;
   }, [companionActive]);
 
-  // Load token + reading mode + site visibility.
+  // Load token + reading mode + theme + site visibility.
   useEffect(() => {
     let cancelled = false;
-    Promise.all([getToken(), getUser(), getReadingMode(), getSiteHidden(siteHost)])
-      .then(([nextToken, nextUser, nextMode, hidden]) => {
+    Promise.all([getToken(), getUser(), getReadingMode(), getTheme(), getSiteHidden(siteHost)])
+      .then(([nextToken, nextUser, nextMode, nextTheme, hidden]) => {
         if (cancelled) return;
         setToken(nextToken);
         setCurrentUser(nextUser);
         setReadingMode(nextMode);
+        setThemeId(nextTheme);
         setSiteHiddenState(hidden);
       })
       .catch((err) => {
@@ -361,6 +368,8 @@ function Overlay({ url, roomId, canonical }: { url: string; roomId: string; cano
       if (userChange) setCurrentUser((userChange.newValue as StoredUser | undefined) ?? null);
       const c = changes[KEY_READING_MODE];
       if (c) setReadingMode((c.newValue as ReadingMode | undefined) ?? "quiet");
+      const theme = changes[KEY_THEME];
+      if (theme) setThemeId(normalizeThemeId(theme.newValue));
       const hidden = changes[KEY_HIDDEN_SITES];
       if (hidden) {
         const next = (hidden.newValue as Record<string, boolean> | undefined) ?? {};
@@ -370,6 +379,11 @@ function Overlay({ url, roomId, canonical }: { url: string; roomId: string; cano
     chrome.storage.onChanged.addListener(handler);
     return () => chrome.storage.onChanged.removeListener(handler);
   }, [siteHost]);
+
+  useEffect(() => {
+    applyThemeAttributes(themeId, readingMode);
+    setMarkerTheme(themeId);
+  }, [themeId, readingMode]);
 
   useEffect(() => {
     if (!lumenHidden) return;
@@ -1060,6 +1074,11 @@ function Overlay({ url, roomId, canonical }: { url: string; roomId: string; cano
     setReadingMode(mode);
   }
 
+  async function changeTheme(theme: LumenThemeId) {
+    await saveTheme(theme);
+    setThemeId(theme);
+  }
+
   return (
     <>
       <Orb
@@ -1074,6 +1093,7 @@ function Overlay({ url, roomId, canonical }: { url: string; roomId: string; cano
       {panelOpen && (
         <InfoPanel
           mode={readingMode}
+          theme={themeId}
           visible={visibleLenses.length}
           hidden={hiddenCount}
           orphanLenses={lenses.filter((l) => orphanIds.has(l.id))}
@@ -1089,6 +1109,7 @@ function Overlay({ url, roomId, canonical }: { url: string; roomId: string; cano
           companionMessages={companionMessages}
           currentUserId={currentUser?.userId ?? null}
           onModeChange={(mode) => void changeReadingMode(mode)}
+          onThemeChange={(theme) => void changeTheme(theme)}
           onClose={() => setPanelOpen(false)}
           onHideTab={() => setTabHidden(true)}
           onFindCompanion={findCompanion}
@@ -1221,6 +1242,7 @@ function ClusterHeatOverlay({ rects }: { rects: ClusterHeatRect[] }) {
 
 function InfoPanel({
   mode,
+  theme,
   visible,
   hidden,
   orphanLenses,
@@ -1236,6 +1258,7 @@ function InfoPanel({
   companionMessages,
   currentUserId,
   onModeChange,
+  onThemeChange,
   onClose,
   onHideTab,
   onFindCompanion,
@@ -1248,6 +1271,7 @@ function InfoPanel({
   onCancelReanchor,
 }: {
   mode: ReadingMode;
+  theme: LumenThemeId;
   visible: number;
   hidden: number;
   orphanLenses: Lens[];
@@ -1263,6 +1287,7 @@ function InfoPanel({
   companionMessages: CompanionChatMessage[];
   currentUserId: string | null;
   onModeChange: (mode: ReadingMode) => void;
+  onThemeChange: (theme: LumenThemeId) => void;
   onClose: () => void;
   onHideTab: () => void;
   onFindCompanion: () => void;
@@ -1341,6 +1366,7 @@ function InfoPanel({
       {chatFocused && (
         <div className="ip-chat-summary">
           <span>{mode}</span>
+          <span>{LUMEN_THEMES[theme].label}</span>
           <span>{visible} visible</span>
           <span>{companionConnected ? "Companion live" : "Companion offline"}</span>
         </div>
@@ -1363,6 +1389,26 @@ function InfoPanel({
             </button>
           ))}
         </div>
+      </div>
+
+      <div className={`ip-section ip-control-section ${chatFocused ? "soft-collapsed" : ""}`}>
+        <div className="ip-section-head">
+          <span className="ip-label">UI skin</span>
+          <span className="pill">{LUMEN_THEMES[theme].label}</span>
+        </div>
+        <div className="ip-theme-switch" role="group" aria-label="UI skin">
+          {LUMEN_THEME_IDS.map((id) => (
+            <button
+              key={id}
+              className={theme === id ? "active" : ""}
+              onClick={() => onThemeChange(id)}
+              aria-pressed={theme === id}
+            >
+              <span>{LUMEN_THEMES[id].label}</span>
+            </button>
+          ))}
+        </div>
+        <div className="ip-theme-desc">{LUMEN_THEMES[theme].description}</div>
       </div>
 
       <div className={`ip-section ip-lens-status ${chatFocused ? "soft-collapsed" : ""}`}>
@@ -2095,8 +2141,15 @@ function TargetIcon() {
 
 let lumenRoot: Root | null = null;
 let lumenMount: HTMLElement | null = null;
+let lumenHost: HTMLElement | null = null;
 let bootUrl: string | null = null;
 let routeRefreshTimer: number | null = null;
+
+function applyThemeAttributes(themeId: LumenThemeId, mode?: ReadingMode): void {
+  if (!lumenHost) return;
+  lumenHost.dataset.lumenTheme = themeId;
+  if (mode) lumenHost.dataset.lumenMode = mode;
+}
 
 async function renderForCurrentPage() {
   const mount = lumenMount;
@@ -2150,12 +2203,16 @@ function installRouteHooks() {
 async function boot() {
   if (document.getElementById("lumen-root")) return;
 
-  injectMarkerStyles();
+  const theme = await getTheme();
+  injectMarkerStyles(theme);
 
   const host = document.createElement("div");
   host.id = "lumen-root";
+  host.dataset.lumenTheme = theme;
+  host.dataset.lumenMode = "quiet";
   host.style.cssText = "all: initial; position: fixed; top: 0; left: 0; width: 0; height: 0; z-index: 2147483647;";
   document.documentElement.appendChild(host);
+  lumenHost = host;
 
   const shadow = host.attachShadow({ mode: "open" });
   const styleEl = document.createElement("style");
