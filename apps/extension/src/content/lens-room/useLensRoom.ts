@@ -1,7 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import type { Lens, LensType, ReactionKind, ReadingMode } from "@lumen/schema";
 
-import { logout } from "../../shared/storage";
 import { fetchLensesForRoom } from "../../shared/api-proxy";
 import type { SelectionDraft } from "../types";
 import { mergeLensLists, shouldShowInMode } from "../lens-model";
@@ -39,7 +38,7 @@ interface UseLensRoomInput {
   readingMode: ReadingMode;
   draft: SelectionDraft | null;
   anchorRegistry: AnchorRegistryApi;
-  clearAuthState: () => void;
+  onAuthRejected: () => void | Promise<void>;
 }
 
 interface PublishInput {
@@ -57,7 +56,7 @@ export function useLensRoom({
   readingMode,
   draft,
   anchorRegistry,
-  clearAuthState,
+  onAuthRejected,
 }: UseLensRoomInput) {
   const [lenses, setLenses] = useState<Lens[]>([]);
   const {
@@ -83,9 +82,8 @@ export function useLensRoom({
       .catch(async (err) => {
         if (err instanceof Error && err.message.includes("fetchLenses 401")) {
           console.warn("[Lumen] token was rejected by the server; logging out:", err);
-          await logout();
           if (!cancelled) {
-            clearAuthState();
+            await onAuthRejected();
           }
           return;
         }
@@ -95,7 +93,7 @@ export function useLensRoom({
       cancelled = true;
       clearRanges();
     };
-  }, [token, roomId, lumenHidden, clearAuthState, clearRanges, restoreLensBatch]);
+  }, [token, roomId, lumenHidden, onAuthRejected, clearRanges, restoreLensBatch]);
 
   const visibleLenses = useMemo(
     () => lumenHidden ? [] : lenses.filter((lens) => !orphanIds.has(lens.id) && shouldShowInMode(lens, readingMode)),
@@ -157,12 +155,11 @@ export function useLensRoom({
       });
     } catch (err) {
       if (err instanceof Error && err.message.includes("createLens 401")) {
-        await logout();
-        clearAuthState();
+        await onAuthRejected();
       }
       throw err;
     }
-  }, [token, roomId, canonical, clearAuthState]);
+  }, [token, roomId, canonical, onAuthRejected]);
 
   const reanchor = useCallback(async (lensId: string, range: Range): Promise<Lens | null> => {
     if (!token) return null;

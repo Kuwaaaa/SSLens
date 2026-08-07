@@ -75,7 +75,7 @@ export function Overlay({ url, roomId, canonical }: { url: string; roomId: strin
     changeTheme,
     hideTab,
     restoreTab,
-    clearAuthState,
+    handleAuthRejected,
   } = useOverlaySettings({ url, canonical });
   // --- Orphan handling ---
   // When restoreAnchor() returns null (DOM has shifted too much for any of
@@ -157,7 +157,7 @@ export function Overlay({ url, roomId, canonical }: { url: string; roomId: strin
       restoreLensAnchorWithFallback,
       restoreLensBatch,
     },
-    clearAuthState,
+    onAuthRejected: handleAuthRejected,
   });
   const [panelOpen, setPanelOpen] = useState(false);
   const layoutTick = useLayoutTick(lumenHidden);

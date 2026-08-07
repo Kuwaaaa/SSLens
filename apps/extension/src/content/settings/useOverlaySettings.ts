@@ -13,6 +13,7 @@ import {
   KEY_TOKEN,
   KEY_USER,
   normalizeHost,
+  logout,
   setReadingMode as saveReadingMode,
   setTheme as saveTheme,
   type StoredUser,
@@ -113,6 +114,11 @@ export function useOverlaySettings({ url, canonical }: UseOverlaySettingsInput) 
     setCurrentUser(null);
   }, []);
 
+  const handleAuthRejected = useCallback(async () => {
+    await logout();
+    clearAuthState();
+  }, [clearAuthState]);
+
   return {
     siteHost,
     token,
@@ -127,6 +133,6 @@ export function useOverlaySettings({ url, canonical }: UseOverlaySettingsInput) 
     changeTheme,
     hideTab,
     restoreTab,
-    clearAuthState,
+    handleAuthRejected,
   };
 }
