@@ -13,10 +13,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { type LensType } from "@lumen/schema";
 
-import {
-  clearAllClusterHighlights,
-  clearAllHighlights,
-} from "../marker";
+import { clearAllHighlights } from "../marker";
 import { BloomLayer } from "../shapes";
 import { useBloomRuntime } from "./bloom/useBloomRuntime";
 import { useCompanionRoom } from "./companion/useCompanionRoom";
@@ -48,6 +45,7 @@ import { useMarkerHighlights } from "./surface/useMarkerHighlights";
 import { usePageSelection } from "./surface/usePageSelection";
 import { useRoomEventDispatcher } from "./ws/useRoomEventDispatcher";
 import { useWsBridge } from "./ws/useWsBridge";
+import { useHiddenRuntimeReset } from "./visibility/useHiddenRuntimeReset";
 import type {
   ActiveLensStack,
   SelectionDraft,
@@ -195,19 +193,20 @@ export function Overlay({ url, roomId, canonical }: { url: string; roomId: strin
     onMessage: handleWsMessage,
   });
 
-  useEffect(() => {
-    if (!lumenHidden) return;
-    clearAllHighlights();
-    clearAllClusterHighlights();
+  const resetOverlayUi = useCallback(() => {
     setPanelOpen(false);
     setActiveLens(null);
     setDraft(null);
     setComposerOpen(false);
     setReanchorTargetId(null);
     setReanchorError(null);
-    resetCompanion();
-    resetBlooms();
-  }, [lumenHidden, resetCompanion, resetBlooms]);
+  }, []);
+  useHiddenRuntimeReset({
+    hidden: lumenHidden,
+    resetOverlayUi,
+    resetCompanion,
+    resetBlooms,
+  });
 
   const visibleLensIds = useMemo(
     () => new Set(visibleLenses.map((lens) => lens.id)),
