@@ -14,9 +14,15 @@ export function initializeMarkerTheme(themeId: LumenThemeId): void {
 }
 
 export function applyThemeAttributes(themeId: LumenThemeId, mode?: ReadingMode): void {
-  if (!lumenHost) return;
-  lumenHost.dataset.lumenTheme = themeId;
-  if (mode) lumenHost.dataset.lumenMode = mode;
+  const currentHost = typeof document === "undefined"
+    ? null
+    : document.getElementById("lumen-root") as HTMLElement | null;
+  const hosts = new Set([lumenHost, currentHost].filter((host): host is HTMLElement => !!host));
+  for (const host of hosts) {
+    host.dataset.lumenTheme = themeId;
+    if (mode) host.dataset.lumenMode = mode;
+  }
+  if (currentHost) lumenHost = currentHost;
 }
 
 export function applyRuntimeTheme(themeId: LumenThemeId, mode?: ReadingMode): void {

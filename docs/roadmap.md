@@ -268,79 +268,6 @@ Links:
 - [Operator Console Insights design](./technical/operator-console-insights-design.zh.md)
 
 
-### Content Runtime Modularization
-
-Feature ID: `content-runtime-modularization`
-Status: `next`
-Phase: Extension Architecture
-Progress: 99
-Current stage: Authenticated manual smoke gate
-Last worked: 2026-08-08
-
-Resume point:
-The content runtime is modularized and the unpacked extension injects successfully in Chromium with no-token, theme, reading-mode, and route-refresh smoke checks passing. Finish authenticated manual smoke for publish, reactions, reports, re-anchor, and Companion before marking complete.
-
-Summary:
-Move the extension content script toward a thin runtime shell with explicit settings, theme, surface, Lens room, WebSocket, Companion, bloom, and UI boundaries.
-
-Why:
-Theme switching, Companion, anchoring, markers, and Lens UI now share one large content runtime. Clear ownership will reduce coupling before the next wave of UI and surface work.
-
-Next actions:
-- Run authenticated manual smoke for selection, composer, publish, card opening, references, reactions, reports, and re-anchor
-- Run Companion join, leave, chat, and emoji smoke with a valid beta token
-- Re-run cmd /c bun run typecheck, cmd /c bun run test, and git diff --check after the authenticated smoke gate
-- Mark the modularization track complete only after the authenticated browser checks pass
-
-Scope:
-- Behavior-preserving decomposition of apps/extension/src/content.tsx
-- Settings and theme runtime isolation
-- Lens anchor registry and active stack ownership
-- Webpage surface mechanics for selection, marker clicks, Range geometry, clusters, scrolling, and layout ticks
-- Lens room state, commands, and WebSocket event application
-- WebSocket bridge separation from Lens and Companion domain events
-- Companion presence, emoji, and chat state
-- Bloom runtime and clipboard/browser capability adapters
-- Prop-driven UI component extraction
-- Focused pure tests for model, event, active-stack, cluster, and theme-host logic
-
-Out of scope:
-- Product behavior changes
-- New visual language or theme design
-- Server API changes
-- Replacing React or the MV3 service-worker WebSocket bridge
-- Full browser automation as the first testing step
-
-Stages:
-- done: Freeze behavior baseline (2026-08-08)
-- done: Extract pure types and model helpers (2026-08-08)
-- done: Extract leaf prop-driven UI components early (2026-08-08)
-- done: Extract bootstrap, route runtime, and theme host (2026-08-08)
-- done: Extract settings and theme runtime hook (2026-08-08)
-- done: Extract anchor registry and active stack (2026-08-08)
-- done: Extract webpage surface mechanics (2026-08-08)
-- done: Extract Lens room state and commands (2026-08-08)
-- done: Extract WebSocket bridge and Companion room (2026-08-08)
-- done: Extract bloom runtime and browser adapters (2026-08-08)
-- done: Extract prop-driven UI components (2026-08-08)
-- done: Shrink Overlay to composition (2026-08-08)
-- done: Add focused runtime tests (2026-08-08)
-- done: Wire test:extension before focused tests (2026-08-08)
-- now: Manual runtime smoke (2026-08-08)
-
-Recent updates:
-- 2026-08-08 verification: Continued phase 12 with a real unpacked-extension runtime pass in Playwright Chromium. Fixed the CRXJS content-script loader contract by exporting onExecute from the bootstrap-only content entry, and fixed initial host reading-mode application by loading readingMode during bootContentRuntime. Verified #lumen-root injection, open Shadow DOM, Lumen isolated execution context, no-token overlay rendering, no runtime errors, stored Signal theme and Full reading mode application, and same-tab navigation survival. Authenticated publish/reaction/report/re-anchor/Companion smoke remains the final gate.
-- 2026-08-08 architecture: Extracted the hidden-state runtime reset coordinator into content/visibility/useHiddenRuntimeReset.ts. Overlay now provides only its local UI reset callback while marker/cluster highlight clearing, Companion reset, and bloom reset remain explicitly centralized. This resolves the remaining P2 visibility-reset coupling from the responsibility audit without scattering hidden-state listeners across runtime hooks.
-- 2026-08-08 verification: Completed automated phase-12 preflight and additional boundary cleanup. Verified dev extension manifest at localhost:5173, confirmed the local server responds on localhost:3000 with the expected unauthorized /api/status response, confirmed production build guard still blocks missing VITE_LUMEN_API_BASE, and verified the current HTTP beta extension build succeeds. Also extracted Companion room event helpers and pure cluster heat segment calculation with focused tests. Manual browser interaction verification on a loaded unpacked extension remains the final gate.
-- 2026-08-08 audit: Completed a final responsibility audit pass with an independent sub-agent. No severe responsibility regression was found: content.tsx remains bootstrap-only, components avoid storage/chrome/ws/API/marker/anchor ownership, useWsBridge remains a single chrome.runtime.connect bridge, and anchorRanges remains a ref-backed Map. Follow-up cleanup removed duplicate publish auth handling from Overlay, moved auth rejection persistence to the settings boundary, and extracted WebSocket room event routing into a tested dispatcher. Manual browser extension verification remains before marking the track complete.
-- 2026-08-08 progress: Completed phase 11 focused runtime tests. Added test:extension to the root test chain, added Bun tests for Lens model helpers, Companion model helpers, active stack ordering/reference navigation, cluster heat rects, WebSocket room event decoding, and theme host attributes, and extracted decodeWsRoomEvent into content/ws/ws-events.ts. Automated verification is now wired; manual extension runtime verification remains before final completion.
-
-Links:
-- [Feature note](./features/content-runtime-modularization.md)
-- [Theme System](./features/theme-system.md)
-- [Project status](./project-status.md)
-
-
 ## planned
 
 ### Composer Markdown Preview
@@ -552,4 +479,79 @@ Recent updates:
 Links:
 - [Atlas design](./product/atlas-design.md)
 - [Ecosystem roadmap](./product/ecosystem-roadmap.md)
+
+
+## shipped
+
+### Content Runtime Modularization
+
+Feature ID: `content-runtime-modularization`
+Status: `shipped`
+Phase: Extension Architecture
+Progress: 100
+Current stage: Complete
+Last worked: 2026-08-08
+
+Resume point:
+Content runtime modularization is complete. The entry is bootstrap-only, Overlay is a composition layer, runtime concerns are split into settings/theme/surface/Lens room/WebSocket/Companion/bloom hooks, focused tests are wired, and real unauthenticated plus authenticated extension smokes passed.
+
+Summary:
+Move the extension content script toward a thin runtime shell with explicit settings, theme, surface, Lens room, WebSocket, Companion, bloom, and UI boundaries.
+
+Why:
+Theme switching, Companion, anchoring, markers, and Lens UI now share one large content runtime. Clear ownership will reduce coupling before the next wave of UI and surface work.
+
+Next actions:
+- Keep future content runtime changes inside the established module boundaries
+- Use the authenticated smoke checklist when changing selection, publishing, WebSocket, Companion, re-anchor, references, or theme host behavior
+- Move new surface-specific behavior behind surface adapters instead of expanding Overlay
+
+Scope:
+- Behavior-preserving decomposition of apps/extension/src/content.tsx
+- Settings and theme runtime isolation
+- Lens anchor registry and active stack ownership
+- Webpage surface mechanics for selection, marker clicks, Range geometry, clusters, scrolling, and layout ticks
+- Lens room state, commands, and WebSocket event application
+- WebSocket bridge separation from Lens and Companion domain events
+- Companion presence, emoji, and chat state
+- Bloom runtime and clipboard/browser capability adapters
+- Prop-driven UI component extraction
+- Focused pure tests for model, event, active-stack, cluster, and theme-host logic
+
+Out of scope:
+- Product behavior changes
+- New visual language or theme design
+- Server API changes
+- Replacing React or the MV3 service-worker WebSocket bridge
+- Full browser automation as the first testing step
+
+Stages:
+- done: Freeze behavior baseline (2026-08-08)
+- done: Extract pure types and model helpers (2026-08-08)
+- done: Extract leaf prop-driven UI components early (2026-08-08)
+- done: Extract bootstrap, route runtime, and theme host (2026-08-08)
+- done: Extract settings and theme runtime hook (2026-08-08)
+- done: Extract anchor registry and active stack (2026-08-08)
+- done: Extract webpage surface mechanics (2026-08-08)
+- done: Extract Lens room state and commands (2026-08-08)
+- done: Extract WebSocket bridge and Companion room (2026-08-08)
+- done: Extract bloom runtime and browser adapters (2026-08-08)
+- done: Extract prop-driven UI components (2026-08-08)
+- done: Shrink Overlay to composition (2026-08-08)
+- done: Add focused runtime tests (2026-08-08)
+- done: Wire test:extension before focused tests (2026-08-08)
+- done: Manual runtime smoke (2026-08-08)
+- done: Final responsibility audit (2026-08-08)
+
+Recent updates:
+- 2026-08-08 verification: Completed authenticated phase-12 runtime smoke against a localhost API extension build in Playwright Chromium. Verified authenticated startup, selection-to-composer, Lens publish, card opening, Lens reference parsing and card visibility, reaction, report, orphan re-anchor, Companion join/emoji/chat/leave, popup theme switching, and InfoPanel theme switching. Fixed theme-host to update the current #lumen-root host when applying runtime theme attributes, then reran typecheck, tests, and responsibility audit.
+- 2026-08-08 verification: Continued phase 12 with a real unpacked-extension runtime pass in Playwright Chromium. Fixed the CRXJS content-script loader contract by exporting onExecute from the bootstrap-only content entry, and fixed initial host reading-mode application by loading readingMode during bootContentRuntime. Verified #lumen-root injection, open Shadow DOM, Lumen isolated execution context, no-token overlay rendering, no runtime errors, stored Signal theme and Full reading mode application, and same-tab navigation survival. Authenticated publish/reaction/report/re-anchor/Companion smoke remains the final gate.
+- 2026-08-08 architecture: Extracted the hidden-state runtime reset coordinator into content/visibility/useHiddenRuntimeReset.ts. Overlay now provides only its local UI reset callback while marker/cluster highlight clearing, Companion reset, and bloom reset remain explicitly centralized. This resolves the remaining P2 visibility-reset coupling from the responsibility audit without scattering hidden-state listeners across runtime hooks.
+- 2026-08-08 verification: Completed automated phase-12 preflight and additional boundary cleanup. Verified dev extension manifest at localhost:5173, confirmed the local server responds on localhost:3000 with the expected unauthorized /api/status response, confirmed production build guard still blocks missing VITE_LUMEN_API_BASE, and verified the current HTTP beta extension build succeeds. Also extracted Companion room event helpers and pure cluster heat segment calculation with focused tests. Manual browser interaction verification on a loaded unpacked extension remains the final gate.
+- 2026-08-08 audit: Completed a final responsibility audit pass with an independent sub-agent. No severe responsibility regression was found: content.tsx remains bootstrap-only, components avoid storage/chrome/ws/API/marker/anchor ownership, useWsBridge remains a single chrome.runtime.connect bridge, and anchorRanges remains a ref-backed Map. Follow-up cleanup removed duplicate publish auth handling from Overlay, moved auth rejection persistence to the settings boundary, and extracted WebSocket room event routing into a tested dispatcher. Manual browser extension verification remains before marking the track complete.
+
+Links:
+- [Feature note](./features/content-runtime-modularization.md)
+- [Theme System](./features/theme-system.md)
+- [Project status](./project-status.md)
 

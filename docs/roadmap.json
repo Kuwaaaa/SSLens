@@ -499,19 +499,18 @@
     {
       "id": "content-runtime-modularization",
       "title": "Content Runtime Modularization",
-      "status": "next",
+      "status": "shipped",
       "phase": "Extension Architecture",
-      "progress": 99,
-      "currentStage": "Authenticated manual smoke gate",
+      "progress": 100,
+      "currentStage": "Complete",
       "summary": "Move the extension content script toward a thin runtime shell with explicit settings, theme, surface, Lens room, WebSocket, Companion, bloom, and UI boundaries.",
       "why": "Theme switching, Companion, anchoring, markers, and Lens UI now share one large content runtime. Clear ownership will reduce coupling before the next wave of UI and surface work.",
       "notePath": "./features/content-runtime-modularization.md",
-      "resumePoint": "The content runtime is modularized and the unpacked extension injects successfully in Chromium with no-token, theme, reading-mode, and route-refresh smoke checks passing. Finish authenticated manual smoke for publish, reactions, reports, re-anchor, and Companion before marking complete.",
+      "resumePoint": "Content runtime modularization is complete. The entry is bootstrap-only, Overlay is a composition layer, runtime concerns are split into settings/theme/surface/Lens room/WebSocket/Companion/bloom hooks, focused tests are wired, and real unauthenticated plus authenticated extension smokes passed.",
       "nextActions": [
-        "Run authenticated manual smoke for selection, composer, publish, card opening, references, reactions, reports, and re-anchor",
-        "Run Companion join, leave, chat, and emoji smoke with a valid beta token",
-        "Re-run cmd /c bun run typecheck, cmd /c bun run test, and git diff --check after the authenticated smoke gate",
-        "Mark the modularization track complete only after the authenticated browser checks pass"
+        "Keep future content runtime changes inside the established module boundaries",
+        "Use the authenticated smoke checklist when changing selection, publishing, WebSocket, Companion, re-anchor, references, or theme host behavior",
+        "Move new surface-specific behavior behind surface adapters instead of expanding Overlay"
       ],
       "lastWorkedAt": "2026-08-08",
       "scope": [
@@ -621,7 +620,13 @@
         {
           "id": "runtime-smoke",
           "title": "Manual runtime smoke",
-          "status": "now",
+          "status": "done",
+          "updatedAt": "2026-08-08"
+        },
+        {
+          "id": "final-audit",
+          "title": "Final responsibility audit",
+          "status": "done",
           "updatedAt": "2026-08-08"
         }
       ],
@@ -740,6 +745,11 @@
           "date": "2026-08-08",
           "kind": "verification",
           "text": "Continued phase 12 with a real unpacked-extension runtime pass in Playwright Chromium. Fixed the CRXJS content-script loader contract by exporting onExecute from the bootstrap-only content entry, and fixed initial host reading-mode application by loading readingMode during bootContentRuntime. Verified #lumen-root injection, open Shadow DOM, Lumen isolated execution context, no-token overlay rendering, no runtime errors, stored Signal theme and Full reading mode application, and same-tab navigation survival. Authenticated publish/reaction/report/re-anchor/Companion smoke remains the final gate."
+        },
+        {
+          "date": "2026-08-08",
+          "kind": "verification",
+          "text": "Completed authenticated phase-12 runtime smoke against a localhost API extension build in Playwright Chromium. Verified authenticated startup, selection-to-composer, Lens publish, card opening, Lens reference parsing and card visibility, reaction, report, orphan re-anchor, Companion join/emoji/chat/leave, popup theme switching, and InfoPanel theme switching. Fixed theme-host to update the current #lumen-root host when applying runtime theme attributes, then reran typecheck, tests, and responsibility audit."
         }
       ],
       "links": [

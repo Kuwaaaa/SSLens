@@ -1,8 +1,8 @@
 # Content Runtime Modularization
 
-Status: next
-Progress: 99
-Current stage: Authenticated manual smoke gate
+Status: shipped
+Progress: 100
+Current stage: Complete
 Last worked: 2026-08-08
 
 ## Resume Point
@@ -11,11 +11,9 @@ Behavior baseline, pure model extraction, phase 1.5 prop-driven UI extraction,
 phase 2 bootstrap/route/theme-host extraction, phase 3 settings/theme runtime
 extraction, phase 4 anchor/active-stack extraction, phase 5 surface extraction,
 phase 6 Lens room extraction, phase 7 WebSocket/Companion extraction, phase 8
-bloom/browser adapter extraction, phase 10 Overlay composition shrink, and
-phase 11 focused runtime tests are complete. The unpacked extension now injects
-successfully in a real Chromium page and passes the unauthenticated runtime
-smoke. Continue with authenticated manual smoke for publish, reactions, reports,
-re-anchor, and Companion before marking the modularization track complete.
+bloom/browser adapter extraction, phase 10 Overlay composition shrink, phase 11
+focused runtime tests, real extension injection smoke, authenticated runtime
+smoke, and final responsibility audit are complete.
 
 ## Goal
 
@@ -248,6 +246,18 @@ Captured before the first extraction pass on 2026-08-08:
     errors.
   - verified stored `signal` theme and `full` reading mode are applied to the
     host on same-tab navigation to `https://example.org/`.
+- Completed phase 12 authenticated runtime smoke:
+  - verified authenticated overlay startup with a local beta user and localhost
+    API build.
+  - verified selection-to-composer, publish, card opening, reaction, report,
+    orphan re-anchor, Lens reference parsing/visibility, Companion join/emoji
+    toss/chat/leave, popup theme switching, and InfoPanel theme switching.
+  - fixed `theme-host` so runtime theme application updates the current
+    `#lumen-root` host even when the host singleton is stale or unavailable.
+  - completed the final responsibility audit: `content.tsx` remains
+    bootstrap-only, `Overlay.tsx` remains composition-sized, runtime concerns
+    remain in hooks, components remain prop-driven, and pure model modules stay
+    free of React, chrome APIs, network IO, and DOM mutation.
 - Verified with `bun run typecheck` and `bun run test`.
 
 ## Staged Plan
@@ -583,6 +593,15 @@ same-tab navigation survival. Authenticated browser interaction remains the
 last gate because publish, reactions, reports, re-anchor, and Companion require
 a valid beta token and live server state.
 
+The authenticated smoke gate is complete. A localhost API extension build in
+Playwright Chromium verified selection-to-composer, Lens publish, card opening,
+reaction, report, orphan re-anchor, Lens reference parsing and card visibility,
+Companion join/emoji/chat/leave, popup theme switching, and InfoPanel theme
+switching. The final audit still shows clear ownership: storage stays in
+settings, API commands in Lens room modules, WebSocket lifecycle in `ws/`,
+surface DOM mechanics in `surface/`, anchor restore in `anchor-registry`, and
+UI components remain prop-driven.
+
 ## Verification
 
 Every phase should run:
@@ -612,6 +631,14 @@ Automated phase-12 preflight completed:
 - `bun run build:extension` failed at the expected production API-base guard.
 - `bun run build:extension:http-beta` succeeded and regenerated
   `apps/extension/dist` for unpacked loading.
+
+Authenticated phase-12 smoke completed:
+
+- Local user redeem and authenticated overlay startup.
+- Selection, composer, publish, card open, Lens reference, reaction, report,
+  orphan re-anchor, Companion join/emoji/chat/leave, popup theme switching, and
+  InfoPanel theme switching.
+- Final responsibility audit after runtime smoke.
 
 ## Decisions
 
