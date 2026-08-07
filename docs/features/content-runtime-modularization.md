@@ -150,6 +150,10 @@ Captured before the first extraction pass on 2026-08-08:
   `apps/extension/src/content/components/CompanionChat.tsx`; the component keeps
   only local input and scroll state and still communicates through the `onSend`
   callback.
+- Continued phase 1.5 by moving `Composer` into
+  `apps/extension/src/content/components/Composer.tsx`; the component keeps
+  local draft form state, tag parsing, anonymous toggle, and reference insertion,
+  while the content runtime still owns publish through the `onSubmit` callback.
 - Kept runtime hooks, WebSocket lifecycle, storage listeners, and DOM event
   handlers unchanged.
 - Verified with `bun run typecheck` and `bun run test`.

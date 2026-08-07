@@ -639,6 +639,11 @@
           "date": "2026-08-08",
           "kind": "progress",
           "text": "Continued phase 1.5 leaf UI extraction by moving CompanionChat into apps/extension/src/content/components/CompanionChat.tsx. The component keeps only local input and scroll state and still communicates through the onSend callback; WebSocket and Companion runtime hooks remain unchanged. Verified with bun run typecheck and bun run test."
+        },
+        {
+          "date": "2026-08-08",
+          "kind": "progress",
+          "text": "Continued phase 1.5 by moving Composer into apps/extension/src/content/components/Composer.tsx. Composer keeps local draft form state, tag parsing, anonymous toggle, and reference insertion, while the content runtime still owns publish via the onSubmit callback. content.tsx is down to roughly 1814 lines. Verified with bun run typecheck and bun run test."
         }
       ],
       "links": [

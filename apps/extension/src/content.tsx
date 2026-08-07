@@ -51,6 +51,7 @@ import {
   ClusterHeatOverlay,
   CompanionChat,
   CompanionEmojiLayer,
+  Composer as ComposerPanel,
   CreateButton,
   NoTokenHint,
   Orb,
@@ -72,7 +73,6 @@ import type {
 
 import overlayCss from "./styles.css?inline";
 
-const LENS_TYPES: LensType[] = ["quick", "fun", "question", "knowledge"];
 const REACTION_CHOICES = REACTION_KINDS;
 const READING_MODES: ReadingMode[] = ["quiet", "thinking", "full"];
 const LONG_LENS_PREVIEW_CHARS = 520;
@@ -127,8 +127,8 @@ function positionCardNear(
 }
 
 function rangesOverlap(a: Range, b: Range): boolean {
-  // START_TO_END: compares a.end vs b.start → >0 means a.end is after b.start
-  // END_TO_START: compares a.start vs b.end → <0 means a.start is before b.end
+  // START_TO_END: compares a.end vs b.start -> >0 means a.end is after b.start
+  // END_TO_START: compares a.start vs b.end -> <0 means a.start is before b.end
   return (
     a.compareBoundaryPoints(Range.START_TO_END, b) > 0 &&
     a.compareBoundaryPoints(Range.END_TO_START, b) < 0
@@ -1050,7 +1050,7 @@ function Overlay({ url, roomId, canonical }: { url: string; roomId: string; cano
         />
       )}
       {composerOpen && draft && !reanchorTargetId && (
-        <Composer
+        <ComposerPanel
           draft={draft}
           referenceLenses={lenses}
           overlapLenses={draftOverlapLenses}
@@ -1203,7 +1203,7 @@ function InfoPanel({
           <strong>Lumen</strong>
           <div className="ip-header-meta">{visible} visible</div>
         </div>
-        <button className="close" onClick={onClose} aria-label="Close">×</button>
+        <button className="close" onClick={onClose} aria-label="Close">x</button>
       </div>
 
       {chatFocused && (
@@ -1375,7 +1375,7 @@ function InfoPanel({
                   <div className="orphan-quote">"{l.anchor.quote.exact.slice(0, 80)}"</div>
                 )}
                 <div className="orphan-body">
-                  {l.body.slice(0, 100)}{l.body.length > 100 ? "…" : ""}
+                  {l.body.slice(0, 100)}{l.body.length > 100 ? "..." : ""}
                 </div>
                 {l.canEditAnchor ? (
                   <button
@@ -1411,133 +1411,6 @@ function InfoPanel({
         )}
       </div>
     </section>
-  );
-}
-
-function Composer({
-  draft,
-  referenceLenses,
-  overlapLenses,
-  onCancel,
-  onSubmit,
-}: {
-  draft: SelectionDraft;
-  referenceLenses: Lens[];
-  overlapLenses: Lens[];
-  onCancel: () => void;
-  onSubmit: (input: { type: LensType; body: string; tags: string[]; anonymous: boolean }) => void | Promise<void>;
-}) {
-  const [type, setType] = useState<LensType>("quick");
-  const [body, setBody] = useState("");
-  const [tagsRaw, setTagsRaw] = useState("");
-  const [anonymous, setAnonymous] = useState(false);
-  const [refPickerOpen, setRefPickerOpen] = useState(false);
-  const [busy, setBusy] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const textareaRef = useRef<HTMLTextAreaElement>(null);
-
-  const top = Math.min(window.innerHeight - 320, draft.rect.bottom + 12);
-  const left = Math.max(8, Math.min(window.innerWidth - 380, draft.rect.left));
-
-  async function submit() {
-    if (!body.trim()) {
-      setError("Body required");
-      return;
-    }
-    setBusy(true);
-    setError(null);
-    try {
-      const tags = tagsRaw.split(",").map((s) => s.trim()).filter(Boolean);
-      await onSubmit({ type, body: body.trim(), tags, anonymous });
-    } catch (e) {
-      setError(e instanceof Error ? e.message : String(e));
-    } finally {
-      setBusy(false);
-    }
-  }
-
-  function insertLensRef(lensId: string) {
-    const snippet = `[[lens:${lensId}]]`;
-    const el = textareaRef.current;
-    const start = el?.selectionStart ?? body.length;
-    const end = el?.selectionEnd ?? body.length;
-    const prefix = body.slice(0, start);
-    const suffix = body.slice(end);
-    const spacerBefore = prefix.length > 0 && !/\s$/.test(prefix) ? " " : "";
-    const spacerAfter = suffix.length > 0 && !/^\s/.test(suffix) ? " " : "";
-    const inserted = `${spacerBefore}${snippet}${spacerAfter}`;
-    const next = `${prefix}${inserted}${suffix}`;
-    setBody(next);
-    setRefPickerOpen(false);
-    window.setTimeout(() => {
-      textareaRef.current?.focus();
-      const pos = start + inserted.length;
-      textareaRef.current?.setSelectionRange(pos, pos);
-    }, 0);
-  }
-
-  return (
-    <div className="composer" style={{ top, left }} data-lumen-overlay="">
-      <div className="quote-preview">"{draft.text.slice(0, 200)}"</div>
-      {overlapLenses.length > 0 && (
-        <div className="overlap-hint">
-          <span>{overlapLenses.length} Lens already here</span>
-          <button type="button" onClick={() => setRefPickerOpen(true)}>Reference one</button>
-        </div>
-      )}
-      <div>
-        <label>Type</label>
-        <select value={type} onChange={(e) => setType(e.target.value as LensType)}>
-          {LENS_TYPES.map((t) => <option key={t} value={t}>{t}</option>)}
-        </select>
-      </div>
-      <div>
-        <label>Body</label>
-        <textarea ref={textareaRef} value={body} onChange={(e) => setBody(e.target.value)} autoFocus />
-      </div>
-      {referenceLenses.length > 0 && (
-        <div className="ref-insert">
-          <button type="button" className="ref-insert-toggle" onClick={() => setRefPickerOpen((v) => !v)}>
-            Insert reference
-          </button>
-          {refPickerOpen && (
-            <div className="ref-insert-list">
-              {referenceLenses.map((lens) => (
-                <button
-                  key={lens.id}
-                  type="button"
-                  className="ref-insert-item"
-                  onClick={() => insertLensRef(lens.id)}
-                >
-                  <span className="ref-insert-meta">
-                    <span className="pill">{lens.type}</span>
-                    <span>@{lens.author?.handle ?? "unknown"}</span>
-                  </span>
-                  <span className="ref-insert-body">{lens.body.slice(0, 72)}</span>
-                </button>
-              ))}
-            </div>
-          )}
-        </div>
-      )}
-      <div>
-        <label>Tags (comma-separated)</label>
-        <input type="text" value={tagsRaw} onChange={(e) => setTagsRaw(e.target.value)} />
-      </div>
-      <label className="checkbox-row">
-        <input
-          type="checkbox"
-          checked={anonymous}
-          onChange={(e) => setAnonymous(e.currentTarget.checked)}
-        />
-        <span>Post as Anonymous</span>
-      </label>
-      {error && <div className="err">{error}</div>}
-      <div className="row">
-        <button className="cancel" onClick={onCancel} disabled={busy}>Cancel</button>
-        <button onClick={submit} disabled={busy}>{busy ? "Posting…" : "Publish"}</button>
-      </div>
-    </div>
   );
 }
 
