@@ -501,17 +501,18 @@
       "title": "Content Runtime Modularization",
       "status": "next",
       "phase": "Extension Architecture",
-      "progress": 94,
-      "currentStage": "Focused runtime tests",
+      "progress": 98,
+      "currentStage": "Manual runtime verification and final audit",
       "summary": "Move the extension content script toward a thin runtime shell with explicit settings, theme, surface, Lens room, WebSocket, Companion, bloom, and UI boundaries.",
       "why": "Theme switching, Companion, anchoring, markers, and Lens UI now share one large content runtime. Clear ownership will reduce coupling before the next wave of UI and surface work.",
       "notePath": "./features/content-runtime-modularization.md",
-      "resumePoint": "Behavior baseline, pure model extraction, phase 1.5 prop-driven UI extraction, phase 2 bootstrap/route/theme-host extraction, phase 3 settings/theme runtime extraction, phase 4 anchor/active-stack extraction, phase 5 surface extraction, phase 6 Lens room extraction, phase 7 WebSocket/Companion extraction, phase 8 bloom/browser adapter extraction, and phase 10 Overlay composition shrink are complete. Continue with phase 11 by wiring extension tests into bun run test and adding focused tests for pure model, active stack, cluster, WebSocket event, and theme-host logic.",
+      "resumePoint": "Behavior baseline, pure model extraction, prop-driven UI extraction, bootstrap/route/theme-host extraction, settings/theme runtime extraction, anchor/active-stack extraction, surface extraction, Lens room extraction, WebSocket/Companion extraction, bloom/browser adapter extraction, Overlay composition shrink, and focused runtime tests are complete. Continue with manual extension runtime verification on a real HTTP(S) page and a final responsibility/coupling audit before marking this track complete.",
       "nextActions": [
-        "Add a test:extension script that runs Bun tests for apps/extension sources and include it in bun run test",
-        "Add focused tests for active-stack ordering and reference navigation",
-        "Add focused tests for lens/companion model helpers and pure cluster helpers where DOM mocking is feasible",
-        "Add focused tests for WebSocket event decode helpers or extract decode into a pure ws-events module first"
+        "Run bun run dev:extension and refresh a real HTTP(S) page",
+        "Verify selection, composer, Lens publishing/card opening, references, reactions, reports, and re-anchor",
+        "Verify Companion join/leave/chat/emoji and same-tab route refresh",
+        "Verify Classic/Signal theme switching from both popup and InfoPanel",
+        "Run a final responsibility audit across content.tsx, Overlay.tsx, hooks, components, and pure model modules"
       ],
       "lastWorkedAt": "2026-08-08",
       "scope": [
@@ -609,13 +610,13 @@
         {
           "id": "focused-tests",
           "title": "Add focused runtime tests",
-          "status": "now",
+          "status": "done",
           "updatedAt": "2026-08-08"
         },
         {
           "id": "test-wiring",
           "title": "Wire test:extension before focused tests",
-          "status": "now",
+          "status": "done",
           "updatedAt": "2026-08-08"
         }
       ],
@@ -709,6 +710,11 @@
           "date": "2026-08-08",
           "kind": "progress",
           "text": "Completed phase 10 by moving Overlay runtime composition into apps/extension/src/content/Overlay.tsx and shrinking apps/extension/src/content.tsx to a bootstrap-only entry that imports Overlay and calls bootContentRuntime. Verified with bun run typecheck and bun run test."
+        },
+        {
+          "date": "2026-08-08",
+          "kind": "progress",
+          "text": "Completed phase 11 focused runtime tests. Added test:extension to the root test chain, added Bun tests for Lens model helpers, Companion model helpers, active stack ordering/reference navigation, cluster heat rects, WebSocket room event decoding, and theme host attributes, and extracted decodeWsRoomEvent into content/ws/ws-events.ts. Automated verification is now wired; manual extension runtime verification remains before final completion."
         }
       ],
       "links": [

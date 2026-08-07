@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 
 import type { WsBridgeEvent } from "../types";
+import { decodeWsRoomEvent } from "./ws-events";
 
 export type WsRoomEvent = { type: string; [key: string]: unknown };
 export type WsSend = (payload: unknown) => void;
@@ -85,11 +86,8 @@ export function useWsBridge({
         return;
       }
       if (event.type !== "message") return;
-      try {
-        callbacksRef.current.onMessage(JSON.parse(event.data) as WsRoomEvent);
-      } catch {
-        return;
-      }
+      const message = decodeWsRoomEvent(event.data);
+      if (message) callbacksRef.current.onMessage(message);
     });
 
     port.onDisconnect.addListener(() => {

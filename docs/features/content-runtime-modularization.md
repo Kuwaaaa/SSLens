@@ -1,8 +1,8 @@
 # Content Runtime Modularization
 
 Status: next
-Progress: 94
-Current stage: Focused runtime tests
+Progress: 98
+Current stage: Manual runtime verification and final audit
 Last worked: 2026-08-08
 
 ## Resume Point
@@ -10,11 +10,11 @@ Last worked: 2026-08-08
 Behavior baseline, pure model extraction, phase 1.5 prop-driven UI extraction,
 phase 2 bootstrap/route/theme-host extraction, phase 3 settings/theme runtime
 extraction, phase 4 anchor/active-stack extraction, phase 5 surface extraction,
-phase 6 Lens room extraction, and phase 7 WebSocket/Companion extraction are
-complete. Phase 8 bloom/browser adapter extraction is also complete. Continue
-with phase 11 by wiring extension tests into `bun run test` and adding focused
-tests for pure model, active stack, cluster, WebSocket event, and theme-host
-logic.
+phase 6 Lens room extraction, phase 7 WebSocket/Companion extraction, phase 8
+bloom/browser adapter extraction, phase 10 Overlay composition shrink, and
+phase 11 focused runtime tests are complete. Continue with manual extension
+runtime verification and a final responsibility/coupling audit before marking
+the modularization track complete.
 
 ## Goal
 
@@ -209,6 +209,11 @@ Captured before the first extraction pass on 2026-08-08:
 - Completed phase 10 by moving the runtime composition into
   `apps/extension/src/content/Overlay.tsx`; `apps/extension/src/content.tsx`
   now only imports `Overlay` and starts `bootContentRuntime`.
+- Completed phase 11 by wiring `test:extension` into `bun run test`, adding
+  focused Bun tests for Lens model helpers, Companion model helpers, active
+  stack ordering/reference navigation, cluster heat rects, WebSocket room event
+  decoding, and theme host attributes, and extracting `decodeWsRoomEvent` into
+  `apps/extension/src/content/ws/ws-events.ts`.
 - Verified with `bun run typecheck` and `bun run test`.
 
 ## Staged Plan
@@ -458,6 +463,29 @@ Prefer pure tests before browser automation:
 Browser/manual verification remains necessary for Range, Highlight, Shadow DOM,
 and route behavior.
 
+### 12. Manual Runtime Verification And Final Audit
+
+Run the normal extension development loop and verify the extracted runtime on a
+real HTTP(S) page:
+
+- selection-to-composer flow.
+- Lens publishing and card opening.
+- Lens references and anchor jumping.
+- reactions, reports, and re-anchor.
+- Companion join/leave/chat/emoji.
+- route refresh after same-tab navigation.
+- Classic/Signal theme switching from both popup and InfoPanel.
+
+Then do a final responsibility audit:
+
+- `content.tsx` stays bootstrap-only.
+- `Overlay.tsx` stays a composition layer.
+- hooks own runtime concerns, not visual presentation.
+- components stay prop-driven and avoid storage, chrome ports, marker mutation,
+  anchor restore, and API fetches.
+- pure model modules stay free of React, chrome APIs, network IO, and DOM
+  mutation.
+
 ## Audit Notes
 
 A sub-agent audit on 2026-08-07 agreed with the overall direction but called out
@@ -501,13 +529,8 @@ bun run typecheck
 bun run test
 ```
 
-Wiring gap to fix first: `bun run test` in `package.json` currently runs only
-`test:canonicalize`, `test:anchoring`, and `test:schema`. It does not collect
-any `apps/extension` tests, and none exist yet. Before phase 11, add a
-`test:extension` script (for example `bun test apps/extension`) and include it
-in the `test` chain, otherwise the new pure-model/event/cluster tests are never
-executed. Until then, `bun run typecheck` is the only automated gate for the
-extracted extension modules.
+`bun run test` now includes `test:extension`, which runs the focused Bun tests
+under `apps/extension/src/**/*.test.ts`.
 
 Manual verification after phases 2, 4, 5, 6, and 7:
 

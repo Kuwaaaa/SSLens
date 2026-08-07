@@ -26,7 +26,8 @@
     "test:canonicalize": "bun scripts/canonicalize-url.test.ts",
     "test:anchoring": "bun packages/anchoring/src/anchoring.test.ts",
     "test:schema": "bun packages/schema/src/validation.test.ts",
-    "test": "bun run test:canonicalize && bun run test:anchoring && bun run test:schema"
+    "test:extension": "bun test ./apps/extension/src/**/*.test.ts",
+    "test": "bun run test:canonicalize && bun run test:anchoring && bun run test:schema && bun run test:extension"
   },
   "engines": {
     "bun": ">=1.1.0"
