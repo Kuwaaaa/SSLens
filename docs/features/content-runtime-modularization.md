@@ -214,6 +214,13 @@ Captured before the first extraction pass on 2026-08-08:
   stack ordering/reference navigation, cluster heat rects, WebSocket room event
   decoding, and theme host attributes, and extracting `decodeWsRoomEvent` into
   `apps/extension/src/content/ws/ws-events.ts`.
+- Completed a responsibility audit cleanup pass after phase 11:
+  - removed duplicate `createLens 401` handling from `Overlay`.
+  - moved auth rejection persistence to the settings boundary via
+    `handleAuthRejected`.
+  - extracted WebSocket room event routing into
+    `apps/extension/src/content/ws/useRoomEventDispatcher.ts` with focused
+    dispatch tests.
 - Verified with `bun run typecheck` and `bun run test`.
 
 ## Staged Plan
@@ -519,6 +526,17 @@ constraints now folded into the phases above:
 The review also reordered leaf UI extraction earlier (phase 1.5) because those
 components are already prop-driven and moving them first shrinks the file that
 every later phase has to diff against.
+
+A final responsibility audit on 2026-08-08 found no severe boundary regression:
+`content.tsx` is bootstrap-only, components do not own storage/chrome/ws/API,
+marker mutation, or anchor restore, `useWsBridge` still has one
+`chrome.runtime.connect` bridge, and `anchorRanges` remains a ref-backed `Map`.
+The audit led to three follow-ups. Two were completed immediately: duplicate
+publish auth handling was removed from `Overlay`, auth rejection persistence was
+returned to the settings boundary, and WebSocket room event routing moved out of
+`Overlay` into a tested dispatcher. The remaining optional cleanup is a
+visibility-reset coordinator if `Overlay` grows again; for now the explicit
+central reset is preferable to hidden per-hook resets.
 
 ## Verification
 

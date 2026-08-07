@@ -715,6 +715,11 @@
           "date": "2026-08-08",
           "kind": "progress",
           "text": "Completed phase 11 focused runtime tests. Added test:extension to the root test chain, added Bun tests for Lens model helpers, Companion model helpers, active stack ordering/reference navigation, cluster heat rects, WebSocket room event decoding, and theme host attributes, and extracted decodeWsRoomEvent into content/ws/ws-events.ts. Automated verification is now wired; manual extension runtime verification remains before final completion."
+        },
+        {
+          "date": "2026-08-08",
+          "kind": "audit",
+          "text": "Completed a final responsibility audit pass with an independent sub-agent. No severe responsibility regression was found: content.tsx remains bootstrap-only, components avoid storage/chrome/ws/API/marker/anchor ownership, useWsBridge remains a single chrome.runtime.connect bridge, and anchorRanges remains a ref-backed Map. Follow-up cleanup removed duplicate publish auth handling from Overlay, moved auth rejection persistence to the settings boundary, and extracted WebSocket room event routing into a tested dispatcher. Manual browser extension verification remains before marking the track complete."
         }
       ],
       "links": [
