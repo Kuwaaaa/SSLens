@@ -273,12 +273,12 @@ Links:
 Feature ID: `content-runtime-modularization`
 Status: `next`
 Phase: Extension Architecture
-Progress: 84
-Current stage: Bloom runtime and browser adapter extraction
+Progress: 90
+Current stage: Overlay composition shrink
 Last worked: 2026-08-08
 
 Resume point:
-Behavior baseline, pure model extraction, phase 1.5 prop-driven UI extraction, phase 2 bootstrap/route/theme-host extraction, phase 3 settings/theme runtime extraction, phase 4 anchor/active-stack extraction, phase 5 surface extraction, phase 6 Lens room extraction, and phase 7 WebSocket/Companion extraction are complete. Continue with phase 8 by extracting bloom runtime ownership; clipboard browser adapter already moved earlier with InfoPanel.
+Behavior baseline, pure model extraction, phase 1.5 prop-driven UI extraction, phase 2 bootstrap/route/theme-host extraction, phase 3 settings/theme runtime extraction, phase 4 anchor/active-stack extraction, phase 5 surface extraction, phase 6 Lens room extraction, phase 7 WebSocket/Companion extraction, and phase 8 bloom/browser adapter extraction are complete. Continue with phase 10 by moving Overlay into content/Overlay.tsx and shrinking the content entry to bootstrap-only composition, then add focused tests.
 
 Summary:
 Move the extension content script toward a thin runtime shell with explicit settings, theme, surface, Lens room, WebSocket, Companion, bloom, and UI boundaries.
@@ -287,11 +287,10 @@ Why:
 Theme switching, Companion, anchoring, markers, and Lens UI now share one large content runtime. Clear ownership will reduce coupling before the next wave of UI and surface work.
 
 Next actions:
-- Create content/bloom/useBloomRuntime.ts to own bloom list state, marker/card-open bloom creation, timeout cleanup, and theme-aware bloom specs
-- Keep browser clipboard behavior in content/browser/clipboard.ts as the browser capability adapter already extracted with InfoPanel
-- Wire card-open and marker bloom callbacks through the bloom hook without changing visual behavior
-- Run bun run typecheck and bun run test after each component extraction batch
-- Then shrink Overlay to composition and add focused tests
+- Move Overlay from apps/extension/src/content.tsx into apps/extension/src/content/Overlay.tsx without changing hook wiring
+- Shrink apps/extension/src/content.tsx to import Overlay and call bootContentRuntime
+- Run bun run typecheck and bun run test after the entry split
+- Then wire extension tests and add focused tests for active-stack, cluster, ws-events, and model helpers
 
 Scope:
 - Behavior-preserving decomposition of apps/extension/src/content.tsx
@@ -322,18 +321,18 @@ Stages:
 - done: Extract webpage surface mechanics (2026-08-08)
 - done: Extract Lens room state and commands (2026-08-08)
 - done: Extract WebSocket bridge and Companion room (2026-08-08)
-- now: Extract bloom runtime and browser adapters (2026-08-08)
-- planned: Extract prop-driven UI components
-- planned: Shrink Overlay to composition
+- done: Extract bloom runtime and browser adapters (2026-08-08)
+- done: Extract prop-driven UI components (2026-08-08)
+- now: Shrink Overlay to composition (2026-08-08)
 - planned: Add focused runtime tests
 - planned: Wire test:extension before focused tests (2026-08-07)
 
 Recent updates:
+- 2026-08-08 progress: Completed phase 8 by moving bloom runtime ownership into apps/extension/src/content/bloom/useBloomRuntime.ts. The hook now owns bloom list state, marker/card-open bloom creation, theme-aware bloom specs, and cleanup; the clipboard browser adapter had already moved into content/browser/clipboard.ts with InfoPanel. Verified with bun run typecheck and bun run test.
 - 2026-08-08 progress: Completed phase 7 by moving the single shared WebSocket transport into apps/extension/src/content/ws/useWsBridge.ts and Companion room state/commands/events into apps/extension/src/content/companion/useCompanionRoom.ts. Lens and Companion still share one chrome.runtime.connect service-worker port; Companion receives the bridge send function instead of opening its own connection. Verified with bun run typecheck and bun run test.
 - 2026-08-08 progress: Completed phase 6 by moving Lens room ownership into apps/extension/src/content/lens-room/useLensRoom.ts, lens-events.ts, and lens-commands.ts. The hook now owns Lens list state, initial fetch, visible/clusterable/draft-overlap derivation, Lens command helpers, and Lens WebSocket event application callbacks while Overlay keeps WebSocket transport, Companion state, active Lens UI state, and bloom runtime. Verified with bun run typecheck and bun run test.
 - 2026-08-08 progress: Completed phase 5 by moving webpage surface mechanics into apps/extension/src/content/surface/: layout tick handling, cluster heat segment/rect calculation, page selection capture, marker click hit testing, marker highlight effects, overlay-target exclusion, and jump-to-anchor scrolling. Overlay still owns Lens fetch/command orchestration, WebSocket transport lifecycle, Companion state, and bloom runtime. Verified with bun run typecheck and bun run test.
 - 2026-08-08 progress: Completed phase 4 by moving ref-backed Lens anchor range ownership and orphan synchronization into apps/extension/src/content/lens-room/anchor-registry.ts, and active stack, overlap ordering, preferred marker-hit selection, cluster sibling ordering, and reference navigation stack updates into apps/extension/src/content/lens-room/active-stack.ts. anchorRanges remains a ref-backed Map inside the registry, never React state. Verified with bun run typecheck and bun run test.
-- 2026-08-08 progress: Completed phase 3 by moving token, user, reading mode, theme, site-hidden, tab-hidden, settings load, popup storage change listening, theme application, and settings commands into apps/extension/src/content/settings/useOverlaySettings.ts. Overlay consumes settings state and commands while Lens, Companion, WebSocket, surface, and bloom ownership remain unchanged. Verified with bun run typecheck and bun run test.
 
 Links:
 - [Feature note](./features/content-runtime-modularization.md)

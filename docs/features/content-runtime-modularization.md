@@ -1,8 +1,8 @@
 # Content Runtime Modularization
 
 Status: next
-Progress: 84
-Current stage: Bloom runtime and browser adapter extraction
+Progress: 90
+Current stage: Overlay composition shrink
 Last worked: 2026-08-08
 
 ## Resume Point
@@ -11,8 +11,9 @@ Behavior baseline, pure model extraction, phase 1.5 prop-driven UI extraction,
 phase 2 bootstrap/route/theme-host extraction, phase 3 settings/theme runtime
 extraction, phase 4 anchor/active-stack extraction, phase 5 surface extraction,
 phase 6 Lens room extraction, and phase 7 WebSocket/Companion extraction are
-complete. Continue with phase 8 by extracting bloom runtime ownership; clipboard
-browser adapter already moved earlier with `InfoPanel`.
+complete. Phase 8 bloom/browser adapter extraction is also complete. Continue
+with phase 10 by moving `Overlay` into `content/Overlay.tsx` and shrinking the
+content entry to bootstrap-only composition, then add focused tests.
 
 ## Goal
 
@@ -200,7 +201,11 @@ Captured before the first extraction pass on 2026-08-08:
   Companion runtime into:
   - `apps/extension/src/content/ws/useWsBridge.ts`
   - `apps/extension/src/content/companion/useCompanionRoom.ts`
-- Kept active Lens UI state and bloom runtime unchanged.
+- Completed phase 8 by moving bloom runtime ownership into
+  `apps/extension/src/content/bloom/useBloomRuntime.ts`; clipboard browser
+  adapter ownership had already moved into
+  `apps/extension/src/content/browser/clipboard.ts` with `InfoPanel`.
+- Kept active Lens UI state in `Overlay`.
 - Verified with `bun run typecheck` and `bun run test`.
 
 ## Staged Plan

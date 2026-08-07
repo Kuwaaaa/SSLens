@@ -17,8 +17,9 @@ import {
   clearAllClusterHighlights,
   clearAllHighlights,
 } from "./marker";
-import { BloomLayer, makeBloomSpec, type BloomIntent, type BloomSpec } from "./shapes";
+import { BloomLayer } from "./shapes";
 import { bootContentRuntime } from "./content/bootstrap";
+import { useBloomRuntime } from "./content/bloom/useBloomRuntime";
 import { useCompanionRoom } from "./content/companion/useCompanionRoom";
 import {
   ClusterHeatOverlay,
@@ -161,21 +162,7 @@ function Overlay({ url, roomId, canonical }: { url: string; roomId: string; cano
   });
   const [panelOpen, setPanelOpen] = useState(false);
   const layoutTick = useLayoutTick(lumenHidden);
-
-  // --- Geometric shape blooms ---
-  // Small SVG primitives that emerge from behind a card (or beside a new
-  // marker). See shapes.tsx + the `lumen-bloom` keyframe in styles.css.
-  const [blooms, setBlooms] = useState<Array<{ id: string; spec: BloomSpec }>>([]);
-  const triggerBloom = useCallback(
-    (rect: DOMRect, intent: BloomIntent) => {
-      const id = `b-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
-      setBlooms((b) => [...b, { id, spec: makeBloomSpec(rect, intent, themeId) }]);
-    },
-    [themeId],
-  );
-  const removeBloom = useCallback((id: string) => {
-    setBlooms((b) => b.filter((x) => x.id !== id));
-  }, []);
+  const { blooms, triggerBloom, removeBloom, resetBlooms } = useBloomRuntime(themeId);
   const handleWsMessage = useCallback((msg: WsRoomEvent) => {
     if (msg.type === "subscribed") {
       return;
@@ -236,8 +223,8 @@ function Overlay({ url, roomId, canonical }: { url: string; roomId: string; cano
     setReanchorTargetId(null);
     setReanchorError(null);
     resetCompanion();
-    setBlooms([]);
-  }, [lumenHidden, resetCompanion]);
+    resetBlooms();
+  }, [lumenHidden, resetCompanion, resetBlooms]);
 
   const visibleLensIds = useMemo(
     () => new Set(visibleLenses.map((lens) => lens.id)),
