@@ -298,15 +298,7 @@ export function Overlay({ url, roomId, canonical }: { url: string; roomId: strin
 
   async function publish(input: { type: LensType; body: string; tags: string[]; anonymous: boolean }) {
     if (!token || !draft) return;
-    try {
-      await publishLensDraft(input, draft.range);
-    } catch (err) {
-      if (err instanceof Error && err.message.includes("createLens 401")) {
-        console.warn("[Lumen] token was rejected while creating a Lens; logging out:", err);
-        clearAuthState();
-      }
-      throw err;
-    }
+    await publishLensDraft(input, draft.range);
     setComposerOpen(false);
     setDraft(null);
     window.getSelection()?.removeAllRanges();
