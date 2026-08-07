@@ -1,17 +1,17 @@
 # Content Runtime Modularization
 
 Status: next
-Progress: 52
-Current stage: Anchor registry and active stack extraction
+Progress: 60
+Current stage: Webpage surface mechanics extraction
 Last worked: 2026-08-08
 
 ## Resume Point
 
 Behavior baseline, pure model extraction, phase 1.5 prop-driven UI extraction,
-phase 2 bootstrap/route/theme-host extraction, and phase 3 settings/theme
-runtime extraction are complete. Continue with phase 4 by extracting anchor
-registry and active stack ownership while keeping `anchorRanges` backed by a
-ref Map, never React state.
+phase 2 bootstrap/route/theme-host extraction, phase 3 settings/theme runtime
+extraction, and phase 4 anchor/active-stack extraction are complete. Continue
+with phase 5 by extracting webpage surface mechanics for selection capture,
+marker clicks, layout ticks, cluster heat segments, and jump-to-anchor helpers.
 
 ## Goal
 
@@ -177,6 +177,12 @@ Captured before the first extraction pass on 2026-08-08:
   state, storage loading, popup storage change listening, theme application, and
   settings commands into
   `apps/extension/src/content/settings/useOverlaySettings.ts`.
+- Completed phase 4 by moving ref-backed Lens anchor range ownership and orphan
+  synchronization into
+  `apps/extension/src/content/lens-room/anchor-registry.ts`, and active stack,
+  overlap ordering, preferred marker-hit selection, cluster sibling ordering,
+  and reference navigation stack updates into
+  `apps/extension/src/content/lens-room/active-stack.ts`.
 - Kept Lens runtime hooks, WebSocket lifecycle, and DOM/surface event handlers
   unchanged.
 - Verified with `bun run typecheck` and `bun run test`.

@@ -15,7 +15,7 @@ import { type Lens, type LensType, type ReactionKind } from "@lumen/schema";
 
 import { logout } from "./shared/storage";
 import { fetchLensesForRoom, createLens, reportLens, toggleReaction, updateLensAnchor } from "./shared/api-proxy";
-import { buildTextIndex, createAnchor, flatOffsetsToRange, rangeToFlatOffsets, restoreAnchor } from "@lumen/anchoring";
+import { buildTextIndex, createAnchor, flatOffsetsToRange, rangeToFlatOffsets } from "@lumen/anchoring";
 import {
   applyClusterHighlight,
   applyHighlight,
@@ -39,6 +39,14 @@ import {
   RestoreTabButton,
 } from "./content/components";
 import { mergeLensLists, refsFromBody, shouldShowInMode } from "./content/lens-model";
+import {
+  activeStackForLens,
+  lensesForActiveStack,
+  openReferencedLensStack,
+  preferredLensIdAtPoint,
+  rangesOverlap,
+} from "./content/lens-room/active-stack";
+import { useAnchorRegistry } from "./content/lens-room/anchor-registry";
 import type {
   ActiveLensStack,
   ClusterHeatRect,
@@ -61,26 +69,6 @@ const COMPANION_EMOJI_CHOICES = [
 
 function clamp(n: number, min: number, max: number): number {
   return Math.max(min, Math.min(max, n));
-}
-
-function rangesOverlap(a: Range, b: Range): boolean {
-  // START_TO_END: compares a.end vs b.start -> >0 means a.end is after b.start
-  // END_TO_START: compares a.start vs b.end -> <0 means a.start is before b.end
-  return (
-    a.compareBoundaryPoints(Range.START_TO_END, b) > 0 &&
-    a.compareBoundaryPoints(Range.END_TO_START, b) < 0
-  );
-}
-
-function rangesEqual(a: Range, b: Range): boolean {
-  return (
-    a.compareBoundaryPoints(Range.START_TO_START, b) === 0 &&
-    a.compareBoundaryPoints(Range.END_TO_END, b) === 0
-  );
-}
-
-function rangeTextLength(range: Range): number {
-  return range.toString().length;
 }
 
 function stableJitter(input: string, salt: number): number {
@@ -125,7 +113,16 @@ function Overlay({ url, roomId, canonical }: { url: string; roomId: string; cano
   //
   // Re-anchor flow: user starts from an orphan row, selects replacement
   // text, confirms, then the client patches the Lens anchor on the server.
-  const [orphanIds, setOrphanIds] = useState<Set<string>>(new Set());
+  const {
+    orphanIds,
+    getRange,
+    hasRange,
+    clearRanges,
+    removeLens,
+    restoreLensAnchor,
+    restoreLensAnchorWithFallback,
+    restoreLensBatch,
+  } = useAnchorRegistry();
   const [activeLens, setActiveLens] = useState<ActiveLensStack | null>(null);
   const [draft, setDraft] = useState<SelectionDraft | null>(null);
   const [composerOpen, setComposerOpen] = useState(false);
@@ -142,7 +139,6 @@ function Overlay({ url, roomId, canonical }: { url: string; roomId: string; cano
   const [panelOpen, setPanelOpen] = useState(false);
   const [layoutTick, setLayoutTick] = useState(0);
 
-  const anchorRanges = useRef<Map<string, Range>>(new Map());
   const wsRef = useRef<chrome.runtime.Port | null>(null);
   const companionActiveRef = useRef(false);
 
@@ -230,20 +226,7 @@ function Overlay({ url, roomId, canonical }: { url: string; roomId: string; cano
     fetchLensesForRoom(roomId, token)
       .then((ls) => {
         if (cancelled) return;
-        const orphans = new Set<string>();
-        for (const lens of ls) {
-          const range = restoreAnchor(lens.anchor);
-          if (range) anchorRanges.current.set(lens.id, range);
-          else orphans.add(lens.id);
-        }
-        setOrphanIds((current) => {
-          const next = new Set(current);
-          for (const lens of ls) {
-            if (orphans.has(lens.id)) next.add(lens.id);
-            else next.delete(lens.id);
-          }
-          return next;
-        });
+        restoreLensBatch(ls);
         setLenses((prev) => mergeLensLists(prev, ls));
       })
       .catch(async (err) => {
@@ -259,10 +242,10 @@ function Overlay({ url, roomId, canonical }: { url: string; roomId: string; cano
       });
     return () => {
       cancelled = true;
-      anchorRanges.current.clear();
+      clearRanges();
       clearAllHighlights();
     };
-  }, [token, roomId, lumenHidden, clearAuthState]);
+  }, [token, roomId, lumenHidden, clearAuthState, clearRanges, restoreLensBatch]);
 
   // WebSocket
   useEffect(() => {
@@ -342,10 +325,9 @@ function Overlay({ url, roomId, canonical }: { url: string; roomId: string; cano
       } else if (msg.type === "lens_created") {
         const lens = msg.lens as Lens;
         // Dedup against the always-current ref Map
-        if (!anchorRanges.current.has(lens.id)) {
-          const range = restoreAnchor(lens.anchor);
+        if (!hasRange(lens.id)) {
+          const range = restoreLensAnchor(lens);
           if (range) {
-            anchorRanges.current.set(lens.id, range);
             // Pop a small bloom near the new marker once highlight has rendered.
             window.setTimeout(() => {
               const r = range.getBoundingClientRect();
@@ -353,36 +335,12 @@ function Overlay({ url, roomId, canonical }: { url: string; roomId: string; cano
                 triggerBloom(r, "marker");
               }
             }, 80);
-          } else {
-            setOrphanIds((s) => {
-              if (s.has(lens.id)) return s;
-              const next = new Set(s);
-              next.add(lens.id);
-              return next;
-            });
           }
         }
         setLenses((prev) => (prev.some((l) => l.id === lens.id) ? prev : [...prev, lens]));
       } else if (msg.type === "lens_anchor_updated") {
         const lens = msg.lens as Lens;
-        const range = restoreAnchor(lens.anchor);
-        if (range) {
-          anchorRanges.current.set(lens.id, range);
-          setOrphanIds((s) => {
-            if (!s.has(lens.id)) return s;
-            const next = new Set(s);
-            next.delete(lens.id);
-            return next;
-          });
-        } else {
-          anchorRanges.current.delete(lens.id);
-          setOrphanIds((s) => {
-            if (s.has(lens.id)) return s;
-            const next = new Set(s);
-            next.add(lens.id);
-            return next;
-          });
-        }
+        restoreLensAnchor(lens);
         setLenses((prev) => (
           prev.some((l) => l.id === lens.id)
             ? prev.map((l) => (l.id === lens.id ? { ...lens, myReactions: l.myReactions } : l))
@@ -390,13 +348,7 @@ function Overlay({ url, roomId, canonical }: { url: string; roomId: string; cano
         ));
       } else if (msg.type === "lens_deleted" && typeof msg.lensId === "string") {
         const lensId = msg.lensId;
-        anchorRanges.current.delete(lensId);
-        setOrphanIds((s) => {
-          if (!s.has(lensId)) return s;
-          const next = new Set(s);
-          next.delete(lensId);
-          return next;
-        });
+        removeLens(lensId);
         setLenses((prev) => prev.filter((l) => l.id !== lensId));
         setActiveLens((prev) => prev && (prev.rootId === lensId || prev.clusterIds.includes(lensId) || prev.childIds.includes(lensId))
           ? null
@@ -441,7 +393,19 @@ function Overlay({ url, roomId, canonical }: { url: string; roomId: string; cano
       if (wsRef.current === port) wsRef.current = null;
       setWsConnected(false);
     };
-  }, [token, roomId, lumenHidden, wsRetryTick, addEmojiBurst, addCompanionMessage, mergeCompanionHistory]);
+  }, [
+    token,
+    roomId,
+    lumenHidden,
+    wsRetryTick,
+    addEmojiBurst,
+    addCompanionMessage,
+    mergeCompanionHistory,
+    hasRange,
+    restoreLensAnchor,
+    removeLens,
+    triggerBloom,
+  ]);
 
   // Visible lenses = not orphan + passes mode filter
   const visibleLenses = useMemo(
@@ -463,14 +427,14 @@ function Overlay({ url, roomId, canonical }: { url: string; roomId: string; cano
     if (!draft) return [];
     return lenses.filter((lens) => {
       if (orphanIds.has(lens.id)) return false;
-      const range = anchorRanges.current.get(lens.id);
+      const range = getRange(lens.id);
       return range ? rangesOverlap(draft.range, range) : false;
     });
-  }, [draft, lenses, orphanIds]);
+  }, [draft, lenses, orphanIds, getRange]);
 
   const clusterHeatSegments = useMemo(
     () => buildClusterHeatSegments(clusterableLenses, visibleLensIds),
-    [clusterableLenses, visibleLensIds],
+    [clusterableLenses, visibleLensIds, getRange],
   );
 
   const clusterHeatRects = useMemo(
@@ -482,11 +446,11 @@ function Overlay({ url, roomId, canonical }: { url: string; roomId: string; cano
   useEffect(() => {
     clearAllHighlights();
     for (const lens of visibleLenses) {
-      const range = anchorRanges.current.get(lens.id);
+      const range = getRange(lens.id);
       if (range) applyHighlight(lens.id, range);
     }
     return () => clearAllHighlights();
-  }, [visibleLenses]);
+  }, [visibleLenses, getRange]);
 
   // The rounded overlay paints every visible marker segment. Single-covered
   // spans stay very quiet; overlaps get progressively warmer and denser.
@@ -554,9 +518,9 @@ function Overlay({ url, roomId, canonical }: { url: string; roomId: string; cano
         return;
       }
       const pointIds = lensIdsAtPoint(e.clientX, e.clientY);
-      const id = preferredLensIdAtPoint(pointIds);
+      const id = preferredLensIdAtPoint(pointIds, lenses, getRange);
       if (id) {
-        setActiveLens(activeStackForLens(id));
+        setActiveLens(activeStackForLens(id, lenses, clusterableLenses, getRange));
         setDraft(null);
       } else {
         setActiveLens(null);
@@ -564,7 +528,7 @@ function Overlay({ url, roomId, canonical }: { url: string; roomId: string; cano
     }
     document.addEventListener("click", onClick);
     return () => document.removeEventListener("click", onClick);
-  }, [lumenHidden, clusterableLenses]);
+  }, [lumenHidden, lenses, clusterableLenses, getRange]);
 
   async function publish(input: { type: LensType; body: string; tags: string[]; anonymous: boolean }) {
     if (!token || !draft) return;
@@ -603,14 +567,8 @@ function Overlay({ url, roomId, canonical }: { url: string; roomId: string; cano
     try {
       const anchor = createAnchor(draft.range);
       const lens = await updateLensAnchor(reanchorTargetId, anchor, token);
-      const restored = restoreAnchor(lens.anchor) ?? draft.range.cloneRange();
-      anchorRanges.current.set(lens.id, restored);
+      restoreLensAnchorWithFallback(lens.id, lens.anchor, draft.range);
       setLenses((prev) => prev.map((l) => (l.id === lens.id ? lens : l)));
-      setOrphanIds((s) => {
-        const next = new Set(s);
-        next.delete(lens.id);
-        return next;
-      });
       setReanchorTargetId(null);
       setDraft(null);
       window.getSelection()?.removeAllRanges();
@@ -632,83 +590,18 @@ function Overlay({ url, roomId, canonical }: { url: string; roomId: string; cano
   if (!token) return <NoTokenHint />;
 
   const activeLensStack = activeLens
-    ? [activeLens.rootId, ...activeLens.clusterIds, ...activeLens.childIds]
-        .map((id) => lenses.find((l) => l.id === id) ?? null)
-        .filter((l): l is Lens => !!l)
+    ? lensesForActiveStack(activeLens, lenses)
     : [];
-  const activeLensRange = activeLens ? anchorRanges.current.get(activeLens.rootId) ?? null : null;
+  const activeLensRange = activeLens ? getRange(activeLens.rootId) : null;
   const activeLensClusterCount = activeLens ? activeLens.clusterIds.length + 1 : 0;
   const companionCount = companionUsers.length;
   const hiddenCount = lenses.length - visibleLenses.length - orphanIds.size;
-
-  function clusterIdsForLens(id: string, pool: Lens[]): string[] {
-    const rootRange = anchorRanges.current.get(id);
-    if (!rootRange) return [];
-    const siblings = pool
-      .filter((lens) => {
-        if (lens.id === id) return false;
-        const range = anchorRanges.current.get(lens.id);
-        return range ? rangesOverlap(rootRange, range) : false;
-      })
-      .sort((a, b) => {
-        const aRange = anchorRanges.current.get(a.id);
-        const bRange = anchorRanges.current.get(b.id);
-        const aExact = aRange ? rangesEqual(rootRange, aRange) : false;
-        const bExact = bRange ? rangesEqual(rootRange, bRange) : false;
-        if (aExact !== bExact) return aExact ? -1 : 1;
-        return a.createdAt - b.createdAt;
-      });
-    return siblings.map((lens) => lens.id);
-  }
-
-  function sortClusterLensIds(ids: string[]): string[] {
-    return [...ids].sort((a, b) => {
-      const aRange = anchorRanges.current.get(a);
-      const bRange = anchorRanges.current.get(b);
-      const aLength = aRange ? rangeTextLength(aRange) : Number.MAX_SAFE_INTEGER;
-      const bLength = bRange ? rangeTextLength(bRange) : Number.MAX_SAFE_INTEGER;
-      if (aLength !== bLength) return aLength - bLength;
-      const aLens = lenses.find((lens) => lens.id === a);
-      const bLens = lenses.find((lens) => lens.id === b);
-      return (aLens?.createdAt ?? 0) - (bLens?.createdAt ?? 0);
-    });
-  }
-
-  function activeStackForLensIds(ids: string[]): ActiveLensStack | null {
-    const sorted = sortClusterLensIds([...new Set(ids)]);
-    const rootId = sorted[0];
-    if (!rootId) return null;
-    return {
-      rootId,
-      clusterIds: sorted.slice(1),
-      childIds: [],
-    };
-  }
-
-  function activeStackForLens(id: string): ActiveLensStack {
-    if (!lenses.find((lens) => lens.id === id)) {
-      return {
-        rootId: id,
-        clusterIds: [],
-        childIds: [],
-      };
-    }
-    return {
-      rootId: id,
-      clusterIds: sortClusterLensIds(clusterIdsForLens(id, clusterableLenses)),
-      childIds: [],
-    };
-  }
-
-  function preferredLensIdAtPoint(ids: string[]): string | null {
-    return sortClusterLensIds([...new Set(ids)])[0] ?? null;
-  }
 
   function buildClusterHeatSegments(pool: Lens[], visibleIds: Set<string>): ClusterHeatSegment[] {
     const index = buildTextIndex(document.body);
     const spans = pool
       .map((lens) => {
-        const range = anchorRanges.current.get(lens.id);
+        const range = getRange(lens.id);
         const offsets = range ? rangeToFlatOffsets(range, index) : null;
         if (!offsets || offsets.end <= offsets.start) return null;
         return {
@@ -775,7 +668,7 @@ function Overlay({ url, roomId, canonical }: { url: string; roomId: string; cano
   }
 
   function jumpToLensAnchor(id: string) {
-    const range = anchorRanges.current.get(id);
+    const range = getRange(id);
     if (!range) return;
     const rect = range.getBoundingClientRect();
     if (rect.width > 0 || rect.height > 0) {
@@ -790,22 +683,17 @@ function Overlay({ url, roomId, canonical }: { url: string; roomId: string; cano
         : node.parentElement;
       el?.scrollIntoView({ block: "center", behavior: "smooth" });
     }
-    setActiveLens(activeStackForLens(id));
+    setActiveLens(activeStackForLens(id, lenses, clusterableLenses, getRange));
   }
 
   function openReferencedLens(id: string) {
-    setActiveLens((current) => {
-      if (!current) return activeStackForLens(id);
-      const existingIndex = current.childIds.indexOf(id);
-      if (current.rootId === id) return { ...current, childIds: [] };
-      if (current.clusterIds.includes(id)) {
-        return activeStackForLens(id);
-      }
-      if (existingIndex >= 0) {
-        return { ...current, childIds: current.childIds.slice(0, existingIndex + 1) };
-      }
-      return { ...current, childIds: [...current.childIds, id] };
-    });
+    setActiveLens((current) => openReferencedLensStack(
+      current,
+      id,
+      lenses,
+      clusterableLenses,
+      getRange,
+    ));
   }
 
   async function reactToLens(id: string, kind: ReactionKind) {
@@ -947,7 +835,7 @@ function Overlay({ url, roomId, canonical }: { url: string; roomId: string; cano
           lenses={activeLensStack}
           clusterCount={activeLensClusterCount}
           rootAnchorRange={activeLensRange}
-          hasAnchor={(id) => anchorRanges.current.has(id)}
+          hasAnchor={hasRange}
           onJumpToAnchor={jumpToLensAnchor}
           knownLenses={lenses}
           onLensClick={openReferencedLens}
