@@ -501,18 +501,18 @@
       "title": "Content Runtime Modularization",
       "status": "next",
       "phase": "Extension Architecture",
-      "progress": 38,
-      "currentStage": "Bootstrap, route runtime, and theme host extraction",
+      "progress": 45,
+      "currentStage": "Settings and theme runtime hook extraction",
       "summary": "Move the extension content script toward a thin runtime shell with explicit settings, theme, surface, Lens room, WebSocket, Companion, bloom, and UI boundaries.",
       "why": "Theme switching, Companion, anchoring, markers, and Lens UI now share one large content runtime. Clear ownership will reduce coupling before the next wave of UI and surface work.",
       "notePath": "./features/content-runtime-modularization.md",
-      "resumePoint": "Behavior baseline, pure model extraction, and phase 1.5 prop-driven UI extraction are complete. content.tsx now has no large inline React component definitions beyond Overlay. Continue with phase 2 by extracting Shadow DOM bootstrap, route refresh hooks, and theme host attribute application without moving Lens, Companion, or storage runtime ownership yet.",
+      "resumePoint": "Behavior baseline, pure model extraction, phase 1.5 prop-driven UI extraction, and phase 2 bootstrap/route/theme-host extraction are complete. Continue with phase 3 by extracting settings and theme runtime state into content/settings/useOverlaySettings.ts, keeping Lens, Companion, WebSocket, surface, and bloom ownership in Overlay for now.",
       "nextActions": [
-        "Extract Shadow DOM host creation, inline CSS injection, and React root mounting into bootstrap.tsx",
-        "Extract route refresh hooks for pushState, replaceState, popstate, and hashchange into route-runtime.ts",
-        "Extract data-lumen-theme/data-lumen-mode application and marker theme initialization into theme-host.ts",
+        "Create content/settings/useOverlaySettings.ts for token, user, reading mode, theme, and site-hidden storage state",
+        "Move chrome.storage.onChanged handling for settings keys behind the settings hook",
+        "Expose changeReadingMode, changeTheme, and setTabHidden commands from the hook",
         "Run bun run typecheck and bun run test after each component extraction batch",
-        "Keep Lens, Companion, and storage runtime ownership in Overlay during this phase"
+        "Keep Lens, Companion, WebSocket, surface, and bloom ownership in Overlay during this phase"
       ],
       "lastWorkedAt": "2026-08-08",
       "scope": [
@@ -556,13 +556,14 @@
         {
           "id": "bootstrap",
           "title": "Extract bootstrap, route runtime, and theme host",
-          "status": "now",
+          "status": "done",
           "updatedAt": "2026-08-08"
         },
         {
           "id": "settings",
           "title": "Extract settings and theme runtime hook",
-          "status": "planned"
+          "status": "now",
+          "updatedAt": "2026-08-08"
         },
         {
           "id": "anchor-registry",
@@ -661,6 +662,11 @@
           "date": "2026-08-08",
           "kind": "progress",
           "text": "Completed phase 1.5 by moving LensCard into apps/extension/src/content/components/LensCard.tsx. LensCard owns card positioning, cluster expansion, expandable height measurement, and LensPanel composition, while active stack construction and card-open bloom triggering remain owned by the content runtime through props. content.tsx is down to roughly 1142 lines. Verified with bun run typecheck and bun run test."
+        },
+        {
+          "date": "2026-08-08",
+          "kind": "progress",
+          "text": "Completed phase 2 by moving Shadow DOM host creation, CSS injection, React root rendering, canonical room refresh, route hooks, and theme host/marker application into apps/extension/src/content/bootstrap.tsx, route-runtime.ts, and theme-host.ts. Overlay still owns Lens, Companion, WebSocket, storage, surface, and bloom runtime state. content.tsx is down to roughly 1049 lines. Verified with bun run typecheck and bun run test."
         }
       ],
       "links": [

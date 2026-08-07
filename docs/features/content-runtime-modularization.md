@@ -1,17 +1,17 @@
 # Content Runtime Modularization
 
 Status: next
-Progress: 38
-Current stage: Bootstrap, route runtime, and theme host extraction
+Progress: 45
+Current stage: Settings and theme runtime hook extraction
 Last worked: 2026-08-08
 
 ## Resume Point
 
-Behavior baseline, pure model extraction, and phase 1.5 prop-driven UI
-extraction are complete. `content.tsx` now has no large inline React component
-definitions beyond `Overlay`. Continue with phase 2 by extracting Shadow DOM
-bootstrap, route refresh hooks, and theme host attribute application without
-moving Lens, Companion, or storage runtime ownership yet.
+Behavior baseline, pure model extraction, phase 1.5 prop-driven UI extraction,
+and phase 2 bootstrap/route/theme-host extraction are complete. Continue with
+phase 3 by extracting settings and theme runtime state into
+`content/settings/useOverlaySettings.ts`, keeping Lens, Companion, WebSocket,
+surface, and bloom ownership in `Overlay` for now.
 
 ## Goal
 
@@ -167,6 +167,12 @@ Captured before the first extraction pass on 2026-08-08:
   positioning, cluster expansion, expandable height measurement, and LensPanel
   composition, while active stack construction and card-open bloom triggering
   remain owned by the content runtime through props.
+- Completed phase 2 by moving Shadow DOM host creation, CSS injection, React
+  root rendering, canonical room refresh, route hooks, and theme host/marker
+  application into:
+  - `apps/extension/src/content/bootstrap.tsx`
+  - `apps/extension/src/content/route-runtime.ts`
+  - `apps/extension/src/content/theme-host.ts`
 - Kept runtime hooks, WebSocket lifecycle, storage listeners, and DOM event
   handlers unchanged.
 - Verified with `bun run typecheck` and `bun run test`.

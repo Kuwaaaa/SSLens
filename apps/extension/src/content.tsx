@@ -11,10 +11,8 @@
 // connect to an insecure ws:// backend during the no-domain beta.
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { createRoot, type Root } from "react-dom/client";
 import { type Lens, type LensType, type ReactionKind, type ReadingMode } from "@lumen/schema";
 
-import { canonicalizeUrl, canonicalUrlFromDocument, roomIdFor } from "./shared/canonicalize";
 import {
   getReadingMode,
   getSiteHidden,
@@ -39,12 +37,11 @@ import {
   applyHighlight,
   clearAllClusterHighlights,
   clearAllHighlights,
-  injectMarkerStyles,
   lensIdsAtPoint,
-  setMarkerTheme,
 } from "./marker";
 import { BloomLayer, makeBloomSpec, type BloomIntent, type BloomSpec } from "./shapes";
 import { DEFAULT_THEME_ID, normalizeThemeId, type LumenThemeId } from "./theme";
+import { bootContentRuntime } from "./content/bootstrap";
 import { isCompanionChatMessage, mergeCompanionMessages } from "./content/companion-model";
 import {
   ClusterHeatOverlay,
@@ -68,8 +65,7 @@ import type {
   SelectionDraft,
   WsBridgeEvent,
 } from "./content/types";
-
-import overlayCss from "./styles.css?inline";
+import { applyRuntimeTheme } from "./content/theme-host";
 
 const COMPANION_EMOJI_CHOICES = [
   "\u{1F44B}",
@@ -255,8 +251,7 @@ function Overlay({ url, roomId, canonical }: { url: string; roomId: string; cano
   }, [siteHost]);
 
   useEffect(() => {
-    applyThemeAttributes(themeId, readingMode);
-    setMarkerTheme(themeId);
+    applyRuntimeTheme(themeId, readingMode);
   }, [themeId, readingMode]);
 
   useEffect(() => {
@@ -1049,94 +1044,6 @@ function Overlay({ url, roomId, canonical }: { url: string; roomId: string; cano
   );
 }
 
-// --- bootstrap ---
-
-let lumenRoot: Root | null = null;
-let lumenMount: HTMLElement | null = null;
-let lumenHost: HTMLElement | null = null;
-let bootUrl: string | null = null;
-let routeRefreshTimer: number | null = null;
-
-function applyThemeAttributes(themeId: LumenThemeId, mode?: ReadingMode): void {
-  if (!lumenHost) return;
-  lumenHost.dataset.lumenTheme = themeId;
-  if (mode) lumenHost.dataset.lumenMode = mode;
-}
-
-async function renderForCurrentPage() {
-  const mount = lumenMount;
-  if (!mount) return;
-
-  const url = window.location.href;
-  let roomId: string;
-  let canonical: string;
-  try {
-    const documentCanonical = canonicalUrlFromDocument();
-    canonical = canonicalizeUrl(url, documentCanonical);
-    roomId = await roomIdFor(url, documentCanonical);
-  } catch (err) {
-    console.warn("[Lumen] could not derive room from URL, aborting:", err);
-    return;
-  }
-
-  bootUrl = url;
-  if (!lumenRoot) lumenRoot = createRoot(mount);
-  lumenRoot.render(<Overlay key={roomId} url={url} roomId={roomId} canonical={canonical} />);
-}
-
-function scheduleRouteRefresh() {
-  if (routeRefreshTimer !== null) window.clearTimeout(routeRefreshTimer);
-  routeRefreshTimer = window.setTimeout(() => {
-    routeRefreshTimer = null;
-    if (window.location.href !== bootUrl) void renderForCurrentPage();
-  }, 100);
-}
-
-function installRouteHooks() {
-  const originalPushState = history.pushState;
-  const originalReplaceState = history.replaceState;
-
-  history.pushState = function pushState(...args) {
-    const result = originalPushState.apply(this, args);
-    scheduleRouteRefresh();
-    return result;
-  };
-
-  history.replaceState = function replaceState(...args) {
-    const result = originalReplaceState.apply(this, args);
-    scheduleRouteRefresh();
-    return result;
-  };
-
-  window.addEventListener("popstate", scheduleRouteRefresh);
-  window.addEventListener("hashchange", scheduleRouteRefresh);
-}
-
-async function boot() {
-  if (document.getElementById("lumen-root")) return;
-
-  const theme = await getTheme();
-  injectMarkerStyles(theme);
-
-  const host = document.createElement("div");
-  host.id = "lumen-root";
-  host.dataset.lumenTheme = theme;
-  host.dataset.lumenMode = "quiet";
-  host.style.cssText = "all: initial; position: fixed; top: 0; left: 0; width: 0; height: 0; z-index: 2147483647;";
-  document.documentElement.appendChild(host);
-  lumenHost = host;
-
-  const shadow = host.attachShadow({ mode: "open" });
-  const styleEl = document.createElement("style");
-  styleEl.textContent = overlayCss;
-  shadow.appendChild(styleEl);
-  const mount = document.createElement("div");
-  mount.setAttribute("data-lumen-overlay", "");
-  shadow.appendChild(mount);
-  lumenMount = mount;
-  installRouteHooks();
-
-  await renderForCurrentPage();
-}
-
-void boot();
+void bootContentRuntime(({ url, roomId, canonical }) => (
+  <Overlay key={roomId} url={url} roomId={roomId} canonical={canonical} />
+));
