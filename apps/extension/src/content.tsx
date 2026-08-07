@@ -10,7 +10,7 @@
 // The service worker owns the real WebSocket so HTTPS pages do not directly
 // connect to an insecure ws:// backend during the no-domain beta.
 
-import { useCallback, useEffect, useMemo, useRef, useState, type FormEvent } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { createRoot, type Root } from "react-dom/client";
 import { REACTION_KINDS, type Lens, type LensType, type ReactionKind, type ReadingMode } from "@lumen/schema";
 
@@ -49,6 +49,7 @@ import { DEFAULT_THEME_ID, LUMEN_THEME_IDS, LUMEN_THEMES, normalizeThemeId, type
 import { isCompanionChatMessage, mergeCompanionMessages } from "./content/companion-model";
 import {
   ClusterHeatOverlay,
+  CompanionChat,
   CompanionEmojiLayer,
   CreateButton,
   NoTokenHint,
@@ -1410,66 +1411,6 @@ function InfoPanel({
         )}
       </div>
     </section>
-  );
-}
-
-function CompanionChat({
-  open,
-  messages,
-  currentUserId,
-  disabled,
-  onSend,
-}: {
-  open: boolean;
-  messages: CompanionChatMessage[];
-  currentUserId: string | null;
-  disabled: boolean;
-  onSend: (body: string) => void;
-}) {
-  const [body, setBody] = useState("");
-  const listRef = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    if (!open) return;
-    const el = listRef.current;
-    if (!el) return;
-    el.scrollTop = el.scrollHeight;
-  }, [messages.length, open]);
-
-  function submit(e: FormEvent) {
-    e.preventDefault();
-    const trimmed = body.trim();
-    if (!open || !trimmed || disabled) return;
-    onSend(trimmed);
-    setBody("");
-  }
-
-  return (
-    <div className={`companion-chat ${open ? "expanded" : "collapsed"}`} aria-hidden={!open}>
-      <div ref={listRef} className="companion-chat-messages">
-        {messages.length === 0 ? (
-          <div className="companion-chat-empty">Tiny chat starts here.</div>
-        ) : messages.map((message) => {
-          const mine = currentUserId !== null && message.userId === currentUserId;
-          return (
-            <div key={message.id} className={`companion-chat-message ${mine ? "mine" : ""}`}>
-              <div className="companion-chat-meta">{mine ? "You" : `@${message.handle}`}</div>
-              <div className="companion-chat-body">{message.body}</div>
-            </div>
-          );
-        })}
-      </div>
-      <form className="companion-chat-form" onSubmit={submit}>
-        <input
-          value={body}
-          onChange={(e) => setBody(e.currentTarget.value.slice(0, 280))}
-          placeholder={disabled ? "Reconnecting..." : "Say something small"}
-          disabled={disabled}
-          maxLength={280}
-        />
-        <button disabled={disabled || !body.trim()}>Send</button>
-      </form>
-    </div>
   );
 }
 

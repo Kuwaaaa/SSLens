@@ -634,6 +634,11 @@
           "date": "2026-08-08",
           "kind": "progress",
           "text": "Started phase 1.5 leaf UI extraction. Moved Orb, CompanionEmojiLayer, ClusterHeatOverlay, NoTokenHint, RestoreTabButton, CreateButton, ReanchorConfirm, and TargetIcon into apps/extension/src/content/components/ and kept runtime hooks unchanged. content.tsx is down to roughly 2000 lines. Verified with bun run typecheck and bun run test."
+        },
+        {
+          "date": "2026-08-08",
+          "kind": "progress",
+          "text": "Continued phase 1.5 leaf UI extraction by moving CompanionChat into apps/extension/src/content/components/CompanionChat.tsx. The component keeps only local input and scroll state and still communicates through the onSend callback; WebSocket and Companion runtime hooks remain unchanged. Verified with bun run typecheck and bun run test."
         }
       ],
       "links": [

@@ -146,6 +146,10 @@ Captured before the first extraction pass on 2026-08-08:
   - `apps/extension/src/content/components/CreateButton.tsx`
   - `apps/extension/src/content/components/ReanchorConfirm.tsx`
   - `apps/extension/src/content/components/TargetIcon.tsx`
+- Continued phase 1.5 by moving `CompanionChat` into
+  `apps/extension/src/content/components/CompanionChat.tsx`; the component keeps
+  only local input and scroll state and still communicates through the `onSend`
+  callback.
 - Kept runtime hooks, WebSocket lifecycle, storage listeners, and DOM event
   handlers unchanged.
 - Verified with `bun run typecheck` and `bun run test`.

@@ -1,4 +1,5 @@
 export { ClusterHeatOverlay } from "./ClusterHeatOverlay";
+export { CompanionChat } from "./CompanionChat";
 export { CompanionEmojiLayer } from "./CompanionEmojiLayer";
 export { CreateButton } from "./CreateButton";
 export { NoTokenHint } from "./NoTokenHint";
