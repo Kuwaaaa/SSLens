@@ -10,7 +10,7 @@
 // The service worker owns the real WebSocket so HTTPS pages do not directly
 // connect to an insecure ws:// backend during the no-domain beta.
 
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { type Lens, type LensType, type ReactionKind } from "@lumen/schema";
 
 import {
@@ -19,7 +19,7 @@ import {
 } from "./marker";
 import { BloomLayer, makeBloomSpec, type BloomIntent, type BloomSpec } from "./shapes";
 import { bootContentRuntime } from "./content/bootstrap";
-import { isCompanionChatMessage, mergeCompanionMessages } from "./content/companion-model";
+import { useCompanionRoom } from "./content/companion/useCompanionRoom";
 import {
   ClusterHeatOverlay,
   CompanionEmojiLayer,
@@ -46,12 +46,10 @@ import { useLayoutTick } from "./content/surface/useLayoutTick";
 import { useMarkerClicks } from "./content/surface/useMarkerClicks";
 import { useMarkerHighlights } from "./content/surface/useMarkerHighlights";
 import { usePageSelection } from "./content/surface/usePageSelection";
+import { useWsBridge, type WsRoomEvent } from "./content/ws/useWsBridge";
 import type {
   ActiveLensStack,
-  CompanionChatMessage,
-  CompanionEmojiBurst,
   SelectionDraft,
-  WsBridgeEvent,
 } from "./content/types";
 import { useOverlaySettings } from "./content/settings/useOverlaySettings";
 
@@ -63,10 +61,6 @@ const COMPANION_EMOJI_CHOICES = [
   "\u{1F914}",
   "\u{1F4AF}",
 ] as const;
-
-function clamp(n: number, min: number, max: number): number {
-  return Math.max(min, Math.min(max, n));
-}
 
 function Overlay({ url, roomId, canonical }: { url: string; roomId: string; canonical: string }) {
   const {
@@ -117,6 +111,23 @@ function Overlay({ url, roomId, canonical }: { url: string; roomId: string; cano
   const [reanchorBusy, setReanchorBusy] = useState(false);
   const [reanchorError, setReanchorError] = useState<string | null>(null);
   const {
+    active: companionActive,
+    emojiBursts,
+    chatOpen,
+    messages: companionMessages,
+    count: companionCount,
+    reset: resetCompanion,
+    handleBridgeOpen: handleCompanionBridgeOpen,
+    handleBridgeClose: handleCompanionBridgeClose,
+    handleBeforeBridgeDisconnect: handleBeforeCompanionBridgeDisconnect,
+    handleEvent: handleCompanionEvent,
+    join: joinCompanion,
+    leave: leaveCompanion,
+    tossEmoji: tossCompanionEmoji,
+    sendChat: sendCompanionChat,
+    toggleChat: toggleCompanionChat,
+  } = useCompanionRoom();
+  const {
     lenses,
     visibleLenses,
     clusterableLenses,
@@ -148,18 +159,8 @@ function Overlay({ url, roomId, canonical }: { url: string; roomId: string; cano
     },
     clearAuthState,
   });
-  const [wsConnected, setWsConnected] = useState(false);
-  const [wsRetryTick, setWsRetryTick] = useState(0);
-  const [companionActive, setCompanionActive] = useState(false);
-  const [companionUsers, setCompanionUsers] = useState<string[]>([]);
-  const [emojiBursts, setEmojiBursts] = useState<CompanionEmojiBurst[]>([]);
-  const [chatOpen, setChatOpen] = useState(false);
-  const [companionMessages, setCompanionMessages] = useState<CompanionChatMessage[]>([]);
   const [panelOpen, setPanelOpen] = useState(false);
   const layoutTick = useLayoutTick(lumenHidden);
-
-  const wsRef = useRef<chrome.runtime.Port | null>(null);
-  const companionActiveRef = useRef(false);
 
   // --- Geometric shape blooms ---
   // Small SVG primitives that emerge from behind a card (or beside a new
@@ -175,30 +176,54 @@ function Overlay({ url, roomId, canonical }: { url: string; roomId: string; cano
   const removeBloom = useCallback((id: string) => {
     setBlooms((b) => b.filter((x) => x.id !== id));
   }, []);
-  const addEmojiBurst = useCallback((input: Omit<CompanionEmojiBurst, "id">) => {
-    const id = `ce-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
-    setEmojiBursts((bursts) => [
-      ...bursts.slice(-10),
-      {
-        ...input,
-        id,
-        y: clamp(input.y, 0.12, 0.88),
-      },
-    ]);
-    window.setTimeout(() => {
-      setEmojiBursts((bursts) => bursts.filter((burst) => burst.id !== id));
-    }, 1250);
-  }, []);
-  const addCompanionMessage = useCallback((message: CompanionChatMessage) => {
-    setCompanionMessages((messages) => mergeCompanionMessages(messages, [message]));
-  }, []);
-  const mergeCompanionHistory = useCallback((messages: CompanionChatMessage[]) => {
-    setCompanionMessages((current) => mergeCompanionMessages(current, messages));
-  }, []);
-
-  useEffect(() => {
-    companionActiveRef.current = companionActive;
-  }, [companionActive]);
+  const handleWsMessage = useCallback((msg: WsRoomEvent) => {
+    if (msg.type === "subscribed") {
+      return;
+    } else if (typeof msg.type === "string" && msg.type.startsWith("companion_")) {
+      handleCompanionEvent(msg);
+    } else if (msg.type === "lens_created") {
+      const lens = msg.lens as Lens;
+      const range = handleLensCreated(lens);
+      if (range) {
+        // Pop a small bloom near the new marker once highlight has rendered.
+        window.setTimeout(() => {
+          const r = range.getBoundingClientRect();
+          if (r.width > 0 && r.height > 0) {
+            triggerBloom(r, "marker");
+          }
+        }, 80);
+      }
+    } else if (msg.type === "lens_anchor_updated") {
+      const lens = msg.lens as Lens;
+      handleLensAnchorUpdated(lens);
+    } else if (msg.type === "lens_deleted" && typeof msg.lensId === "string") {
+      const lensId = msg.lensId;
+      handleLensDeleted(lensId);
+      setActiveLens((prev) => prev && (prev.rootId === lensId || prev.clusterIds.includes(lensId) || prev.childIds.includes(lensId))
+        ? null
+        : prev);
+    } else if (msg.type === "reaction_updated") {
+      const lensId = msg.lensId as string;
+      const reactions = msg.reactions as Partial<Record<ReactionKind, number>>;
+      handleReactionUpdated(lensId, reactions);
+    }
+  }, [
+    handleCompanionEvent,
+    handleLensCreated,
+    handleLensAnchorUpdated,
+    handleLensDeleted,
+    handleReactionUpdated,
+    triggerBloom,
+  ]);
+  const wsBridge = useWsBridge({
+    token,
+    roomId,
+    disabled: lumenHidden,
+    onOpen: handleCompanionBridgeOpen,
+    onClose: handleCompanionBridgeClose,
+    onBeforeDisconnect: handleBeforeCompanionBridgeDisconnect,
+    onMessage: handleWsMessage,
+  });
 
   useEffect(() => {
     if (!lumenHidden) return;
@@ -210,163 +235,9 @@ function Overlay({ url, roomId, canonical }: { url: string; roomId: string; cano
     setComposerOpen(false);
     setReanchorTargetId(null);
     setReanchorError(null);
-    setWsConnected(false);
-    setCompanionActive(false);
-    setCompanionUsers([]);
-    setEmojiBursts([]);
-    setChatOpen(false);
-    setCompanionMessages([]);
+    resetCompanion();
     setBlooms([]);
-  }, [lumenHidden]);
-
-  // WebSocket
-  useEffect(() => {
-    if (!token || lumenHidden) return;
-    const port = chrome.runtime.connect({ name: "lumen.ws" });
-    let disposed = false;
-    let reconnectTimer: number | null = null;
-    wsRef.current = port;
-
-    port.onMessage.addListener((event: WsBridgeEvent) => {
-      if (!event || event.namespace !== "lumen.ws") return;
-      if (event.type === "open") {
-        setWsConnected(true);
-        if (companionActiveRef.current) {
-          port.postMessage({ namespace: "lumen.ws", type: "send", payload: { type: "companion_join" } });
-        }
-        return;
-      }
-      if (event.type === "error") {
-        console.warn(
-          "[Lumen] WebSocket bridge failed. If HTTP API requests work, check token validity, extension service worker logs, and reverse-proxy Upgrade headers.",
-          event.error ?? "",
-        );
-        return;
-      }
-      if (event.type === "close") {
-        if (event.code !== 1000) {
-          console.warn("[Lumen] WebSocket closed:", {
-            code: event.code,
-            reason: event.reason || "(no reason)",
-            wasClean: event.wasClean,
-          });
-        }
-        setWsConnected(false);
-        setCompanionUsers([]);
-        return;
-      }
-      if (event.type !== "message") return;
-      let msg: { type: string; [k: string]: unknown };
-      try {
-        msg = JSON.parse(event.data);
-      } catch {
-        return;
-      }
-      if (msg.type === "subscribed") {
-        return;
-      } else if (msg.type === "companion_presence") {
-        setCompanionUsers((msg.users as string[] | undefined) ?? []);
-      } else if (msg.type === "companion_joined") {
-        const users = msg.users as string[] | undefined;
-        if (users) setCompanionUsers(users);
-        else setCompanionUsers((p) => [...new Set([...p, msg.userId as string])]);
-      } else if (msg.type === "companion_left") {
-        const users = msg.users as string[] | undefined;
-        if (users) setCompanionUsers(users);
-        else setCompanionUsers((p) => p.filter((u) => u !== (msg.userId as string)));
-      } else if (msg.type === "companion_emoji") {
-        if (!companionActiveRef.current) return;
-        const emoji = typeof msg.emoji === "string" ? msg.emoji : null;
-        const edge = msg.edge === "left" || msg.edge === "right" ? msg.edge : null;
-        const y = typeof msg.y === "number" ? msg.y : 0.5;
-        if (emoji && edge) addEmojiBurst({ emoji, edge, y });
-      } else if (msg.type === "companion_chat_history") {
-        if (!companionActiveRef.current) return;
-        const messages = Array.isArray(msg.messages)
-          ? msg.messages.filter(isCompanionChatMessage)
-          : [];
-        mergeCompanionHistory(messages);
-      } else if (msg.type === "companion_chat") {
-        if (!companionActiveRef.current) return;
-        const id = typeof msg.id === "string" ? msg.id : null;
-        const userId = typeof msg.userId === "string" ? msg.userId : "unknown";
-        const handle = typeof msg.handle === "string" ? msg.handle : "unknown";
-        const body = typeof msg.body === "string" ? msg.body : "";
-        const at = typeof msg.at === "number" ? msg.at : Date.now();
-        if (id && body.trim()) addCompanionMessage({ id, userId, handle, body, at });
-      } else if (msg.type === "lens_created") {
-        const lens = msg.lens as Lens;
-        const range = handleLensCreated(lens);
-        if (range) {
-          // Pop a small bloom near the new marker once highlight has rendered.
-          window.setTimeout(() => {
-            const r = range.getBoundingClientRect();
-            if (r.width > 0 && r.height > 0) {
-              triggerBloom(r, "marker");
-            }
-          }, 80);
-        }
-      } else if (msg.type === "lens_anchor_updated") {
-        const lens = msg.lens as Lens;
-        handleLensAnchorUpdated(lens);
-      } else if (msg.type === "lens_deleted" && typeof msg.lensId === "string") {
-        const lensId = msg.lensId;
-        handleLensDeleted(lensId);
-        setActiveLens((prev) => prev && (prev.rootId === lensId || prev.clusterIds.includes(lensId) || prev.childIds.includes(lensId))
-          ? null
-          : prev);
-      } else if (msg.type === "reaction_updated") {
-        const lensId = msg.lensId as string;
-        const reactions = msg.reactions as Partial<Record<ReactionKind, number>>;
-        handleReactionUpdated(lensId, reactions);
-      }
-    });
-
-    port.onDisconnect.addListener(() => {
-      setWsConnected(false);
-      setCompanionUsers([]);
-      if (!disposed) {
-        reconnectTimer = window.setTimeout(() => {
-          setWsRetryTick((n) => n + 1);
-        }, 1000);
-      }
-    });
-
-    port.postMessage({ namespace: "lumen.ws", type: "connect", token, roomId });
-
-    return () => {
-      disposed = true;
-      if (reconnectTimer !== null) window.clearTimeout(reconnectTimer);
-      if (companionActiveRef.current) {
-        try {
-          port.postMessage({ namespace: "lumen.ws", type: "send", payload: { type: "companion_leave" } });
-        } catch {
-          // Socket is already gone; server close handling clears presence.
-        }
-      }
-      try {
-        port.postMessage({ namespace: "lumen.ws", type: "disconnect" });
-        port.disconnect();
-      } catch {
-        // The extension worker may already be gone during tab teardown.
-      }
-      if (wsRef.current === port) wsRef.current = null;
-      setWsConnected(false);
-    };
-  }, [
-    token,
-    roomId,
-    lumenHidden,
-    wsRetryTick,
-    addEmojiBurst,
-    addCompanionMessage,
-    mergeCompanionHistory,
-    handleLensCreated,
-    handleLensAnchorUpdated,
-    handleLensDeleted,
-    handleReactionUpdated,
-    triggerBloom,
-  ]);
+  }, [lumenHidden, resetCompanion]);
 
   const visibleLensIds = useMemo(
     () => new Set(visibleLenses.map((lens) => lens.id)),
@@ -486,7 +357,7 @@ function Overlay({ url, roomId, canonical }: { url: string; roomId: string; cano
     : [];
   const activeLensRange = activeLens ? getRange(activeLens.rootId) : null;
   const activeLensClusterCount = activeLens ? activeLens.clusterIds.length + 1 : 0;
-  const companionCount = companionUsers.length;
+  const companionConnected = wsBridge.connected;
   const hiddenCount = lenses.length - visibleLenses.length - orphanIds.size;
 
   function jumpToLensAnchor(id: string) {
@@ -514,47 +385,11 @@ function Overlay({ url, roomId, canonical }: { url: string; roomId: string; cano
     setActiveLens(null);
   }
 
-  function findCompanion() {
-    setCompanionActive(true);
-    try {
-      wsRef.current?.postMessage({ namespace: "lumen.ws", type: "send", payload: { type: "companion_join" } });
-    } catch {
-      // The bridge will join on the next open event while companionActive is true.
-    }
-  }
-
-  function leaveCompanionMode() {
-    setCompanionActive(false);
-    setCompanionUsers([]);
-    setEmojiBursts([]);
-    setChatOpen(false);
-    setCompanionMessages([]);
-    try {
-      wsRef.current?.postMessage({ namespace: "lumen.ws", type: "send", payload: { type: "companion_leave" } });
-    } catch {
-      // Socket close handling on the server also clears companion presence.
-    }
-  }
-
-  function tossCompanionEmoji(emoji: string) {
-    if (!companionActive || !wsConnected) return;
-    const edge = Math.random() > 0.5 ? "right" : "left";
-    const y = 0.18 + Math.random() * 0.64;
-    wsRef.current?.postMessage({ namespace: "lumen.ws", type: "send", payload: { type: "companion_emoji", emoji, edge, y } });
-  }
-
-  function sendCompanionChat(body: string) {
-    if (!companionActive || !wsConnected) return;
-    const trimmed = body.trim().slice(0, 280);
-    if (!trimmed) return;
-    wsRef.current?.postMessage({ namespace: "lumen.ws", type: "send", payload: { type: "companion_chat", body: trimmed } });
-  }
-
   return (
     <>
       <Orb
         count={visibleLenses.length}
-        live={wsConnected}
+        live={companionConnected}
         companionActive={companionActive}
         companionCount={companionCount}
         extraCount={hiddenCount + orphanIds.size}
@@ -574,7 +409,7 @@ function Overlay({ url, roomId, canonical }: { url: string; roomId: string; cano
           reanchorTargetId={reanchorTargetId}
           companionActive={companionActive}
           companionCount={companionCount}
-          companionConnected={wsConnected}
+          companionConnected={companionConnected}
           companionEmojiChoices={COMPANION_EMOJI_CHOICES}
           chatOpen={chatOpen}
           companionMessages={companionMessages}
@@ -583,11 +418,11 @@ function Overlay({ url, roomId, canonical }: { url: string; roomId: string; cano
           onThemeChange={(theme) => void changeTheme(theme)}
           onClose={() => setPanelOpen(false)}
           onHideTab={hideTab}
-          onFindCompanion={findCompanion}
-          onLeaveCompanion={leaveCompanionMode}
-          onTossCompanionEmoji={tossCompanionEmoji}
-          onToggleChat={() => setChatOpen((open) => !open)}
-          onSendCompanionChat={sendCompanionChat}
+          onFindCompanion={() => joinCompanion(wsBridge.send)}
+          onLeaveCompanion={() => leaveCompanion(wsBridge.send)}
+          onTossCompanionEmoji={(emoji) => tossCompanionEmoji(wsBridge.send, companionConnected, emoji)}
+          onToggleChat={toggleCompanionChat}
+          onSendCompanionChat={(body) => sendCompanionChat(wsBridge.send, companionConnected, body)}
           onReport={reportLensById}
           onReanchor={startReanchor}
           onCancelReanchor={() => {

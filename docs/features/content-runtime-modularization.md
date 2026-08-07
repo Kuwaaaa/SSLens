@@ -1,8 +1,8 @@
 # Content Runtime Modularization
 
 Status: next
-Progress: 76
-Current stage: WebSocket bridge and Companion room extraction
+Progress: 84
+Current stage: Bloom runtime and browser adapter extraction
 Last worked: 2026-08-08
 
 ## Resume Point
@@ -10,9 +10,9 @@ Last worked: 2026-08-08
 Behavior baseline, pure model extraction, phase 1.5 prop-driven UI extraction,
 phase 2 bootstrap/route/theme-host extraction, phase 3 settings/theme runtime
 extraction, phase 4 anchor/active-stack extraction, phase 5 surface extraction,
-and phase 6 Lens room extraction are complete. Continue with phase 7 by
-extracting the single WebSocket bridge and Companion room while preserving one
-service-worker port shared by Lens and Companion.
+phase 6 Lens room extraction, and phase 7 WebSocket/Companion extraction are
+complete. Continue with phase 8 by extracting bloom runtime ownership; clipboard
+browser adapter already moved earlier with `InfoPanel`.
 
 ## Goal
 
@@ -196,8 +196,11 @@ Captured before the first extraction pass on 2026-08-08:
   - `apps/extension/src/content/lens-room/useLensRoom.ts`
   - `apps/extension/src/content/lens-room/lens-events.ts`
   - `apps/extension/src/content/lens-room/lens-commands.ts`
-- Kept WebSocket transport lifecycle, Companion state, active Lens UI state, and
-  bloom runtime unchanged.
+- Completed phase 7 by moving the single shared WebSocket transport and
+  Companion runtime into:
+  - `apps/extension/src/content/ws/useWsBridge.ts`
+  - `apps/extension/src/content/companion/useCompanionRoom.ts`
+- Kept active Lens UI state and bloom runtime unchanged.
 - Verified with `bun run typecheck` and `bun run test`.
 
 ## Staged Plan
