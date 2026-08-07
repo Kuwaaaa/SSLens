@@ -221,6 +221,16 @@ Captured before the first extraction pass on 2026-08-08:
   - extracted WebSocket room event routing into
     `apps/extension/src/content/ws/useRoomEventDispatcher.ts` with focused
     dispatch tests.
+- Continued phase 12 automated preflight and boundary cleanup:
+  - extracted Companion presence, emoji, chat history, and chat event parsing
+    into `apps/extension/src/content/companion/companion-events.ts`.
+  - extracted pure cluster heat segment calculation into
+    `buildClusterHeatSegmentsFromIndex` while keeping `buildClusterHeatSegments`
+    as the webpage DOM wrapper.
+  - verified `localhost:5173/manifest.json` responds, `localhost:3000/api/status`
+    reaches the server and returns the expected unauthorized status, the normal
+    production extension build guard still rejects missing public API base, and
+    `bun run build:extension:http-beta` succeeds.
 - Verified with `bun run typecheck` and `bun run test`.
 
 ## Staged Plan
@@ -538,6 +548,13 @@ returned to the settings boundary, and WebSocket room event routing moved out of
 visibility-reset coordinator if `Overlay` grows again; for now the explicit
 central reset is preferable to hidden per-hook resets.
 
+The automated phase-12 preflight also completed two optional P3 cleanups from
+the audit: Companion event parsing moved into `companion-events.ts`, and cluster
+heat segment calculation can now be tested against an injected anchoring
+`TextIndex`. These changes keep DOM IO at the surface wrapper and React state in
+the Companion hook, while leaving manual browser interaction verification as
+the remaining completion gate.
+
 ## Verification
 
 Every phase should run:
@@ -557,6 +574,16 @@ Manual verification after phases 2, 4, 5, 6, and 7:
 - Verify selection, composer, Lens card opening, references, reactions,
   reports, re-anchor, Companion join/leave/chat/emoji, route refresh, and
   Classic/Signal theme switching from both popup and InfoPanel.
+
+Automated phase-12 preflight completed:
+
+- `http://localhost:5173/manifest.json` returned 200 from the extension dev
+  server.
+- `http://localhost:3000/api/status` reached the local server and returned the
+  expected 401 without operator auth.
+- `bun run build:extension` failed at the expected production API-base guard.
+- `bun run build:extension:http-beta` succeeded and regenerated
+  `apps/extension/dist` for unpacked loading.
 
 ## Decisions
 
