@@ -273,12 +273,12 @@ Links:
 Feature ID: `content-runtime-modularization`
 Status: `next`
 Phase: Extension Architecture
-Progress: 32
-Current stage: Leaf prop-driven UI extraction
+Progress: 38
+Current stage: Bootstrap, route runtime, and theme host extraction
 Last worked: 2026-08-08
 
 Resume point:
-Behavior baseline and pure model extraction are complete. Phase 1.5 is underway: Orb, CompanionEmojiLayer, ClusterHeatOverlay, NoTokenHint, RestoreTabButton, CreateButton, ReanchorConfirm, TargetIcon, CompanionChat, Composer, InfoPanel, and LensPanel now live under apps/extension/src/content/components/. Continue by extracting the remaining larger prop-driven container component: LensCard.
+Behavior baseline, pure model extraction, and phase 1.5 prop-driven UI extraction are complete. content.tsx now has no large inline React component definitions beyond Overlay. Continue with phase 2 by extracting Shadow DOM bootstrap, route refresh hooks, and theme host attribute application without moving Lens, Companion, or storage runtime ownership yet.
 
 Summary:
 Move the extension content script toward a thin runtime shell with explicit settings, theme, surface, Lens room, WebSocket, Companion, bloom, and UI boundaries.
@@ -287,10 +287,11 @@ Why:
 Theme switching, Companion, anchoring, markers, and Lens UI now share one large content runtime. Clear ownership will reduce coupling before the next wave of UI and surface work.
 
 Next actions:
-- Continue phase 1.5 by extracting LensCard into content/components/ without moving runtime hooks
-- Keep active stack ordering, card positioning, and card-open bloom callbacks owned by the content runtime through LensCard props
+- Extract Shadow DOM host creation, inline CSS injection, and React root mounting into bootstrap.tsx
+- Extract route refresh hooks for pushState, replaceState, popstate, and hashchange into route-runtime.ts
+- Extract data-lumen-theme/data-lumen-mode application and marker theme initialization into theme-host.ts
 - Run bun run typecheck and bun run test after each component extraction batch
-- Then extract bootstrap, route runtime, and theme host without changing behavior
+- Keep Lens, Companion, and storage runtime ownership in Overlay during this phase
 
 Scope:
 - Behavior-preserving decomposition of apps/extension/src/content.tsx
@@ -314,8 +315,8 @@ Out of scope:
 Stages:
 - done: Freeze behavior baseline (2026-08-08)
 - done: Extract pure types and model helpers (2026-08-08)
-- now: Extract leaf prop-driven UI components early (2026-08-08)
-- planned: Extract bootstrap, route runtime, and theme host
+- done: Extract leaf prop-driven UI components early (2026-08-08)
+- now: Extract bootstrap, route runtime, and theme host (2026-08-08)
 - planned: Extract settings and theme runtime hook
 - planned: Extract anchor registry and active stack
 - planned: Extract webpage surface mechanics
@@ -328,11 +329,11 @@ Stages:
 - planned: Wire test:extension before focused tests (2026-08-07)
 
 Recent updates:
+- 2026-08-08 progress: Completed phase 1.5 by moving LensCard into apps/extension/src/content/components/LensCard.tsx. LensCard owns card positioning, cluster expansion, expandable height measurement, and LensPanel composition, while active stack construction and card-open bloom triggering remain owned by the content runtime through props. content.tsx is down to roughly 1142 lines. Verified with bun run typecheck and bun run test.
 - 2026-08-08 progress: Continued phase 1.5 by moving LensPanel into apps/extension/src/content/components/LensPanel.tsx. LensPanel keeps reaction picker/busy state and long-body expansion locally, while reaction commands, reference navigation, and anchor jumping remain callback-driven from the content runtime. Verified with bun run typecheck and bun run test.
 - 2026-08-08 progress: Continued phase 1.5 by moving InfoPanel into apps/extension/src/content/components/InfoPanel.tsx and moving clipboard fallback behavior into apps/extension/src/content/browser/clipboard.ts. InfoPanel keeps local copy/report/debug UI state while reading mode, theme, report, re-anchor, and Companion commands remain callback-driven from the content runtime. content.tsx is down to roughly 1462 lines. Verified with bun run typecheck and bun run test.
 - 2026-08-08 progress: Continued phase 1.5 by moving Composer into apps/extension/src/content/components/Composer.tsx. Composer keeps local draft form state, tag parsing, anonymous toggle, and reference insertion, while the content runtime still owns publish via the onSubmit callback. content.tsx is down to roughly 1814 lines. Verified with bun run typecheck and bun run test.
 - 2026-08-08 progress: Continued phase 1.5 leaf UI extraction by moving CompanionChat into apps/extension/src/content/components/CompanionChat.tsx. The component keeps only local input and scroll state and still communicates through the onSend callback; WebSocket and Companion runtime hooks remain unchanged. Verified with bun run typecheck and bun run test.
-- 2026-08-08 progress: Started phase 1.5 leaf UI extraction. Moved Orb, CompanionEmojiLayer, ClusterHeatOverlay, NoTokenHint, RestoreTabButton, CreateButton, ReanchorConfirm, and TargetIcon into apps/extension/src/content/components/ and kept runtime hooks unchanged. content.tsx is down to roughly 2000 lines. Verified with bun run typecheck and bun run test.
 
 Links:
 - [Feature note](./features/content-runtime-modularization.md)

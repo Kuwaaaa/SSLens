@@ -4,6 +4,7 @@ export { CompanionEmojiLayer } from "./CompanionEmojiLayer";
 export { Composer } from "./Composer";
 export { CreateButton } from "./CreateButton";
 export { InfoPanel } from "./InfoPanel";
+export { LensCard } from "./LensCard";
 export { LensPanel } from "./LensPanel";
 export { NoTokenHint } from "./NoTokenHint";
 export { Orb } from "./Orb";

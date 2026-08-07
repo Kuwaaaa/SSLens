@@ -1,18 +1,17 @@
 # Content Runtime Modularization
 
 Status: next
-Progress: 32
-Current stage: Leaf prop-driven UI extraction
+Progress: 38
+Current stage: Bootstrap, route runtime, and theme host extraction
 Last worked: 2026-08-08
 
 ## Resume Point
 
-Behavior baseline and pure model extraction are complete. Phase 1.5 is
-underway: `Orb`, `CompanionEmojiLayer`, `ClusterHeatOverlay`, `NoTokenHint`,
-`RestoreTabButton`, `CreateButton`, `ReanchorConfirm`, `TargetIcon`,
-`CompanionChat`, `Composer`, `InfoPanel`, and `LensPanel` now live under
-`apps/extension/src/content/components/`. Continue by extracting the remaining
-larger prop-driven container component: `LensCard`.
+Behavior baseline, pure model extraction, and phase 1.5 prop-driven UI
+extraction are complete. `content.tsx` now has no large inline React component
+definitions beyond `Overlay`. Continue with phase 2 by extracting Shadow DOM
+bootstrap, route refresh hooks, and theme host attribute application without
+moving Lens, Companion, or storage runtime ownership yet.
 
 ## Goal
 
@@ -163,6 +162,11 @@ Captured before the first extraction pass on 2026-08-08:
   `apps/extension/src/content/components/LensPanel.tsx`; the component keeps
   reaction picker/busy state and long-body expansion locally, while Lens
   reactions, reference navigation, and anchor jumping remain callback-driven.
+- Completed phase 1.5 by moving `LensCard` into
+  `apps/extension/src/content/components/LensCard.tsx`; the component owns card
+  positioning, cluster expansion, expandable height measurement, and LensPanel
+  composition, while active stack construction and card-open bloom triggering
+  remain owned by the content runtime through props.
 - Kept runtime hooks, WebSocket lifecycle, storage listeners, and DOM event
   handlers unchanged.
 - Verified with `bun run typecheck` and `bun run test`.
