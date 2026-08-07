@@ -501,17 +501,17 @@
       "title": "Content Runtime Modularization",
       "status": "next",
       "phase": "Extension Architecture",
-      "progress": 90,
-      "currentStage": "Overlay composition shrink",
+      "progress": 94,
+      "currentStage": "Focused runtime tests",
       "summary": "Move the extension content script toward a thin runtime shell with explicit settings, theme, surface, Lens room, WebSocket, Companion, bloom, and UI boundaries.",
       "why": "Theme switching, Companion, anchoring, markers, and Lens UI now share one large content runtime. Clear ownership will reduce coupling before the next wave of UI and surface work.",
       "notePath": "./features/content-runtime-modularization.md",
-      "resumePoint": "Behavior baseline, pure model extraction, phase 1.5 prop-driven UI extraction, phase 2 bootstrap/route/theme-host extraction, phase 3 settings/theme runtime extraction, phase 4 anchor/active-stack extraction, phase 5 surface extraction, phase 6 Lens room extraction, phase 7 WebSocket/Companion extraction, and phase 8 bloom/browser adapter extraction are complete. Continue with phase 10 by moving Overlay into content/Overlay.tsx and shrinking the content entry to bootstrap-only composition, then add focused tests.",
+      "resumePoint": "Behavior baseline, pure model extraction, phase 1.5 prop-driven UI extraction, phase 2 bootstrap/route/theme-host extraction, phase 3 settings/theme runtime extraction, phase 4 anchor/active-stack extraction, phase 5 surface extraction, phase 6 Lens room extraction, phase 7 WebSocket/Companion extraction, phase 8 bloom/browser adapter extraction, and phase 10 Overlay composition shrink are complete. Continue with phase 11 by wiring extension tests into bun run test and adding focused tests for pure model, active stack, cluster, WebSocket event, and theme-host logic.",
       "nextActions": [
-        "Move Overlay from apps/extension/src/content.tsx into apps/extension/src/content/Overlay.tsx without changing hook wiring",
-        "Shrink apps/extension/src/content.tsx to import Overlay and call bootContentRuntime",
-        "Run bun run typecheck and bun run test after the entry split",
-        "Then wire extension tests and add focused tests for active-stack, cluster, ws-events, and model helpers"
+        "Add a test:extension script that runs Bun tests for apps/extension sources and include it in bun run test",
+        "Add focused tests for active-stack ordering and reference navigation",
+        "Add focused tests for lens/companion model helpers and pure cluster helpers where DOM mocking is feasible",
+        "Add focused tests for WebSocket event decode helpers or extract decode into a pure ws-events module first"
       ],
       "lastWorkedAt": "2026-08-08",
       "scope": [
@@ -603,19 +603,20 @@
         {
           "id": "overlay-composition",
           "title": "Shrink Overlay to composition",
-          "status": "now",
+          "status": "done",
           "updatedAt": "2026-08-08"
         },
         {
           "id": "focused-tests",
           "title": "Add focused runtime tests",
-          "status": "planned"
+          "status": "now",
+          "updatedAt": "2026-08-08"
         },
         {
           "id": "test-wiring",
           "title": "Wire test:extension before focused tests",
-          "status": "planned",
-          "updatedAt": "2026-08-07"
+          "status": "now",
+          "updatedAt": "2026-08-08"
         }
       ],
       "updates": [
@@ -703,6 +704,11 @@
           "date": "2026-08-08",
           "kind": "progress",
           "text": "Completed phase 8 by moving bloom runtime ownership into apps/extension/src/content/bloom/useBloomRuntime.ts. The hook now owns bloom list state, marker/card-open bloom creation, theme-aware bloom specs, and cleanup; the clipboard browser adapter had already moved into content/browser/clipboard.ts with InfoPanel. Verified with bun run typecheck and bun run test."
+        },
+        {
+          "date": "2026-08-08",
+          "kind": "progress",
+          "text": "Completed phase 10 by moving Overlay runtime composition into apps/extension/src/content/Overlay.tsx and shrinking apps/extension/src/content.tsx to a bootstrap-only entry that imports Overlay and calls bootContentRuntime. Verified with bun run typecheck and bun run test."
         }
       ],
       "links": [

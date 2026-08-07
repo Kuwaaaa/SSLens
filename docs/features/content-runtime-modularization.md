@@ -1,8 +1,8 @@
 # Content Runtime Modularization
 
 Status: next
-Progress: 90
-Current stage: Overlay composition shrink
+Progress: 94
+Current stage: Focused runtime tests
 Last worked: 2026-08-08
 
 ## Resume Point
@@ -12,8 +12,9 @@ phase 2 bootstrap/route/theme-host extraction, phase 3 settings/theme runtime
 extraction, phase 4 anchor/active-stack extraction, phase 5 surface extraction,
 phase 6 Lens room extraction, and phase 7 WebSocket/Companion extraction are
 complete. Phase 8 bloom/browser adapter extraction is also complete. Continue
-with phase 10 by moving `Overlay` into `content/Overlay.tsx` and shrinking the
-content entry to bootstrap-only composition, then add focused tests.
+with phase 11 by wiring extension tests into `bun run test` and adding focused
+tests for pure model, active stack, cluster, WebSocket event, and theme-host
+logic.
 
 ## Goal
 
@@ -205,7 +206,9 @@ Captured before the first extraction pass on 2026-08-08:
   `apps/extension/src/content/bloom/useBloomRuntime.ts`; clipboard browser
   adapter ownership had already moved into
   `apps/extension/src/content/browser/clipboard.ts` with `InfoPanel`.
-- Kept active Lens UI state in `Overlay`.
+- Completed phase 10 by moving the runtime composition into
+  `apps/extension/src/content/Overlay.tsx`; `apps/extension/src/content.tsx`
+  now only imports `Overlay` and starts `bootContentRuntime`.
 - Verified with `bun run typecheck` and `bun run test`.
 
 ## Staged Plan
