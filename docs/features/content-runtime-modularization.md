@@ -1,17 +1,18 @@
 # Content Runtime Modularization
 
 Status: next
-Progress: 60
-Current stage: Webpage surface mechanics extraction
+Progress: 68
+Current stage: Lens room state and commands extraction
 Last worked: 2026-08-08
 
 ## Resume Point
 
 Behavior baseline, pure model extraction, phase 1.5 prop-driven UI extraction,
 phase 2 bootstrap/route/theme-host extraction, phase 3 settings/theme runtime
-extraction, and phase 4 anchor/active-stack extraction are complete. Continue
-with phase 5 by extracting webpage surface mechanics for selection capture,
-marker clicks, layout ticks, cluster heat segments, and jump-to-anchor helpers.
+extraction, phase 4 anchor/active-stack extraction, and phase 5 surface
+extraction are complete. Continue with phase 6 by extracting Lens room state,
+initial Lens fetch orchestration, Lens commands, and Lens WebSocket event
+application while keeping WebSocket transport and Companion state separate.
 
 ## Goal
 
@@ -183,8 +184,16 @@ Captured before the first extraction pass on 2026-08-08:
   overlap ordering, preferred marker-hit selection, cluster sibling ordering,
   and reference navigation stack updates into
   `apps/extension/src/content/lens-room/active-stack.ts`.
-- Kept Lens runtime hooks, WebSocket lifecycle, and DOM/surface event handlers
-  unchanged.
+- Completed phase 5 by moving surface mechanics into:
+  - `apps/extension/src/content/surface/useLayoutTick.ts`
+  - `apps/extension/src/content/surface/clusters.ts`
+  - `apps/extension/src/content/surface/usePageSelection.ts`
+  - `apps/extension/src/content/surface/useMarkerClicks.ts`
+  - `apps/extension/src/content/surface/useMarkerHighlights.ts`
+  - `apps/extension/src/content/surface/anchors.ts`
+  - `apps/extension/src/content/surface/overlay-target.ts`
+- Kept Lens fetch/command orchestration, WebSocket lifecycle, Companion state,
+  and bloom runtime unchanged.
 - Verified with `bun run typecheck` and `bun run test`.
 
 ## Staged Plan

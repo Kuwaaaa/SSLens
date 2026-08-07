@@ -273,12 +273,12 @@ Links:
 Feature ID: `content-runtime-modularization`
 Status: `next`
 Phase: Extension Architecture
-Progress: 60
-Current stage: Webpage surface mechanics extraction
+Progress: 68
+Current stage: Lens room state and commands extraction
 Last worked: 2026-08-08
 
 Resume point:
-Behavior baseline, pure model extraction, phase 1.5 prop-driven UI extraction, phase 2 bootstrap/route/theme-host extraction, phase 3 settings/theme runtime extraction, and phase 4 anchor/active-stack extraction are complete. Continue with phase 5 by extracting webpage surface mechanics for selection capture, marker clicks, layout ticks, cluster heat segments, and jump-to-anchor helpers.
+Behavior baseline, pure model extraction, phase 1.5 prop-driven UI extraction, phase 2 bootstrap/route/theme-host extraction, phase 3 settings/theme runtime extraction, phase 4 anchor/active-stack extraction, and phase 5 surface extraction are complete. Continue with phase 6 by extracting Lens room state, initial Lens fetch orchestration, Lens commands, and Lens WebSocket event application while keeping WebSocket transport and Companion state separate.
 
 Summary:
 Move the extension content script toward a thin runtime shell with explicit settings, theme, surface, Lens room, WebSocket, Companion, bloom, and UI boundaries.
@@ -287,11 +287,11 @@ Why:
 Theme switching, Companion, anchoring, markers, and Lens UI now share one large content runtime. Clear ownership will reduce coupling before the next wave of UI and surface work.
 
 Next actions:
-- Create content/surface/usePageSelection.ts for document selection capture and overlay-exclusion checks
-- Create content/surface/useMarkerClicks.ts for lensIdsAtPoint handling and preferred active stack opening
-- Create content/surface/useLayoutTick.ts and content/surface/clusters.ts for layout ticks, cluster heat segments, and heat rects
+- Create content/lens-room/useLensRoom.ts to own lenses, initial fetch, visible/clusterable derivation, and registry orchestration
+- Create content/lens-room/lens-events.ts for applying lens_created, lens_anchor_updated, lens_deleted, and reaction_updated events
+- Create content/lens-room/lens-commands.ts for publish, re-anchor, react, and report command helpers
 - Run bun run typecheck and bun run test after each component extraction batch
-- Keep Lens fetching, WebSocket, Companion, and bloom ownership in Overlay during this phase
+- Keep WebSocket transport lifecycle and Companion ownership in Overlay during this phase
 
 Scope:
 - Behavior-preserving decomposition of apps/extension/src/content.tsx
@@ -319,8 +319,8 @@ Stages:
 - done: Extract bootstrap, route runtime, and theme host (2026-08-08)
 - done: Extract settings and theme runtime hook (2026-08-08)
 - done: Extract anchor registry and active stack (2026-08-08)
-- now: Extract webpage surface mechanics (2026-08-08)
-- planned: Extract Lens room state and commands
+- done: Extract webpage surface mechanics (2026-08-08)
+- now: Extract Lens room state and commands (2026-08-08)
 - planned: Extract WebSocket bridge and Companion room
 - planned: Extract bloom runtime and browser adapters
 - planned: Extract prop-driven UI components
@@ -329,11 +329,11 @@ Stages:
 - planned: Wire test:extension before focused tests (2026-08-07)
 
 Recent updates:
+- 2026-08-08 progress: Completed phase 5 by moving webpage surface mechanics into apps/extension/src/content/surface/: layout tick handling, cluster heat segment/rect calculation, page selection capture, marker click hit testing, marker highlight effects, overlay-target exclusion, and jump-to-anchor scrolling. Overlay still owns Lens fetch/command orchestration, WebSocket transport lifecycle, Companion state, and bloom runtime. Verified with bun run typecheck and bun run test.
 - 2026-08-08 progress: Completed phase 4 by moving ref-backed Lens anchor range ownership and orphan synchronization into apps/extension/src/content/lens-room/anchor-registry.ts, and active stack, overlap ordering, preferred marker-hit selection, cluster sibling ordering, and reference navigation stack updates into apps/extension/src/content/lens-room/active-stack.ts. anchorRanges remains a ref-backed Map inside the registry, never React state. Verified with bun run typecheck and bun run test.
 - 2026-08-08 progress: Completed phase 3 by moving token, user, reading mode, theme, site-hidden, tab-hidden, settings load, popup storage change listening, theme application, and settings commands into apps/extension/src/content/settings/useOverlaySettings.ts. Overlay consumes settings state and commands while Lens, Companion, WebSocket, surface, and bloom ownership remain unchanged. Verified with bun run typecheck and bun run test.
 - 2026-08-08 progress: Completed phase 2 by moving Shadow DOM host creation, CSS injection, React root rendering, canonical room refresh, route hooks, and theme host/marker application into apps/extension/src/content/bootstrap.tsx, route-runtime.ts, and theme-host.ts. Overlay still owns Lens, Companion, WebSocket, storage, surface, and bloom runtime state. content.tsx is down to roughly 1049 lines. Verified with bun run typecheck and bun run test.
 - 2026-08-08 progress: Completed phase 1.5 by moving LensCard into apps/extension/src/content/components/LensCard.tsx. LensCard owns card positioning, cluster expansion, expandable height measurement, and LensPanel composition, while active stack construction and card-open bloom triggering remain owned by the content runtime through props. content.tsx is down to roughly 1142 lines. Verified with bun run typecheck and bun run test.
-- 2026-08-08 progress: Continued phase 1.5 by moving LensPanel into apps/extension/src/content/components/LensPanel.tsx. LensPanel keeps reaction picker/busy state and long-body expansion locally, while reaction commands, reference navigation, and anchor jumping remain callback-driven from the content runtime. Verified with bun run typecheck and bun run test.
 
 Links:
 - [Feature note](./features/content-runtime-modularization.md)

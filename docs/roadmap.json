@@ -501,18 +501,18 @@
       "title": "Content Runtime Modularization",
       "status": "next",
       "phase": "Extension Architecture",
-      "progress": 60,
-      "currentStage": "Webpage surface mechanics extraction",
+      "progress": 68,
+      "currentStage": "Lens room state and commands extraction",
       "summary": "Move the extension content script toward a thin runtime shell with explicit settings, theme, surface, Lens room, WebSocket, Companion, bloom, and UI boundaries.",
       "why": "Theme switching, Companion, anchoring, markers, and Lens UI now share one large content runtime. Clear ownership will reduce coupling before the next wave of UI and surface work.",
       "notePath": "./features/content-runtime-modularization.md",
-      "resumePoint": "Behavior baseline, pure model extraction, phase 1.5 prop-driven UI extraction, phase 2 bootstrap/route/theme-host extraction, phase 3 settings/theme runtime extraction, and phase 4 anchor/active-stack extraction are complete. Continue with phase 5 by extracting webpage surface mechanics for selection capture, marker clicks, layout ticks, cluster heat segments, and jump-to-anchor helpers.",
+      "resumePoint": "Behavior baseline, pure model extraction, phase 1.5 prop-driven UI extraction, phase 2 bootstrap/route/theme-host extraction, phase 3 settings/theme runtime extraction, phase 4 anchor/active-stack extraction, and phase 5 surface extraction are complete. Continue with phase 6 by extracting Lens room state, initial Lens fetch orchestration, Lens commands, and Lens WebSocket event application while keeping WebSocket transport and Companion state separate.",
       "nextActions": [
-        "Create content/surface/usePageSelection.ts for document selection capture and overlay-exclusion checks",
-        "Create content/surface/useMarkerClicks.ts for lensIdsAtPoint handling and preferred active stack opening",
-        "Create content/surface/useLayoutTick.ts and content/surface/clusters.ts for layout ticks, cluster heat segments, and heat rects",
+        "Create content/lens-room/useLensRoom.ts to own lenses, initial fetch, visible/clusterable derivation, and registry orchestration",
+        "Create content/lens-room/lens-events.ts for applying lens_created, lens_anchor_updated, lens_deleted, and reaction_updated events",
+        "Create content/lens-room/lens-commands.ts for publish, re-anchor, react, and report command helpers",
         "Run bun run typecheck and bun run test after each component extraction batch",
-        "Keep Lens fetching, WebSocket, Companion, and bloom ownership in Overlay during this phase"
+        "Keep WebSocket transport lifecycle and Companion ownership in Overlay during this phase"
       ],
       "lastWorkedAt": "2026-08-08",
       "scope": [
@@ -574,13 +574,14 @@
         {
           "id": "surface",
           "title": "Extract webpage surface mechanics",
-          "status": "now",
+          "status": "done",
           "updatedAt": "2026-08-08"
         },
         {
           "id": "lens-room",
           "title": "Extract Lens room state and commands",
-          "status": "planned"
+          "status": "now",
+          "updatedAt": "2026-08-08"
         },
         {
           "id": "ws-companion",
@@ -679,6 +680,11 @@
           "date": "2026-08-08",
           "kind": "progress",
           "text": "Completed phase 4 by moving ref-backed Lens anchor range ownership and orphan synchronization into apps/extension/src/content/lens-room/anchor-registry.ts, and active stack, overlap ordering, preferred marker-hit selection, cluster sibling ordering, and reference navigation stack updates into apps/extension/src/content/lens-room/active-stack.ts. anchorRanges remains a ref-backed Map inside the registry, never React state. Verified with bun run typecheck and bun run test."
+        },
+        {
+          "date": "2026-08-08",
+          "kind": "progress",
+          "text": "Completed phase 5 by moving webpage surface mechanics into apps/extension/src/content/surface/: layout tick handling, cluster heat segment/rect calculation, page selection capture, marker click hit testing, marker highlight effects, overlay-target exclusion, and jump-to-anchor scrolling. Overlay still owns Lens fetch/command orchestration, WebSocket transport lifecycle, Companion state, and bloom runtime. Verified with bun run typecheck and bun run test."
         }
       ],
       "links": [

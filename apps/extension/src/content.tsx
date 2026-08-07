@@ -15,13 +15,10 @@ import { type Lens, type LensType, type ReactionKind } from "@lumen/schema";
 
 import { logout } from "./shared/storage";
 import { fetchLensesForRoom, createLens, reportLens, toggleReaction, updateLensAnchor } from "./shared/api-proxy";
-import { buildTextIndex, createAnchor, flatOffsetsToRange, rangeToFlatOffsets } from "@lumen/anchoring";
+import { createAnchor } from "@lumen/anchoring";
 import {
-  applyClusterHighlight,
-  applyHighlight,
   clearAllClusterHighlights,
   clearAllHighlights,
-  lensIdsAtPoint,
 } from "./marker";
 import { BloomLayer, makeBloomSpec, type BloomIntent, type BloomSpec } from "./shapes";
 import { bootContentRuntime } from "./content/bootstrap";
@@ -47,10 +44,14 @@ import {
   rangesOverlap,
 } from "./content/lens-room/active-stack";
 import { useAnchorRegistry } from "./content/lens-room/anchor-registry";
+import { buildClusterHeatRects, buildClusterHeatSegments } from "./content/surface/clusters";
+import { scrollRangeIntoView } from "./content/surface/anchors";
+import { useLayoutTick } from "./content/surface/useLayoutTick";
+import { useMarkerClicks } from "./content/surface/useMarkerClicks";
+import { useMarkerHighlights } from "./content/surface/useMarkerHighlights";
+import { usePageSelection } from "./content/surface/usePageSelection";
 import type {
   ActiveLensStack,
-  ClusterHeatRect,
-  ClusterHeatSegment,
   CompanionChatMessage,
   CompanionEmojiBurst,
   SelectionDraft,
@@ -69,15 +70,6 @@ const COMPANION_EMOJI_CHOICES = [
 
 function clamp(n: number, min: number, max: number): number {
   return Math.max(min, Math.min(max, n));
-}
-
-function stableJitter(input: string, salt: number): number {
-  let hash = 2166136261 ^ salt;
-  for (let i = 0; i < input.length; i++) {
-    hash ^= input.charCodeAt(i);
-    hash = Math.imul(hash, 16777619);
-  }
-  return ((hash >>> 0) / 4294967295) * 2 - 1;
 }
 
 function Overlay({ url, roomId, canonical }: { url: string; roomId: string; canonical: string }) {
@@ -137,7 +129,7 @@ function Overlay({ url, roomId, canonical }: { url: string; roomId: string; cano
   const [chatOpen, setChatOpen] = useState(false);
   const [companionMessages, setCompanionMessages] = useState<CompanionChatMessage[]>([]);
   const [panelOpen, setPanelOpen] = useState(false);
-  const [layoutTick, setLayoutTick] = useState(0);
+  const layoutTick = useLayoutTick(lumenHidden);
 
   const wsRef = useRef<chrome.runtime.Port | null>(null);
   const companionActiveRef = useRef(false);
@@ -198,25 +190,6 @@ function Overlay({ url, roomId, canonical }: { url: string; roomId: string; cano
     setChatOpen(false);
     setCompanionMessages([]);
     setBlooms([]);
-  }, [lumenHidden]);
-
-  useEffect(() => {
-    if (lumenHidden) return;
-    let frame: number | null = null;
-    const schedule = () => {
-      if (frame !== null) return;
-      frame = window.requestAnimationFrame(() => {
-        frame = null;
-        setLayoutTick((n) => n + 1);
-      });
-    };
-    window.addEventListener("resize", schedule);
-    window.addEventListener("scroll", schedule, true);
-    return () => {
-      if (frame !== null) window.cancelAnimationFrame(frame);
-      window.removeEventListener("resize", schedule);
-      window.removeEventListener("scroll", schedule, true);
-    };
   }, [lumenHidden]);
 
   // Initial fetch: hydrate ranges + orphan set
@@ -433,7 +406,7 @@ function Overlay({ url, roomId, canonical }: { url: string; roomId: string; cano
   }, [draft, lenses, orphanIds, getRange]);
 
   const clusterHeatSegments = useMemo(
-    () => buildClusterHeatSegments(clusterableLenses, visibleLensIds),
+    () => buildClusterHeatSegments(clusterableLenses, visibleLensIds, getRange),
     [clusterableLenses, visibleLensIds, getRange],
   );
 
@@ -442,28 +415,11 @@ function Overlay({ url, roomId, canonical }: { url: string; roomId: string; cano
     [clusterHeatSegments, layoutTick],
   );
 
-  // Apply highlights for visible lenses, clear hidden ones
-  useEffect(() => {
-    clearAllHighlights();
-    for (const lens of visibleLenses) {
-      const range = getRange(lens.id);
-      if (range) applyHighlight(lens.id, range);
-    }
-    return () => clearAllHighlights();
-  }, [visibleLenses, getRange]);
-
-  // The rounded overlay paints every visible marker segment. Single-covered
-  // spans stay very quiet; overlaps get progressively warmer and denser.
-  // CSS Highlights still provide the dotted underline and click hit testing.
-  useEffect(() => {
-    clearAllClusterHighlights();
-    for (const segment of clusterHeatSegments) {
-      if (segment.depth >= 2) {
-        applyClusterHighlight(segment.key, segment.range, segment.depth);
-      }
-    }
-    return () => clearAllClusterHighlights();
-  }, [clusterHeatSegments]);
+  useMarkerHighlights({
+    visibleLenses,
+    clusterHeatSegments,
+    getRange,
+  });
 
   // Auto-close only if the root Lens disappears. Ref children may be hidden
   // by the current reading mode and should stay readable inside the stack.
@@ -483,52 +439,33 @@ function Overlay({ url, roomId, canonical }: { url: string; roomId: string; cano
     return () => document.removeEventListener("keydown", onKeyDown);
   }, []);
 
-  // Capture text selection
-  useEffect(() => {
-    if (lumenHidden) return;
-    function onMouseUp(e: MouseEvent) {
-      const target = e.target as Node | null;
-      if (target && (target as Element).closest?.("#lumen-root, [data-lumen-overlay]")) return;
-      const sel = window.getSelection();
-      if (!sel || sel.isCollapsed || sel.rangeCount === 0) {
-        setDraft(null);
-        return;
-      }
-      const range = sel.getRangeAt(0);
-      const text = range.toString().trim();
-      if (text.length < 3) {
-        setDraft(null);
-        return;
-      }
-      const rect = range.getBoundingClientRect();
-      setDraft({ range: range.cloneRange(), text, rect });
+  const handleSelectionDraft = useCallback((nextDraft: SelectionDraft) => {
+    setDraft(nextDraft);
+  }, []);
+  const clearDraft = useCallback(() => {
+    setDraft(null);
+  }, []);
+  const openMarkerLensIds = useCallback((pointIds: string[]) => {
+    const id = preferredLensIdAtPoint(pointIds, lenses, getRange);
+    if (id) {
+      setActiveLens(activeStackForLens(id, lenses, clusterableLenses, getRange));
+      setDraft(null);
     }
-    document.addEventListener("mouseup", onMouseUp);
-    return () => document.removeEventListener("mouseup", onMouseUp);
-  }, [lumenHidden]);
+  }, [lenses, clusterableLenses, getRange]);
+  const clearActiveLens = useCallback(() => {
+    setActiveLens(null);
+  }, []);
 
-  // Click handler for highlights
-  useEffect(() => {
-    if (lumenHidden) return;
-    function onClick(e: MouseEvent) {
-      const target = e.target as Node | null;
-      if (target && (target as Element).closest?.("#lumen-root, [data-lumen-overlay]")) return;
-      const sel = window.getSelection();
-      if (sel && !sel.isCollapsed && sel.toString().trim().length >= 3) {
-        return;
-      }
-      const pointIds = lensIdsAtPoint(e.clientX, e.clientY);
-      const id = preferredLensIdAtPoint(pointIds, lenses, getRange);
-      if (id) {
-        setActiveLens(activeStackForLens(id, lenses, clusterableLenses, getRange));
-        setDraft(null);
-      } else {
-        setActiveLens(null);
-      }
-    }
-    document.addEventListener("click", onClick);
-    return () => document.removeEventListener("click", onClick);
-  }, [lumenHidden, lenses, clusterableLenses, getRange]);
+  usePageSelection({
+    disabled: lumenHidden,
+    onDraft: handleSelectionDraft,
+    onClearDraft: clearDraft,
+  });
+  useMarkerClicks({
+    disabled: lumenHidden,
+    onMarkerLensIds: openMarkerLensIds,
+    onEmptyClick: clearActiveLens,
+  });
 
   async function publish(input: { type: LensType; body: string; tags: string[]; anonymous: boolean }) {
     if (!token || !draft) return;
@@ -597,92 +534,10 @@ function Overlay({ url, roomId, canonical }: { url: string; roomId: string; cano
   const companionCount = companionUsers.length;
   const hiddenCount = lenses.length - visibleLenses.length - orphanIds.size;
 
-  function buildClusterHeatSegments(pool: Lens[], visibleIds: Set<string>): ClusterHeatSegment[] {
-    const index = buildTextIndex(document.body);
-    const spans = pool
-      .map((lens) => {
-        const range = getRange(lens.id);
-        const offsets = range ? rangeToFlatOffsets(range, index) : null;
-        if (!offsets || offsets.end <= offsets.start) return null;
-        return {
-          id: lens.id,
-          start: offsets.start,
-          end: offsets.end,
-          visible: visibleIds.has(lens.id),
-        };
-      })
-      .filter((span): span is { id: string; start: number; end: number; visible: boolean } => !!span);
-
-    if (spans.length === 0) return [];
-
-    const boundaries = [...new Set(spans.flatMap((span) => [span.start, span.end]))]
-      .sort((a, b) => a - b);
-    const segments: ClusterHeatSegment[] = [];
-
-    for (let i = 0; i < boundaries.length - 1; i++) {
-      const start = boundaries[i];
-      const end = boundaries[i + 1];
-      if (end <= start) continue;
-
-      const covering = spans.filter((span) => span.start < end && span.end > start);
-      if (covering.length === 0 || !covering.some((span) => span.visible)) continue;
-
-      const range = flatOffsetsToRange(start, end, index);
-      if (!range) continue;
-      segments.push({
-        key: `${start}:${end}`,
-        range,
-        depth: covering.length,
-      });
-    }
-
-    return segments;
-  }
-
-  function buildClusterHeatRects(segments: ClusterHeatSegment[], tick: number): ClusterHeatRect[] {
-    void tick;
-    return segments.flatMap((segment) => (
-      Array.from(segment.range.getClientRects())
-        .filter((rect) => (
-          rect.width > 0 &&
-          rect.height > 0 &&
-          rect.bottom >= 0 &&
-          rect.top <= window.innerHeight &&
-          rect.right >= 0 &&
-          rect.left <= window.innerWidth
-        ))
-        .map((rect, index) => {
-          const key = `${segment.key}:${index}`;
-          return {
-            key,
-            depth: segment.depth,
-            top: rect.top + 1 + stableJitter(key, 1) * 0.8,
-            left: rect.left - 1 + stableJitter(key, 2) * 0.9,
-            width: rect.width + 2 + stableJitter(key, 3) * 1.8,
-            height: Math.max(4, rect.height - 1 + stableJitter(key, 4) * 1.4),
-            rotate: stableJitter(key, 5) * 0.45,
-            radius: 4.5 + stableJitter(key, 6) * 1.4,
-          };
-        })
-    ));
-  }
-
   function jumpToLensAnchor(id: string) {
     const range = getRange(id);
     if (!range) return;
-    const rect = range.getBoundingClientRect();
-    if (rect.width > 0 || rect.height > 0) {
-      window.scrollBy({
-        top: rect.top - window.innerHeight * 0.35,
-        behavior: "smooth",
-      });
-    } else {
-      const node = range.startContainer;
-      const el = node.nodeType === Node.ELEMENT_NODE
-        ? (node as Element)
-        : node.parentElement;
-      el?.scrollIntoView({ block: "center", behavior: "smooth" });
-    }
+    scrollRangeIntoView(range);
     setActiveLens(activeStackForLens(id, lenses, clusterableLenses, getRange));
   }
 
