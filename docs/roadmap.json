@@ -501,15 +501,15 @@
       "title": "Content Runtime Modularization",
       "status": "next",
       "phase": "Extension Architecture",
-      "progress": 28,
+      "progress": 32,
       "currentStage": "Leaf prop-driven UI extraction",
       "summary": "Move the extension content script toward a thin runtime shell with explicit settings, theme, surface, Lens room, WebSocket, Companion, bloom, and UI boundaries.",
       "why": "Theme switching, Companion, anchoring, markers, and Lens UI now share one large content runtime. Clear ownership will reduce coupling before the next wave of UI and surface work.",
       "notePath": "./features/content-runtime-modularization.md",
-      "resumePoint": "Behavior baseline and pure model extraction are complete. Phase 1.5 is underway: Orb, CompanionEmojiLayer, ClusterHeatOverlay, NoTokenHint, RestoreTabButton, CreateButton, ReanchorConfirm, TargetIcon, CompanionChat, Composer, and InfoPanel now live under apps/extension/src/content/components/. Continue by extracting the remaining larger prop-driven components in small batches: LensCard, then LensPanel.",
+      "resumePoint": "Behavior baseline and pure model extraction are complete. Phase 1.5 is underway: Orb, CompanionEmojiLayer, ClusterHeatOverlay, NoTokenHint, RestoreTabButton, CreateButton, ReanchorConfirm, TargetIcon, CompanionChat, Composer, InfoPanel, and LensPanel now live under apps/extension/src/content/components/. Continue by extracting the remaining larger prop-driven container component: LensCard.",
       "nextActions": [
         "Continue phase 1.5 by extracting LensCard into content/components/ without moving runtime hooks",
-        "Then extract LensPanel into content/components/ while keeping card ordering, reactions, references, and bloom callbacks owned by the runtime",
+        "Keep active stack ordering, card positioning, and card-open bloom callbacks owned by the content runtime through LensCard props",
         "Run bun run typecheck and bun run test after each component extraction batch",
         "Then extract bootstrap, route runtime, and theme host without changing behavior"
       ],
@@ -649,6 +649,11 @@
           "date": "2026-08-08",
           "kind": "progress",
           "text": "Continued phase 1.5 by moving InfoPanel into apps/extension/src/content/components/InfoPanel.tsx and moving clipboard fallback behavior into apps/extension/src/content/browser/clipboard.ts. InfoPanel keeps local copy/report/debug UI state while reading mode, theme, report, re-anchor, and Companion commands remain callback-driven from the content runtime. content.tsx is down to roughly 1462 lines. Verified with bun run typecheck and bun run test."
+        },
+        {
+          "date": "2026-08-08",
+          "kind": "progress",
+          "text": "Continued phase 1.5 by moving LensPanel into apps/extension/src/content/components/LensPanel.tsx. LensPanel keeps reaction picker/busy state and long-body expansion locally, while reaction commands, reference navigation, and anchor jumping remain callback-driven from the content runtime. Verified with bun run typecheck and bun run test."
         }
       ],
       "links": [
