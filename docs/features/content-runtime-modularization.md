@@ -221,6 +221,10 @@ Captured before the first extraction pass on 2026-08-08:
   - extracted WebSocket room event routing into
     `apps/extension/src/content/ws/useRoomEventDispatcher.ts` with focused
     dispatch tests.
+  - extracted the hidden-state runtime reset coordinator into
+    `apps/extension/src/content/visibility/useHiddenRuntimeReset.ts`; `Overlay`
+    now provides only its local UI reset callback while marker/cluster,
+    Companion, and bloom cleanup remain explicitly centralized.
 - Continued phase 12 automated preflight and boundary cleanup:
   - extracted Companion presence, emoji, chat history, and chat event parsing
     into `apps/extension/src/content/companion/companion-events.ts`.
@@ -541,12 +545,12 @@ A final responsibility audit on 2026-08-08 found no severe boundary regression:
 `content.tsx` is bootstrap-only, components do not own storage/chrome/ws/API,
 marker mutation, or anchor restore, `useWsBridge` still has one
 `chrome.runtime.connect` bridge, and `anchorRanges` remains a ref-backed `Map`.
-The audit led to three follow-ups. Two were completed immediately: duplicate
+The audit led to three follow-ups. All three P2 follow-ups were completed:
 publish auth handling was removed from `Overlay`, auth rejection persistence was
 returned to the settings boundary, and WebSocket room event routing moved out of
-`Overlay` into a tested dispatcher. The remaining optional cleanup is a
-visibility-reset coordinator if `Overlay` grows again; for now the explicit
-central reset is preferable to hidden per-hook resets.
+`Overlay` into a tested dispatcher. The hidden-state reset path also moved into
+`useHiddenRuntimeReset`, keeping reset explicit and centralized without making
+each domain hook listen to `lumenHidden` independently.
 
 The automated phase-12 preflight also completed two optional P3 cleanups from
 the audit: Companion event parsing moved into `companion-events.ts`, and cluster

@@ -725,6 +725,11 @@
           "date": "2026-08-08",
           "kind": "verification",
           "text": "Completed automated phase-12 preflight and additional boundary cleanup. Verified dev extension manifest at localhost:5173, confirmed the local server responds on localhost:3000 with the expected unauthorized /api/status response, confirmed production build guard still blocks missing VITE_LUMEN_API_BASE, and verified the current HTTP beta extension build succeeds. Also extracted Companion room event helpers and pure cluster heat segment calculation with focused tests. Manual browser interaction verification on a loaded unpacked extension remains the final gate."
+        },
+        {
+          "date": "2026-08-08",
+          "kind": "architecture",
+          "text": "Extracted the hidden-state runtime reset coordinator into content/visibility/useHiddenRuntimeReset.ts. Overlay now provides only its local UI reset callback while marker/cluster highlight clearing, Companion reset, and bloom reset remain explicitly centralized. This resolves the remaining P2 visibility-reset coupling from the responsibility audit without scattering hidden-state listeners across runtime hooks."
         }
       ],
       "links": [
