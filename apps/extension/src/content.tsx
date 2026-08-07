@@ -43,9 +43,31 @@ import {
   lensIdsAtPoint,
   setMarkerTheme,
 } from "./marker";
-import { parseBody, RenderBody } from "./refs";
+import { RenderBody } from "./refs";
 import { BloomLayer, makeBloomSpec, type BloomIntent, type BloomSpec } from "./shapes";
 import { DEFAULT_THEME_ID, LUMEN_THEME_IDS, LUMEN_THEMES, normalizeThemeId, type LumenThemeId } from "./theme";
+import { isCompanionChatMessage, mergeCompanionMessages } from "./content/companion-model";
+import {
+  ClusterHeatOverlay,
+  CompanionEmojiLayer,
+  CreateButton,
+  NoTokenHint,
+  Orb,
+  ReanchorConfirm,
+  RestoreTabButton,
+  TargetIcon,
+} from "./content/components";
+import { mergeLensLists, refsFromBody, shouldShowInMode } from "./content/lens-model";
+import type {
+  ActiveLensStack,
+  CardPosition,
+  ClusterHeatRect,
+  ClusterHeatSegment,
+  CompanionChatMessage,
+  CompanionEmojiBurst,
+  SelectionDraft,
+  WsBridgeEvent,
+} from "./content/types";
 
 import overlayCss from "./styles.css?inline";
 
@@ -53,61 +75,6 @@ const LENS_TYPES: LensType[] = ["quick", "fun", "question", "knowledge"];
 const REACTION_CHOICES = REACTION_KINDS;
 const READING_MODES: ReadingMode[] = ["quiet", "thinking", "full"];
 const LONG_LENS_PREVIEW_CHARS = 520;
-
-interface SelectionDraft {
-  range: Range;
-  text: string;
-  rect: DOMRect;
-}
-
-interface ActiveLensStack {
-  rootId: string;
-  clusterIds: string[];
-  childIds: string[];
-}
-
-interface CardPosition {
-  top: number;
-  left: number;
-}
-
-interface ClusterHeatSegment {
-  key: string;
-  range: Range;
-  depth: number;
-}
-
-interface ClusterHeatRect {
-  key: string;
-  depth: number;
-  top: number;
-  left: number;
-  width: number;
-  height: number;
-  rotate: number;
-  radius: number;
-}
-
-interface CompanionEmojiBurst {
-  id: string;
-  emoji: string;
-  edge: "left" | "right";
-  y: number;
-}
-
-interface CompanionChatMessage {
-  id: string;
-  userId: string;
-  handle: string;
-  body: string;
-  at: number;
-}
-
-type WsBridgeEvent =
-  | { namespace: "lumen.ws"; type: "open" }
-  | { namespace: "lumen.ws"; type: "close"; code?: number; reason?: string; wasClean?: boolean }
-  | { namespace: "lumen.ws"; type: "error"; error?: string }
-  | { namespace: "lumen.ws"; type: "message"; data: string };
 
 const CARD_WIDTH = 340;
 const CARD_HEIGHT_ESTIMATE = 280;
@@ -158,33 +125,6 @@ function positionCardNear(
   };
 }
 
-// Reading-mode filter. Quiet keeps the page nearly clean; Thinking adds
-// questions; Full shows everything. Featured Lens always show.
-//
-// TODO: when featured/saved/friends signals exist, Quiet should restrict
-// to those instead of relying on type alone.
-function shouldShowInMode(lens: Lens, mode: ReadingMode): boolean {
-  if (lens.viewerIsAuthor) return true;
-  if (mode === "full") return true;
-  if (lens.featured) return true;
-  if (mode === "thinking") {
-    return ["question", "knowledge", "challenge"].includes(lens.type);
-  }
-  // quiet: keep the page sparse, but do show Quick Lens because Quick is
-  // the default creation mode for v2's small-group UGC loop.
-  return ["quick", "knowledge", "challenge"].includes(lens.type);
-}
-
-function refsFromBody(body: string) {
-  return parseBody(body)
-    .filter((token) => token.kind === "lens" || token.kind === "url")
-    .map((token) => ({
-      kind: token.kind,
-      target: token.value,
-      ...(token.label ? { label: token.label } : {}),
-    }));
-}
-
 function rangesOverlap(a: Range, b: Range): boolean {
   // START_TO_END: compares a.end vs b.start → >0 means a.end is after b.start
   // END_TO_START: compares a.start vs b.end → <0 means a.start is before b.end
@@ -212,39 +152,6 @@ function stableJitter(input: string, salt: number): number {
     hash = Math.imul(hash, 16777619);
   }
   return ((hash >>> 0) / 4294967295) * 2 - 1;
-}
-
-function isCompanionChatMessage(input: unknown): input is CompanionChatMessage {
-  if (!input || typeof input !== "object") return false;
-  const message = input as Partial<CompanionChatMessage>;
-  return (
-    typeof message.id === "string" &&
-    typeof message.userId === "string" &&
-    typeof message.handle === "string" &&
-    typeof message.body === "string" &&
-    typeof message.at === "number"
-  );
-}
-
-function mergeCompanionMessages(
-  current: CompanionChatMessage[],
-  incoming: CompanionChatMessage[],
-): CompanionChatMessage[] {
-  const byId = new Map<string, CompanionChatMessage>();
-  for (const message of current) byId.set(message.id, message);
-  for (const message of incoming) byId.set(message.id, message);
-  return [...byId.values()]
-    .sort((a, b) => a.at - b.at)
-    .slice(-40);
-}
-
-function mergeLensLists(current: Lens[], incoming: Lens[]): Lens[] {
-  const byId = new Map<string, Lens>();
-  for (const lens of current) byId.set(lens.id, lens);
-  for (const lens of incoming) {
-    byId.set(lens.id, { ...byId.get(lens.id), ...lens });
-  }
-  return [...byId.values()].sort((a, b) => a.createdAt - b.createdAt);
 }
 
 function Overlay({ url, roomId, canonical }: { url: string; roomId: string; canonical: string }) {
@@ -1175,71 +1082,6 @@ function Overlay({ url, roomId, canonical }: { url: string; roomId: string; cano
   );
 }
 
-function Orb({
-  count,
-  live,
-  companionActive,
-  companionCount,
-  extraCount = 0,
-  onToggle,
-}: {
-  count: number;
-  live: boolean;
-  companionActive: boolean;
-  companionCount: number;
-  extraCount?: number;
-  onToggle: () => void;
-}) {
-  return (
-    <button className="orb" onClick={onToggle}>
-      <span className={`dot ${live ? "" : "idle"}`} />
-      <span>{count} lens</span>
-      {companionActive && (
-        <span className="orb-meta">{companionCount > 0 ? `Companion ${companionCount}` : "Companion"}</span>
-      )}
-      {extraCount > 0 && <span className="orb-badge">+{extraCount}</span>}
-    </button>
-  );
-}
-
-function CompanionEmojiLayer({ bursts }: { bursts: CompanionEmojiBurst[] }) {
-  if (bursts.length === 0) return null;
-  return (
-    <div className="companion-emoji-layer" data-lumen-overlay="" aria-hidden="true">
-      {bursts.map((burst) => (
-        <span
-          key={burst.id}
-          className={`companion-emoji-burst ${burst.edge}`}
-          style={{ top: `${burst.y * 100}%` }}
-        >
-          {burst.emoji}
-        </span>
-      ))}
-    </div>
-  );
-}
-
-function ClusterHeatOverlay({ rects }: { rects: ClusterHeatRect[] }) {
-  return (
-    <div className="cluster-heat-layer" data-lumen-overlay="" aria-hidden="true">
-      {rects.map((rect) => (
-        <span
-          key={rect.key}
-          className={`cluster-heat depth-${Math.min(rect.depth, 4)}`}
-          style={{
-            top: rect.top,
-            left: rect.left,
-            width: rect.width,
-            height: rect.height,
-            borderRadius: rect.radius,
-            transform: `rotate(${rect.rotate}deg)`,
-          }}
-        />
-      ))}
-    </div>
-  );
-}
-
 function InfoPanel({
   mode,
   theme,
@@ -1627,68 +1469,6 @@ function CompanionChat({
         />
         <button disabled={disabled || !body.trim()}>Send</button>
       </form>
-    </div>
-  );
-}
-
-function NoTokenHint() {
-  return (
-    <div className="no-token-hint">
-      <strong>Lumen</strong>
-      <div style={{ marginTop: 4 }}>
-        Click the extension icon to redeem an invite, then reload this page.
-      </div>
-    </div>
-  );
-}
-
-function RestoreTabButton({ onClick }: { onClick: () => void }) {
-  return (
-    <button className="restore-tab" onClick={onClick} data-lumen-overlay="">
-      Show Lumen
-    </button>
-  );
-}
-
-function CreateButton({ draft, onClick }: { draft: SelectionDraft; onClick: () => void }) {
-  const top = Math.min(window.innerHeight - 50, draft.rect.bottom + 6);
-  const left = Math.max(8, Math.min(window.innerWidth - 130, draft.rect.left));
-  return (
-    <button
-      className="create-button"
-      style={{ top, left }}
-      onMouseDown={(e) => e.preventDefault()}
-      onClick={onClick}
-    >
-      Create Lens
-    </button>
-  );
-}
-
-function ReanchorConfirm({
-  draft,
-  busy,
-  error,
-  onCancel,
-  onConfirm,
-}: {
-  draft: SelectionDraft;
-  busy: boolean;
-  error: string | null;
-  onCancel: () => void;
-  onConfirm: () => void;
-}) {
-  const top = Math.min(window.innerHeight - 150, draft.rect.bottom + 8);
-  const left = Math.max(8, Math.min(window.innerWidth - 300, draft.rect.left));
-
-  return (
-    <div className="reanchor-confirm" style={{ top, left }} data-lumen-overlay="">
-      <div className="quote-preview">"{draft.text.slice(0, 140)}"</div>
-      {error && <div className="err">{error}</div>}
-      <div className="row">
-        <button className="cancel" onClick={onCancel} disabled={busy}>Cancel</button>
-        <button onClick={onConfirm} disabled={busy}>{busy ? "Saving..." : "Use as anchor"}</button>
-      </div>
     </div>
   );
 }
@@ -2124,16 +1904,6 @@ function LensPanel({
         )}
       </div>
     </div>
-  );
-}
-
-function TargetIcon() {
-  return (
-    <svg viewBox="0 0 16 16" aria-hidden="true">
-      <circle cx="8" cy="8" r="5" />
-      <circle cx="8" cy="8" r="1.5" />
-      <path d="M8 1.5v2M8 12.5v2M1.5 8h2M12.5 8h2" />
-    </svg>
   );
 }
 
