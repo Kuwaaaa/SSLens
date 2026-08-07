@@ -11,7 +11,7 @@
 // connect to an insecure ws:// backend during the no-domain beta.
 
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { type Lens, type LensType, type ReactionKind } from "@lumen/schema";
+import { type LensType } from "@lumen/schema";
 
 import {
   clearAllClusterHighlights,
@@ -46,7 +46,8 @@ import { useLayoutTick } from "./surface/useLayoutTick";
 import { useMarkerClicks } from "./surface/useMarkerClicks";
 import { useMarkerHighlights } from "./surface/useMarkerHighlights";
 import { usePageSelection } from "./surface/usePageSelection";
-import { useWsBridge, type WsRoomEvent } from "./ws/useWsBridge";
+import { useRoomEventDispatcher } from "./ws/useRoomEventDispatcher";
+import { useWsBridge } from "./ws/useWsBridge";
 import type {
   ActiveLensStack,
   SelectionDraft,
@@ -162,45 +163,28 @@ export function Overlay({ url, roomId, canonical }: { url: string; roomId: strin
   const [panelOpen, setPanelOpen] = useState(false);
   const layoutTick = useLayoutTick(lumenHidden);
   const { blooms, triggerBloom, removeBloom, resetBlooms } = useBloomRuntime(themeId);
-  const handleWsMessage = useCallback((msg: WsRoomEvent) => {
-    if (msg.type === "subscribed") {
-      return;
-    } else if (typeof msg.type === "string" && msg.type.startsWith("companion_")) {
-      handleCompanionEvent(msg);
-    } else if (msg.type === "lens_created") {
-      const lens = msg.lens as Lens;
-      const range = handleLensCreated(lens);
-      if (range) {
-        // Pop a small bloom near the new marker once highlight has rendered.
-        window.setTimeout(() => {
-          const r = range.getBoundingClientRect();
-          if (r.width > 0 && r.height > 0) {
-            triggerBloom(r, "marker");
-          }
-        }, 80);
+  const bloomRestoredMarker = useCallback((range: Range) => {
+    window.setTimeout(() => {
+      const rect = range.getBoundingClientRect();
+      if (rect.width > 0 && rect.height > 0) {
+        triggerBloom(rect, "marker");
       }
-    } else if (msg.type === "lens_anchor_updated") {
-      const lens = msg.lens as Lens;
-      handleLensAnchorUpdated(lens);
-    } else if (msg.type === "lens_deleted" && typeof msg.lensId === "string") {
-      const lensId = msg.lensId;
-      handleLensDeleted(lensId);
-      setActiveLens((prev) => prev && (prev.rootId === lensId || prev.clusterIds.includes(lensId) || prev.childIds.includes(lensId))
-        ? null
-        : prev);
-    } else if (msg.type === "reaction_updated") {
-      const lensId = msg.lensId as string;
-      const reactions = msg.reactions as Partial<Record<ReactionKind, number>>;
-      handleReactionUpdated(lensId, reactions);
-    }
-  }, [
-    handleCompanionEvent,
-    handleLensCreated,
-    handleLensAnchorUpdated,
-    handleLensDeleted,
-    handleReactionUpdated,
-    triggerBloom,
-  ]);
+    }, 80);
+  }, [triggerBloom]);
+  const handleDeletedLensEvent = useCallback((lensId: string) => {
+    handleLensDeleted(lensId);
+    setActiveLens((prev) => prev && (prev.rootId === lensId || prev.clusterIds.includes(lensId) || prev.childIds.includes(lensId))
+      ? null
+      : prev);
+  }, [handleLensDeleted]);
+  const handleWsMessage = useRoomEventDispatcher({
+    onCompanionEvent: handleCompanionEvent,
+    onLensCreated: handleLensCreated,
+    onLensAnchorUpdated: handleLensAnchorUpdated,
+    onLensDeleted: handleDeletedLensEvent,
+    onReactionUpdated: handleReactionUpdated,
+    onRestoredMarker: bloomRestoredMarker,
+  });
   const wsBridge = useWsBridge({
     token,
     roomId,
