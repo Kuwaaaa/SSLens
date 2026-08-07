@@ -3,6 +3,7 @@ export { CompanionChat } from "./CompanionChat";
 export { CompanionEmojiLayer } from "./CompanionEmojiLayer";
 export { Composer } from "./Composer";
 export { CreateButton } from "./CreateButton";
+export { InfoPanel } from "./InfoPanel";
 export { NoTokenHint } from "./NoTokenHint";
 export { Orb } from "./Orb";
 export { ReanchorConfirm } from "./ReanchorConfirm";

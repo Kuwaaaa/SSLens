@@ -1,7 +1,7 @@
 # Content Runtime Modularization
 
 Status: next
-Progress: 22
+Progress: 28
 Current stage: Leaf prop-driven UI extraction
 Last worked: 2026-08-08
 
@@ -9,10 +9,10 @@ Last worked: 2026-08-08
 
 Behavior baseline and pure model extraction are complete. Phase 1.5 is
 underway: `Orb`, `CompanionEmojiLayer`, `ClusterHeatOverlay`, `NoTokenHint`,
-`RestoreTabButton`, `CreateButton`, `ReanchorConfirm`, and `TargetIcon` now live
-under `apps/extension/src/content/components/`. Continue by extracting the
-larger prop-driven components in small batches, starting with `CompanionChat` or
-`Composer` before `InfoPanel`, `LensCard`, and `LensPanel`.
+`RestoreTabButton`, `CreateButton`, `ReanchorConfirm`, `TargetIcon`,
+`CompanionChat`, `Composer`, and `InfoPanel` now live under
+`apps/extension/src/content/components/`. Continue by extracting the remaining
+larger prop-driven components in small batches: `LensCard`, then `LensPanel`.
 
 ## Goal
 
@@ -154,6 +154,11 @@ Captured before the first extraction pass on 2026-08-08:
   `apps/extension/src/content/components/Composer.tsx`; the component keeps
   local draft form state, tag parsing, anonymous toggle, and reference insertion,
   while the content runtime still owns publish through the `onSubmit` callback.
+- Continued phase 1.5 by moving `InfoPanel` into
+  `apps/extension/src/content/components/InfoPanel.tsx`; the component keeps
+  local copy/report/debug UI state, theme and reading-mode controls remain
+  callback-driven, and clipboard writes moved behind
+  `apps/extension/src/content/browser/clipboard.ts`.
 - Kept runtime hooks, WebSocket lifecycle, storage listeners, and DOM event
   handlers unchanged.
 - Verified with `bun run typecheck` and `bun run test`.

@@ -273,12 +273,12 @@ Links:
 Feature ID: `content-runtime-modularization`
 Status: `next`
 Phase: Extension Architecture
-Progress: 22
+Progress: 28
 Current stage: Leaf prop-driven UI extraction
 Last worked: 2026-08-08
 
 Resume point:
-Behavior baseline and pure model extraction are complete. Phase 1.5 is underway: Orb, CompanionEmojiLayer, ClusterHeatOverlay, NoTokenHint, RestoreTabButton, CreateButton, ReanchorConfirm, and TargetIcon now live under apps/extension/src/content/components/. Continue by extracting the larger prop-driven components in small batches, starting with CompanionChat or Composer before InfoPanel/LensCard/LensPanel.
+Behavior baseline and pure model extraction are complete. Phase 1.5 is underway: Orb, CompanionEmojiLayer, ClusterHeatOverlay, NoTokenHint, RestoreTabButton, CreateButton, ReanchorConfirm, TargetIcon, CompanionChat, Composer, and InfoPanel now live under apps/extension/src/content/components/. Continue by extracting the remaining larger prop-driven components in small batches: LensCard, then LensPanel.
 
 Summary:
 Move the extension content script toward a thin runtime shell with explicit settings, theme, surface, Lens room, WebSocket, Companion, bloom, and UI boundaries.
@@ -287,8 +287,8 @@ Why:
 Theme switching, Companion, anchoring, markers, and Lens UI now share one large content runtime. Clear ownership will reduce coupling before the next wave of UI and surface work.
 
 Next actions:
-- Continue phase 1.5 by extracting CompanionChat or Composer into content/components/ without moving runtime hooks
-- Keep InfoPanel copy/report behavior callback-driven and move clipboard behind a browser adapter when that component is extracted
+- Continue phase 1.5 by extracting LensCard into content/components/ without moving runtime hooks
+- Then extract LensPanel into content/components/ while keeping card ordering, reactions, references, and bloom callbacks owned by the runtime
 - Run bun run typecheck and bun run test after each component extraction batch
 - Then extract bootstrap, route runtime, and theme host without changing behavior
 
@@ -328,11 +328,11 @@ Stages:
 - planned: Wire test:extension before focused tests (2026-08-07)
 
 Recent updates:
+- 2026-08-08 progress: Continued phase 1.5 by moving InfoPanel into apps/extension/src/content/components/InfoPanel.tsx and moving clipboard fallback behavior into apps/extension/src/content/browser/clipboard.ts. InfoPanel keeps local copy/report/debug UI state while reading mode, theme, report, re-anchor, and Companion commands remain callback-driven from the content runtime. content.tsx is down to roughly 1462 lines. Verified with bun run typecheck and bun run test.
 - 2026-08-08 progress: Continued phase 1.5 by moving Composer into apps/extension/src/content/components/Composer.tsx. Composer keeps local draft form state, tag parsing, anonymous toggle, and reference insertion, while the content runtime still owns publish via the onSubmit callback. content.tsx is down to roughly 1814 lines. Verified with bun run typecheck and bun run test.
 - 2026-08-08 progress: Continued phase 1.5 leaf UI extraction by moving CompanionChat into apps/extension/src/content/components/CompanionChat.tsx. The component keeps only local input and scroll state and still communicates through the onSend callback; WebSocket and Companion runtime hooks remain unchanged. Verified with bun run typecheck and bun run test.
 - 2026-08-08 progress: Started phase 1.5 leaf UI extraction. Moved Orb, CompanionEmojiLayer, ClusterHeatOverlay, NoTokenHint, RestoreTabButton, CreateButton, ReanchorConfirm, and TargetIcon into apps/extension/src/content/components/ and kept runtime hooks unchanged. content.tsx is down to roughly 2000 lines. Verified with bun run typecheck and bun run test.
 - 2026-08-07 review: Second review confirmed the direction and added four constraints plus one reorder. Constraints: (1) bun run test does not run any extension tests yet, so a test:extension script must be wired before the phase-11 focused tests give signal; typecheck already covers the extension tsconfig; (2) the anchor registry stays a ref Map, never React state, to preserve the live lens_created dedup path; (3) the hide/visibility reset must be coordinated via a per-hook reset() invoked by Overlay rather than one implicit multi-state effect; (4) useWsBridge stays a single connection with subscriber callbacks to avoid reconnect churn. Reorder: pull leaf prop-driven UI components into content/components/ early (new leaf-ui stage) to drop content.tsx from ~2230 to ~900 lines so later hook-extraction phases diff cleanly.
-- 2026-08-07 audit: Sub-agent audit agreed with the direction and adjusted the sequence: anchor-registry and active-stack ownership should be established before surface extraction so the mutable lensId-to-Range map does not leak across modules.
 
 Links:
 - [Feature note](./features/content-runtime-modularization.md)
