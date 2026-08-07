@@ -1,5 +1,10 @@
 import type { Lens } from "@lumen/schema";
-import { buildTextIndex, flatOffsetsToRange, rangeToFlatOffsets } from "@lumen/anchoring";
+import {
+  buildTextIndex,
+  flatOffsetsToRange,
+  rangeToFlatOffsets,
+  type TextIndex,
+} from "@lumen/anchoring";
 
 import type { ClusterHeatRect, ClusterHeatSegment } from "../types";
 
@@ -19,7 +24,15 @@ export function buildClusterHeatSegments(
   visibleIds: Set<string>,
   getRange: RangeLookup,
 ): ClusterHeatSegment[] {
-  const index = buildTextIndex(document.body);
+  return buildClusterHeatSegmentsFromIndex(pool, visibleIds, getRange, buildTextIndex(document.body));
+}
+
+export function buildClusterHeatSegmentsFromIndex(
+  pool: Lens[],
+  visibleIds: Set<string>,
+  getRange: RangeLookup,
+  index: TextIndex,
+): ClusterHeatSegment[] {
   const spans = pool
     .map((lens) => {
       const range = getRange(lens.id);
