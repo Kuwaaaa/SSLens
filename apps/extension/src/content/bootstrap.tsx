@@ -2,7 +2,7 @@ import type { ReactNode } from "react";
 import { createRoot, type Root } from "react-dom/client";
 
 import { canonicalizeUrl, canonicalUrlFromDocument, roomIdFor } from "../shared/canonicalize";
-import { getTheme } from "../shared/storage";
+import { getReadingMode, getTheme } from "../shared/storage";
 import overlayCss from "../styles.css?inline";
 import { installRouteRefreshHooks } from "./route-runtime";
 import { initializeMarkerTheme, setThemeHostElement } from "./theme-host";
@@ -41,13 +41,13 @@ async function renderForCurrentPage(renderOverlay: (props: OverlayProps) => Reac
 export async function bootContentRuntime(renderOverlay: (props: OverlayProps) => ReactNode): Promise<void> {
   if (document.getElementById("lumen-root")) return;
 
-  const theme = await getTheme();
+  const [theme, readingMode] = await Promise.all([getTheme(), getReadingMode()]);
   initializeMarkerTheme(theme);
 
   const host = document.createElement("div");
   host.id = "lumen-root";
   host.dataset.lumenTheme = theme;
-  host.dataset.lumenMode = "quiet";
+  host.dataset.lumenMode = readingMode;
   host.style.cssText = "all: initial; position: fixed; top: 0; left: 0; width: 0; height: 0; z-index: 2147483647;";
   document.documentElement.appendChild(host);
   setThemeHostElement(host);

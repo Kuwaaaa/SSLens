@@ -1,8 +1,8 @@
 # Content Runtime Modularization
 
 Status: next
-Progress: 98
-Current stage: Manual runtime verification and final audit
+Progress: 99
+Current stage: Authenticated manual smoke gate
 Last worked: 2026-08-08
 
 ## Resume Point
@@ -12,9 +12,10 @@ phase 2 bootstrap/route/theme-host extraction, phase 3 settings/theme runtime
 extraction, phase 4 anchor/active-stack extraction, phase 5 surface extraction,
 phase 6 Lens room extraction, phase 7 WebSocket/Companion extraction, phase 8
 bloom/browser adapter extraction, phase 10 Overlay composition shrink, and
-phase 11 focused runtime tests are complete. Continue with manual extension
-runtime verification and a final responsibility/coupling audit before marking
-the modularization track complete.
+phase 11 focused runtime tests are complete. The unpacked extension now injects
+successfully in a real Chromium page and passes the unauthenticated runtime
+smoke. Continue with authenticated manual smoke for publish, reactions, reports,
+re-anchor, and Companion before marking the modularization track complete.
 
 ## Goal
 
@@ -235,6 +236,18 @@ Captured before the first extraction pass on 2026-08-08:
     reaches the server and returns the expected unauthorized status, the normal
     production extension build guard still rejects missing public API base, and
     `bun run build:extension:http-beta` succeeds.
+- Continued phase 12 real runtime verification:
+  - fixed the CRXJS generated content-script loader contract by exporting
+    `onExecute` from `apps/extension/src/content.tsx` while keeping the file a
+    bootstrap-only entry.
+  - fixed initial Shadow host mode application by reading the stored
+    `readingMode` in `bootContentRuntime` instead of hardcoding `quiet`.
+  - verified an unpacked HTTP beta build in Playwright Chromium on
+    `https://example.com/`: the page gets a `#lumen-root` host, open Shadow DOM,
+    Lumen isolated execution context, no-token overlay text, and no runtime
+    errors.
+  - verified stored `signal` theme and `full` reading mode are applied to the
+    host on same-tab navigation to `https://example.org/`.
 - Verified with `bun run typecheck` and `bun run test`.
 
 ## Staged Plan
@@ -558,6 +571,17 @@ heat segment calculation can now be tested against an injected anchoring
 `TextIndex`. These changes keep DOM IO at the surface wrapper and React state in
 the Companion hook, while leaving manual browser interaction verification as
 the remaining completion gate.
+
+The first real extension runtime pass found two bootstrap regressions that were
+easy to miss in unit tests: CRXJS production builds wrap the content entry in a
+loader that calls an exported `onExecute`, and the Shadow host's initial
+`data-lumen-mode` must come from stored settings before React effects run. Both
+are now fixed without moving Lens, Companion, storage, or surface ownership back
+into the entry file. A Playwright Chromium smoke confirmed host injection,
+Shadow DOM creation, no-token rendering, stored theme/mode application, and
+same-tab navigation survival. Authenticated browser interaction remains the
+last gate because publish, reactions, reports, re-anchor, and Companion require
+a valid beta token and live server state.
 
 ## Verification
 

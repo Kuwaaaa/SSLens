@@ -1,6 +1,14 @@
 import { bootContentRuntime } from "./content/bootstrap";
 import { Overlay } from "./content/Overlay";
 
-void bootContentRuntime(({ url, roomId, canonical }) => (
-  <Overlay key={roomId} url={url} roomId={roomId} canonical={canonical} />
-));
+function startContentRuntime() {
+  return bootContentRuntime(({ url, roomId, canonical }) => (
+    <Overlay key={roomId} url={url} roomId={roomId} canonical={canonical} />
+  ));
+}
+
+export function onExecute() {
+  void startContentRuntime();
+}
+
+void startContentRuntime();

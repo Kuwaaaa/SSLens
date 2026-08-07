@@ -1,5 +1,5 @@
 {
-  "updatedAt": "2026-08-07",
+  "updatedAt": "2026-08-08",
   "statusOrder": [
     "now",
     "next",
@@ -501,18 +501,17 @@
       "title": "Content Runtime Modularization",
       "status": "next",
       "phase": "Extension Architecture",
-      "progress": 98,
-      "currentStage": "Manual runtime verification and final audit",
+      "progress": 99,
+      "currentStage": "Authenticated manual smoke gate",
       "summary": "Move the extension content script toward a thin runtime shell with explicit settings, theme, surface, Lens room, WebSocket, Companion, bloom, and UI boundaries.",
       "why": "Theme switching, Companion, anchoring, markers, and Lens UI now share one large content runtime. Clear ownership will reduce coupling before the next wave of UI and surface work.",
       "notePath": "./features/content-runtime-modularization.md",
-      "resumePoint": "Behavior baseline, pure model extraction, prop-driven UI extraction, bootstrap/route/theme-host extraction, settings/theme runtime extraction, anchor/active-stack extraction, surface extraction, Lens room extraction, WebSocket/Companion extraction, bloom/browser adapter extraction, Overlay composition shrink, and focused runtime tests are complete. Continue with manual extension runtime verification on a real HTTP(S) page and a final responsibility/coupling audit before marking this track complete.",
+      "resumePoint": "The content runtime is modularized and the unpacked extension injects successfully in Chromium with no-token, theme, reading-mode, and route-refresh smoke checks passing. Finish authenticated manual smoke for publish, reactions, reports, re-anchor, and Companion before marking complete.",
       "nextActions": [
-        "Run bun run dev:extension and refresh a real HTTP(S) page",
-        "Verify selection, composer, Lens publishing/card opening, references, reactions, reports, and re-anchor",
-        "Verify Companion join/leave/chat/emoji and same-tab route refresh",
-        "Verify Classic/Signal theme switching from both popup and InfoPanel",
-        "Run a final responsibility audit across content.tsx, Overlay.tsx, hooks, components, and pure model modules"
+        "Run authenticated manual smoke for selection, composer, publish, card opening, references, reactions, reports, and re-anchor",
+        "Run Companion join, leave, chat, and emoji smoke with a valid beta token",
+        "Re-run cmd /c bun run typecheck, cmd /c bun run test, and git diff --check after the authenticated smoke gate",
+        "Mark the modularization track complete only after the authenticated browser checks pass"
       ],
       "lastWorkedAt": "2026-08-08",
       "scope": [
@@ -617,6 +616,12 @@
           "id": "test-wiring",
           "title": "Wire test:extension before focused tests",
           "status": "done",
+          "updatedAt": "2026-08-08"
+        },
+        {
+          "id": "runtime-smoke",
+          "title": "Manual runtime smoke",
+          "status": "now",
           "updatedAt": "2026-08-08"
         }
       ],
@@ -730,6 +735,11 @@
           "date": "2026-08-08",
           "kind": "architecture",
           "text": "Extracted the hidden-state runtime reset coordinator into content/visibility/useHiddenRuntimeReset.ts. Overlay now provides only its local UI reset callback while marker/cluster highlight clearing, Companion reset, and bloom reset remain explicitly centralized. This resolves the remaining P2 visibility-reset coupling from the responsibility audit without scattering hidden-state listeners across runtime hooks."
+        },
+        {
+          "date": "2026-08-08",
+          "kind": "verification",
+          "text": "Continued phase 12 with a real unpacked-extension runtime pass in Playwright Chromium. Fixed the CRXJS content-script loader contract by exporting onExecute from the bootstrap-only content entry, and fixed initial host reading-mode application by loading readingMode during bootContentRuntime. Verified #lumen-root injection, open Shadow DOM, Lumen isolated execution context, no-token overlay rendering, no runtime errors, stored Signal theme and Full reading mode application, and same-tab navigation survival. Authenticated publish/reaction/report/re-anchor/Companion smoke remains the final gate."
         }
       ],
       "links": [
