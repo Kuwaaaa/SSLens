@@ -1,18 +1,18 @@
 # Content Runtime Modularization
 
 Status: next
-Progress: 68
-Current stage: Lens room state and commands extraction
+Progress: 76
+Current stage: WebSocket bridge and Companion room extraction
 Last worked: 2026-08-08
 
 ## Resume Point
 
 Behavior baseline, pure model extraction, phase 1.5 prop-driven UI extraction,
 phase 2 bootstrap/route/theme-host extraction, phase 3 settings/theme runtime
-extraction, phase 4 anchor/active-stack extraction, and phase 5 surface
-extraction are complete. Continue with phase 6 by extracting Lens room state,
-initial Lens fetch orchestration, Lens commands, and Lens WebSocket event
-application while keeping WebSocket transport and Companion state separate.
+extraction, phase 4 anchor/active-stack extraction, phase 5 surface extraction,
+and phase 6 Lens room extraction are complete. Continue with phase 7 by
+extracting the single WebSocket bridge and Companion room while preserving one
+service-worker port shared by Lens and Companion.
 
 ## Goal
 
@@ -192,8 +192,12 @@ Captured before the first extraction pass on 2026-08-08:
   - `apps/extension/src/content/surface/useMarkerHighlights.ts`
   - `apps/extension/src/content/surface/anchors.ts`
   - `apps/extension/src/content/surface/overlay-target.ts`
-- Kept Lens fetch/command orchestration, WebSocket lifecycle, Companion state,
-  and bloom runtime unchanged.
+- Completed phase 6 by moving Lens room ownership into:
+  - `apps/extension/src/content/lens-room/useLensRoom.ts`
+  - `apps/extension/src/content/lens-room/lens-events.ts`
+  - `apps/extension/src/content/lens-room/lens-commands.ts`
+- Kept WebSocket transport lifecycle, Companion state, active Lens UI state, and
+  bloom runtime unchanged.
 - Verified with `bun run typecheck` and `bun run test`.
 
 ## Staged Plan

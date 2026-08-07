@@ -501,18 +501,18 @@
       "title": "Content Runtime Modularization",
       "status": "next",
       "phase": "Extension Architecture",
-      "progress": 68,
-      "currentStage": "Lens room state and commands extraction",
+      "progress": 76,
+      "currentStage": "WebSocket bridge and Companion room extraction",
       "summary": "Move the extension content script toward a thin runtime shell with explicit settings, theme, surface, Lens room, WebSocket, Companion, bloom, and UI boundaries.",
       "why": "Theme switching, Companion, anchoring, markers, and Lens UI now share one large content runtime. Clear ownership will reduce coupling before the next wave of UI and surface work.",
       "notePath": "./features/content-runtime-modularization.md",
-      "resumePoint": "Behavior baseline, pure model extraction, phase 1.5 prop-driven UI extraction, phase 2 bootstrap/route/theme-host extraction, phase 3 settings/theme runtime extraction, phase 4 anchor/active-stack extraction, and phase 5 surface extraction are complete. Continue with phase 6 by extracting Lens room state, initial Lens fetch orchestration, Lens commands, and Lens WebSocket event application while keeping WebSocket transport and Companion state separate.",
+      "resumePoint": "Behavior baseline, pure model extraction, phase 1.5 prop-driven UI extraction, phase 2 bootstrap/route/theme-host extraction, phase 3 settings/theme runtime extraction, phase 4 anchor/active-stack extraction, phase 5 surface extraction, and phase 6 Lens room extraction are complete. Continue with phase 7 by extracting the single WebSocket bridge and Companion room while preserving one service-worker port shared by Lens and Companion.",
       "nextActions": [
-        "Create content/lens-room/useLensRoom.ts to own lenses, initial fetch, visible/clusterable derivation, and registry orchestration",
-        "Create content/lens-room/lens-events.ts for applying lens_created, lens_anchor_updated, lens_deleted, and reaction_updated events",
-        "Create content/lens-room/lens-commands.ts for publish, re-anchor, react, and report command helpers",
+        "Create content/ws/useWsBridge.ts to own chrome.runtime.connect, connect/disconnect/retry lifecycle, decoded message dispatch, and raw send",
+        "Create content/companion/useCompanionRoom.ts to own join/leave, presence, emoji bursts, chat history, chat send, and Companion event application",
+        "Keep Lens room and Companion room subscribed to the same WebSocket bridge rather than opening separate ports",
         "Run bun run typecheck and bun run test after each component extraction batch",
-        "Keep WebSocket transport lifecycle and Companion ownership in Overlay during this phase"
+        "Keep bloom runtime and active Lens UI state in Overlay during this phase"
       ],
       "lastWorkedAt": "2026-08-08",
       "scope": [
@@ -580,13 +580,14 @@
         {
           "id": "lens-room",
           "title": "Extract Lens room state and commands",
-          "status": "now",
+          "status": "done",
           "updatedAt": "2026-08-08"
         },
         {
           "id": "ws-companion",
           "title": "Extract WebSocket bridge and Companion room",
-          "status": "planned"
+          "status": "now",
+          "updatedAt": "2026-08-08"
         },
         {
           "id": "bloom-browser",
@@ -685,6 +686,11 @@
           "date": "2026-08-08",
           "kind": "progress",
           "text": "Completed phase 5 by moving webpage surface mechanics into apps/extension/src/content/surface/: layout tick handling, cluster heat segment/rect calculation, page selection capture, marker click hit testing, marker highlight effects, overlay-target exclusion, and jump-to-anchor scrolling. Overlay still owns Lens fetch/command orchestration, WebSocket transport lifecycle, Companion state, and bloom runtime. Verified with bun run typecheck and bun run test."
+        },
+        {
+          "date": "2026-08-08",
+          "kind": "progress",
+          "text": "Completed phase 6 by moving Lens room ownership into apps/extension/src/content/lens-room/useLensRoom.ts, lens-events.ts, and lens-commands.ts. The hook now owns Lens list state, initial fetch, visible/clusterable/draft-overlap derivation, Lens command helpers, and Lens WebSocket event application callbacks while Overlay keeps WebSocket transport, Companion state, active Lens UI state, and bloom runtime. Verified with bun run typecheck and bun run test."
         }
       ],
       "links": [

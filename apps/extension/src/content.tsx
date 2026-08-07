@@ -13,9 +13,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { type Lens, type LensType, type ReactionKind } from "@lumen/schema";
 
-import { logout } from "./shared/storage";
-import { fetchLensesForRoom, createLens, reportLens, toggleReaction, updateLensAnchor } from "./shared/api-proxy";
-import { createAnchor } from "@lumen/anchoring";
 import {
   clearAllClusterHighlights,
   clearAllHighlights,
@@ -35,15 +32,14 @@ import {
   ReanchorConfirm,
   RestoreTabButton,
 } from "./content/components";
-import { mergeLensLists, refsFromBody, shouldShowInMode } from "./content/lens-model";
 import {
   activeStackForLens,
   lensesForActiveStack,
   openReferencedLensStack,
   preferredLensIdAtPoint,
-  rangesOverlap,
 } from "./content/lens-room/active-stack";
 import { useAnchorRegistry } from "./content/lens-room/anchor-registry";
+import { useLensRoom } from "./content/lens-room/useLensRoom";
 import { buildClusterHeatRects, buildClusterHeatSegments } from "./content/surface/clusters";
 import { scrollRangeIntoView } from "./content/surface/anchors";
 import { useLayoutTick } from "./content/surface/useLayoutTick";
@@ -87,7 +83,6 @@ function Overlay({ url, roomId, canonical }: { url: string; roomId: string; cano
     restoreTab,
     clearAuthState,
   } = useOverlaySettings({ url, canonical });
-  const [lenses, setLenses] = useState<Lens[]>([]);
   // --- Orphan handling ---
   // When restoreAnchor() returns null (DOM has shifted too much for any of
   // TextPosition / TextQuote+context / fuzzy fallback to find the text),
@@ -121,6 +116,38 @@ function Overlay({ url, roomId, canonical }: { url: string; roomId: string; cano
   const [reanchorTargetId, setReanchorTargetId] = useState<string | null>(null);
   const [reanchorBusy, setReanchorBusy] = useState(false);
   const [reanchorError, setReanchorError] = useState<string | null>(null);
+  const {
+    lenses,
+    visibleLenses,
+    clusterableLenses,
+    draftOverlapLenses,
+    handleLensCreated,
+    handleLensAnchorUpdated,
+    handleLensDeleted,
+    handleReactionUpdated,
+    publish: publishLensDraft,
+    reanchor: reanchorLensDraft,
+    react: reactToLens,
+    report: reportLensById,
+  } = useLensRoom({
+    token,
+    roomId,
+    canonical,
+    lumenHidden,
+    readingMode,
+    draft,
+    anchorRegistry: {
+      orphanIds,
+      getRange,
+      hasRange,
+      clearRanges,
+      removeLens,
+      restoreLensAnchor,
+      restoreLensAnchorWithFallback,
+      restoreLensBatch,
+    },
+    clearAuthState,
+  });
   const [wsConnected, setWsConnected] = useState(false);
   const [wsRetryTick, setWsRetryTick] = useState(0);
   const [companionActive, setCompanionActive] = useState(false);
@@ -191,34 +218,6 @@ function Overlay({ url, roomId, canonical }: { url: string; roomId: string; cano
     setCompanionMessages([]);
     setBlooms([]);
   }, [lumenHidden]);
-
-  // Initial fetch: hydrate ranges + orphan set
-  useEffect(() => {
-    if (!token || lumenHidden) return;
-    let cancelled = false;
-    fetchLensesForRoom(roomId, token)
-      .then((ls) => {
-        if (cancelled) return;
-        restoreLensBatch(ls);
-        setLenses((prev) => mergeLensLists(prev, ls));
-      })
-      .catch(async (err) => {
-        if (err instanceof Error && err.message.includes("fetchLenses 401")) {
-          console.warn("[Lumen] token was rejected by the server; logging out:", err);
-          await logout();
-          if (!cancelled) {
-            clearAuthState();
-          }
-          return;
-        }
-        console.warn("[Lumen] fetchLenses failed:", err);
-      });
-    return () => {
-      cancelled = true;
-      clearRanges();
-      clearAllHighlights();
-    };
-  }, [token, roomId, lumenHidden, clearAuthState, clearRanges, restoreLensBatch]);
 
   // WebSocket
   useEffect(() => {
@@ -297,41 +296,29 @@ function Overlay({ url, roomId, canonical }: { url: string; roomId: string; cano
         if (id && body.trim()) addCompanionMessage({ id, userId, handle, body, at });
       } else if (msg.type === "lens_created") {
         const lens = msg.lens as Lens;
-        // Dedup against the always-current ref Map
-        if (!hasRange(lens.id)) {
-          const range = restoreLensAnchor(lens);
-          if (range) {
-            // Pop a small bloom near the new marker once highlight has rendered.
-            window.setTimeout(() => {
-              const r = range.getBoundingClientRect();
-              if (r.width > 0 && r.height > 0) {
-                triggerBloom(r, "marker");
-              }
-            }, 80);
-          }
+        const range = handleLensCreated(lens);
+        if (range) {
+          // Pop a small bloom near the new marker once highlight has rendered.
+          window.setTimeout(() => {
+            const r = range.getBoundingClientRect();
+            if (r.width > 0 && r.height > 0) {
+              triggerBloom(r, "marker");
+            }
+          }, 80);
         }
-        setLenses((prev) => (prev.some((l) => l.id === lens.id) ? prev : [...prev, lens]));
       } else if (msg.type === "lens_anchor_updated") {
         const lens = msg.lens as Lens;
-        restoreLensAnchor(lens);
-        setLenses((prev) => (
-          prev.some((l) => l.id === lens.id)
-            ? prev.map((l) => (l.id === lens.id ? { ...lens, myReactions: l.myReactions } : l))
-            : [...prev, lens]
-        ));
+        handleLensAnchorUpdated(lens);
       } else if (msg.type === "lens_deleted" && typeof msg.lensId === "string") {
         const lensId = msg.lensId;
-        removeLens(lensId);
-        setLenses((prev) => prev.filter((l) => l.id !== lensId));
+        handleLensDeleted(lensId);
         setActiveLens((prev) => prev && (prev.rootId === lensId || prev.clusterIds.includes(lensId) || prev.childIds.includes(lensId))
           ? null
           : prev);
       } else if (msg.type === "reaction_updated") {
         const lensId = msg.lensId as string;
         const reactions = msg.reactions as Partial<Record<ReactionKind, number>>;
-        setLenses((prev) => prev.map((l) => (
-          l.id === lensId ? { ...l, reactions } : l
-        )));
+        handleReactionUpdated(lensId, reactions);
       }
     });
 
@@ -374,36 +361,17 @@ function Overlay({ url, roomId, canonical }: { url: string; roomId: string; cano
     addEmojiBurst,
     addCompanionMessage,
     mergeCompanionHistory,
-    hasRange,
-    restoreLensAnchor,
-    removeLens,
+    handleLensCreated,
+    handleLensAnchorUpdated,
+    handleLensDeleted,
+    handleReactionUpdated,
     triggerBloom,
   ]);
-
-  // Visible lenses = not orphan + passes mode filter
-  const visibleLenses = useMemo(
-    () => lumenHidden ? [] : lenses.filter((l) => !orphanIds.has(l.id) && shouldShowInMode(l, readingMode)),
-    [lenses, lumenHidden, orphanIds, readingMode],
-  );
-
-  const clusterableLenses = useMemo(
-    () => lumenHidden ? [] : lenses.filter((l) => !orphanIds.has(l.id)),
-    [lenses, lumenHidden, orphanIds],
-  );
 
   const visibleLensIds = useMemo(
     () => new Set(visibleLenses.map((lens) => lens.id)),
     [visibleLenses],
   );
-
-  const draftOverlapLenses = useMemo(() => {
-    if (!draft) return [];
-    return lenses.filter((lens) => {
-      if (orphanIds.has(lens.id)) return false;
-      const range = getRange(lens.id);
-      return range ? rangesOverlap(draft.range, range) : false;
-    });
-  }, [draft, lenses, orphanIds, getRange]);
 
   const clusterHeatSegments = useMemo(
     () => buildClusterHeatSegments(clusterableLenses, visibleLensIds, getRange),
@@ -420,6 +388,10 @@ function Overlay({ url, roomId, canonical }: { url: string; roomId: string; cano
     clusterHeatSegments,
     getRange,
   });
+  useEffect(() => {
+    if (!token || lumenHidden) return;
+    return () => clearAllHighlights();
+  }, [token, roomId, lumenHidden]);
 
   // Auto-close only if the root Lens disappears. Ref children may be hidden
   // by the current reading mode and should stay readable inside the stack.
@@ -469,25 +441,11 @@ function Overlay({ url, roomId, canonical }: { url: string; roomId: string; cano
 
   async function publish(input: { type: LensType; body: string; tags: string[]; anonymous: boolean }) {
     if (!token || !draft) return;
-    const anchor = createAnchor(draft.range);
     try {
-      await createLens(
-        {
-          roomId,
-          url: canonical,
-          type: input.type,
-          body: input.body,
-          anchor,
-          tags: input.tags,
-          refs: refsFromBody(input.body),
-          anonymous: input.anonymous,
-        },
-        token,
-      );
+      await publishLensDraft(input, draft.range);
     } catch (err) {
       if (err instanceof Error && err.message.includes("createLens 401")) {
         console.warn("[Lumen] token was rejected while creating a Lens; logging out:", err);
-        await logout();
         clearAuthState();
       }
       throw err;
@@ -502,10 +460,7 @@ function Overlay({ url, roomId, canonical }: { url: string; roomId: string; cano
     setReanchorBusy(true);
     setReanchorError(null);
     try {
-      const anchor = createAnchor(draft.range);
-      const lens = await updateLensAnchor(reanchorTargetId, anchor, token);
-      restoreLensAnchorWithFallback(lens.id, lens.anchor, draft.range);
-      setLenses((prev) => prev.map((l) => (l.id === lens.id ? lens : l)));
+      await reanchorLensDraft(reanchorTargetId, draft.range);
       setReanchorTargetId(null);
       setDraft(null);
       window.getSelection()?.removeAllRanges();
@@ -549,21 +504,6 @@ function Overlay({ url, roomId, canonical }: { url: string; roomId: string; cano
       clusterableLenses,
       getRange,
     ));
-  }
-
-  async function reactToLens(id: string, kind: ReactionKind) {
-    if (!token) return;
-    const result = await toggleReaction(id, kind, token);
-    setLenses((prev) => prev.map((l) => (
-      l.id === result.lensId
-        ? { ...l, reactions: result.reactions, myReactions: result.myReactions }
-        : l
-    )));
-  }
-
-  async function reportLensById(id: string) {
-    if (!token) return;
-    await reportLens(id, token);
   }
 
   function startReanchor(id: string) {
