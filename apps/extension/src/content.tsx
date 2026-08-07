@@ -11,25 +11,9 @@
 // connect to an insecure ws:// backend during the no-domain beta.
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { type Lens, type LensType, type ReactionKind, type ReadingMode } from "@lumen/schema";
+import { type Lens, type LensType, type ReactionKind } from "@lumen/schema";
 
-import {
-  getReadingMode,
-  getSiteHidden,
-  getTheme,
-  getToken,
-  getUser,
-  KEY_HIDDEN_SITES,
-  KEY_READING_MODE,
-  KEY_THEME,
-  KEY_TOKEN,
-  KEY_USER,
-  logout,
-  normalizeHost,
-  setReadingMode as saveReadingMode,
-  setTheme as saveTheme,
-  type StoredUser,
-} from "./shared/storage";
+import { logout } from "./shared/storage";
 import { fetchLensesForRoom, createLens, reportLens, toggleReaction, updateLensAnchor } from "./shared/api-proxy";
 import { buildTextIndex, createAnchor, flatOffsetsToRange, rangeToFlatOffsets, restoreAnchor } from "@lumen/anchoring";
 import {
@@ -40,7 +24,6 @@ import {
   lensIdsAtPoint,
 } from "./marker";
 import { BloomLayer, makeBloomSpec, type BloomIntent, type BloomSpec } from "./shapes";
-import { DEFAULT_THEME_ID, normalizeThemeId, type LumenThemeId } from "./theme";
 import { bootContentRuntime } from "./content/bootstrap";
 import { isCompanionChatMessage, mergeCompanionMessages } from "./content/companion-model";
 import {
@@ -65,7 +48,7 @@ import type {
   SelectionDraft,
   WsBridgeEvent,
 } from "./content/types";
-import { applyRuntimeTheme } from "./content/theme-host";
+import { useOverlaySettings } from "./content/settings/useOverlaySettings";
 
 const COMPANION_EMOJI_CHOICES = [
   "\u{1F44B}",
@@ -75,14 +58,6 @@ const COMPANION_EMOJI_CHOICES = [
   "\u{1F914}",
   "\u{1F4AF}",
 ] as const;
-
-function hostForUrl(input: string): string {
-  try {
-    return normalizeHost(new URL(input).hostname);
-  } catch {
-    return normalizeHost(window.location.hostname);
-  }
-}
 
 function clamp(n: number, min: number, max: number): number {
   return Math.max(min, Math.min(max, n));
@@ -118,7 +93,20 @@ function stableJitter(input: string, salt: number): number {
 }
 
 function Overlay({ url, roomId, canonical }: { url: string; roomId: string; canonical: string }) {
-  const siteHost = useMemo(() => hostForUrl(canonical || url), [canonical, url]);
+  const {
+    token,
+    currentUser,
+    readingMode,
+    themeId,
+    tabHidden,
+    settingsReady,
+    lumenHidden,
+    changeReadingMode,
+    changeTheme,
+    hideTab,
+    restoreTab,
+    clearAuthState,
+  } = useOverlaySettings({ url, canonical });
   const [lenses, setLenses] = useState<Lens[]>([]);
   // --- Orphan handling ---
   // When restoreAnchor() returns null (DOM has shifted too much for any of
@@ -144,13 +132,6 @@ function Overlay({ url, roomId, canonical }: { url: string; roomId: string; cano
   const [reanchorTargetId, setReanchorTargetId] = useState<string | null>(null);
   const [reanchorBusy, setReanchorBusy] = useState(false);
   const [reanchorError, setReanchorError] = useState<string | null>(null);
-  const [token, setToken] = useState<string | null>(null);
-  const [currentUser, setCurrentUser] = useState<StoredUser | null>(null);
-  const [readingMode, setReadingMode] = useState<ReadingMode>("quiet");
-  const [themeId, setThemeId] = useState<LumenThemeId>(DEFAULT_THEME_ID);
-  const [siteHidden, setSiteHiddenState] = useState(false);
-  const [tabHidden, setTabHidden] = useState(false);
-  const [settingsReady, setSettingsReady] = useState(false);
   const [wsConnected, setWsConnected] = useState(false);
   const [wsRetryTick, setWsRetryTick] = useState(0);
   const [companionActive, setCompanionActive] = useState(false);
@@ -200,59 +181,9 @@ function Overlay({ url, roomId, canonical }: { url: string; roomId: string; cano
     setCompanionMessages((current) => mergeCompanionMessages(current, messages));
   }, []);
 
-  const lumenHidden = siteHidden || tabHidden;
-
   useEffect(() => {
     companionActiveRef.current = companionActive;
   }, [companionActive]);
-
-  // Load token + reading mode + theme + site visibility.
-  useEffect(() => {
-    let cancelled = false;
-    Promise.all([getToken(), getUser(), getReadingMode(), getTheme(), getSiteHidden(siteHost)])
-      .then(([nextToken, nextUser, nextMode, nextTheme, hidden]) => {
-        if (cancelled) return;
-        setToken(nextToken);
-        setCurrentUser(nextUser);
-        setReadingMode(nextMode);
-        setThemeId(nextTheme);
-        setSiteHiddenState(hidden);
-      })
-      .catch((err) => {
-        console.warn("[Lumen] settings load failed:", err);
-      })
-      .finally(() => {
-        if (!cancelled) setSettingsReady(true);
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, [siteHost]);
-
-  // Listen for popup changes.
-  useEffect(() => {
-    const handler = (changes: Record<string, chrome.storage.StorageChange>) => {
-      const tokenChange = changes[KEY_TOKEN];
-      if (tokenChange) setToken((tokenChange.newValue as string | undefined) ?? null);
-      const userChange = changes[KEY_USER];
-      if (userChange) setCurrentUser((userChange.newValue as StoredUser | undefined) ?? null);
-      const c = changes[KEY_READING_MODE];
-      if (c) setReadingMode((c.newValue as ReadingMode | undefined) ?? "quiet");
-      const theme = changes[KEY_THEME];
-      if (theme) setThemeId(normalizeThemeId(theme.newValue));
-      const hidden = changes[KEY_HIDDEN_SITES];
-      if (hidden) {
-        const next = (hidden.newValue as Record<string, boolean> | undefined) ?? {};
-        setSiteHiddenState(next[siteHost] === true);
-      }
-    };
-    chrome.storage.onChanged.addListener(handler);
-    return () => chrome.storage.onChanged.removeListener(handler);
-  }, [siteHost]);
-
-  useEffect(() => {
-    applyRuntimeTheme(themeId, readingMode);
-  }, [themeId, readingMode]);
 
   useEffect(() => {
     if (!lumenHidden) return;
@@ -320,8 +251,7 @@ function Overlay({ url, roomId, canonical }: { url: string; roomId: string; cano
           console.warn("[Lumen] token was rejected by the server; logging out:", err);
           await logout();
           if (!cancelled) {
-            setToken(null);
-            setCurrentUser(null);
+            clearAuthState();
           }
           return;
         }
@@ -332,7 +262,7 @@ function Overlay({ url, roomId, canonical }: { url: string; roomId: string; cano
       anchorRanges.current.clear();
       clearAllHighlights();
     };
-  }, [token, roomId, lumenHidden]);
+  }, [token, roomId, lumenHidden, clearAuthState]);
 
   // WebSocket
   useEffect(() => {
@@ -657,8 +587,7 @@ function Overlay({ url, roomId, canonical }: { url: string; roomId: string; cano
       if (err instanceof Error && err.message.includes("createLens 401")) {
         console.warn("[Lumen] token was rejected while creating a Lens; logging out:", err);
         await logout();
-        setToken(null);
-        setCurrentUser(null);
+        clearAuthState();
       }
       throw err;
     }
@@ -698,7 +627,7 @@ function Overlay({ url, roomId, canonical }: { url: string; roomId: string; cano
   }
 
   if (!settingsReady) return null;
-  if (tabHidden) return <RestoreTabButton onClick={() => setTabHidden(false)} />;
+  if (tabHidden) return <RestoreTabButton onClick={restoreTab} />;
   if (lumenHidden) return null;
   if (!token) return <NoTokenHint />;
 
@@ -938,16 +867,6 @@ function Overlay({ url, roomId, canonical }: { url: string; roomId: string; cano
     wsRef.current?.postMessage({ namespace: "lumen.ws", type: "send", payload: { type: "companion_chat", body: trimmed } });
   }
 
-  async function changeReadingMode(mode: ReadingMode) {
-    await saveReadingMode(mode);
-    setReadingMode(mode);
-  }
-
-  async function changeTheme(theme: LumenThemeId) {
-    await saveTheme(theme);
-    setThemeId(theme);
-  }
-
   return (
     <>
       <Orb
@@ -980,7 +899,7 @@ function Overlay({ url, roomId, canonical }: { url: string; roomId: string; cano
           onModeChange={(mode) => void changeReadingMode(mode)}
           onThemeChange={(theme) => void changeTheme(theme)}
           onClose={() => setPanelOpen(false)}
-          onHideTab={() => setTabHidden(true)}
+          onHideTab={hideTab}
           onFindCompanion={findCompanion}
           onLeaveCompanion={leaveCompanionMode}
           onTossCompanionEmoji={tossCompanionEmoji}

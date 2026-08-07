@@ -501,18 +501,18 @@
       "title": "Content Runtime Modularization",
       "status": "next",
       "phase": "Extension Architecture",
-      "progress": 45,
-      "currentStage": "Settings and theme runtime hook extraction",
+      "progress": 52,
+      "currentStage": "Anchor registry and active stack extraction",
       "summary": "Move the extension content script toward a thin runtime shell with explicit settings, theme, surface, Lens room, WebSocket, Companion, bloom, and UI boundaries.",
       "why": "Theme switching, Companion, anchoring, markers, and Lens UI now share one large content runtime. Clear ownership will reduce coupling before the next wave of UI and surface work.",
       "notePath": "./features/content-runtime-modularization.md",
-      "resumePoint": "Behavior baseline, pure model extraction, phase 1.5 prop-driven UI extraction, and phase 2 bootstrap/route/theme-host extraction are complete. Continue with phase 3 by extracting settings and theme runtime state into content/settings/useOverlaySettings.ts, keeping Lens, Companion, WebSocket, surface, and bloom ownership in Overlay for now.",
+      "resumePoint": "Behavior baseline, pure model extraction, phase 1.5 prop-driven UI extraction, phase 2 bootstrap/route/theme-host extraction, and phase 3 settings/theme runtime extraction are complete. Continue with phase 4 by extracting anchor registry and active stack ownership while keeping anchorRanges backed by a ref Map, never React state.",
       "nextActions": [
-        "Create content/settings/useOverlaySettings.ts for token, user, reading mode, theme, and site-hidden storage state",
-        "Move chrome.storage.onChanged handling for settings keys behind the settings hook",
-        "Expose changeReadingMode, changeTheme, and setTabHidden commands from the hook",
+        "Create content/lens-room/anchor-registry.ts to own lensId-to-Range operations behind an imperative ref-backed API",
+        "Create content/lens-room/active-stack.ts for active stack construction, overlap ordering, reference navigation updates, and cluster sibling selection",
+        "Keep the range map as a ref Map and keep orphan tracking as React state exposed through registry operations",
         "Run bun run typecheck and bun run test after each component extraction batch",
-        "Keep Lens, Companion, WebSocket, surface, and bloom ownership in Overlay during this phase"
+        "Keep surface event listeners, Lens fetching, WebSocket, Companion, and bloom ownership in Overlay during this phase"
       ],
       "lastWorkedAt": "2026-08-08",
       "scope": [
@@ -562,13 +562,14 @@
         {
           "id": "settings",
           "title": "Extract settings and theme runtime hook",
-          "status": "now",
+          "status": "done",
           "updatedAt": "2026-08-08"
         },
         {
           "id": "anchor-registry",
           "title": "Extract anchor registry and active stack",
-          "status": "planned"
+          "status": "now",
+          "updatedAt": "2026-08-08"
         },
         {
           "id": "surface",
@@ -667,6 +668,11 @@
           "date": "2026-08-08",
           "kind": "progress",
           "text": "Completed phase 2 by moving Shadow DOM host creation, CSS injection, React root rendering, canonical room refresh, route hooks, and theme host/marker application into apps/extension/src/content/bootstrap.tsx, route-runtime.ts, and theme-host.ts. Overlay still owns Lens, Companion, WebSocket, storage, surface, and bloom runtime state. content.tsx is down to roughly 1049 lines. Verified with bun run typecheck and bun run test."
+        },
+        {
+          "date": "2026-08-08",
+          "kind": "progress",
+          "text": "Completed phase 3 by moving token, user, reading mode, theme, site-hidden, tab-hidden, settings load, popup storage change listening, theme application, and settings commands into apps/extension/src/content/settings/useOverlaySettings.ts. Overlay consumes settings state and commands while Lens, Companion, WebSocket, surface, and bloom ownership remain unchanged. Verified with bun run typecheck and bun run test."
         }
       ],
       "links": [

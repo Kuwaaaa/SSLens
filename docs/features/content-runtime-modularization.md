@@ -1,17 +1,17 @@
 # Content Runtime Modularization
 
 Status: next
-Progress: 45
-Current stage: Settings and theme runtime hook extraction
+Progress: 52
+Current stage: Anchor registry and active stack extraction
 Last worked: 2026-08-08
 
 ## Resume Point
 
 Behavior baseline, pure model extraction, phase 1.5 prop-driven UI extraction,
-and phase 2 bootstrap/route/theme-host extraction are complete. Continue with
-phase 3 by extracting settings and theme runtime state into
-`content/settings/useOverlaySettings.ts`, keeping Lens, Companion, WebSocket,
-surface, and bloom ownership in `Overlay` for now.
+phase 2 bootstrap/route/theme-host extraction, and phase 3 settings/theme
+runtime extraction are complete. Continue with phase 4 by extracting anchor
+registry and active stack ownership while keeping `anchorRanges` backed by a
+ref Map, never React state.
 
 ## Goal
 
@@ -173,8 +173,12 @@ Captured before the first extraction pass on 2026-08-08:
   - `apps/extension/src/content/bootstrap.tsx`
   - `apps/extension/src/content/route-runtime.ts`
   - `apps/extension/src/content/theme-host.ts`
-- Kept runtime hooks, WebSocket lifecycle, storage listeners, and DOM event
-  handlers unchanged.
+- Completed phase 3 by moving token/user/reading-mode/theme/site-hidden/tab-hidden
+  state, storage loading, popup storage change listening, theme application, and
+  settings commands into
+  `apps/extension/src/content/settings/useOverlaySettings.ts`.
+- Kept Lens runtime hooks, WebSocket lifecycle, and DOM/surface event handlers
+  unchanged.
 - Verified with `bun run typecheck` and `bun run test`.
 
 ## Staged Plan
