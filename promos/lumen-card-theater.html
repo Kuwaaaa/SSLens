@@ -1,0 +1,1073 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Lumen Card Theater Demo</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800;900&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet">
+  <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/swiper@11/swiper-bundle.min.css">
+  <style>
+    :root {
+      --bg: #07050b;
+      --panel: rgba(18, 13, 28, 0.72);
+      --panel-strong: rgba(255, 255, 255, 0.96);
+      --ink: #f7f1ff;
+      --muted: #a89bb8;
+      --primary: #8b5cf6;
+      --primary-deep: #4a1a7a;
+      --amber: #f59e0b;
+      --cyan: #22d3ee;
+      --green: #22c55e;
+      --line: rgba(255, 255, 255, 0.12);
+      --glass: rgba(255, 255, 255, 0.08);
+      --shadow: 0 26px 80px rgba(0, 0, 0, 0.42);
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    html,
+    body {
+      width: 100%;
+      height: 100%;
+      margin: 0;
+    }
+
+    body {
+      display: flex;
+      overflow: hidden;
+      background:
+        radial-gradient(circle at 68% 18%, rgba(139, 92, 246, 0.2), transparent 28%),
+        radial-gradient(circle at 88% 78%, rgba(245, 158, 11, 0.12), transparent 24%),
+        linear-gradient(135deg, #08040d 0%, #090711 50%, #04070d 100%);
+      color: var(--ink);
+      font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    }
+
+    button {
+      font: inherit;
+    }
+
+    .sidebar {
+      position: relative;
+      z-index: 10;
+      display: flex;
+      flex: 0 0 370px;
+      flex-direction: column;
+      justify-content: space-between;
+      min-width: 320px;
+      padding: 34px 30px;
+      border-right: 1px solid var(--line);
+      background: var(--panel);
+      backdrop-filter: blur(28px) saturate(150%);
+      box-shadow: 18px 0 80px rgba(0, 0, 0, 0.22);
+    }
+
+    .brand-kicker {
+      display: inline-flex;
+      align-items: center;
+      gap: 9px;
+      margin-bottom: 18px;
+      color: #d9c8ff;
+      font: 700 12px/1 JetBrains Mono, monospace;
+      letter-spacing: 0.13em;
+      text-transform: uppercase;
+    }
+
+    .brand-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 999px;
+      background: var(--amber);
+      box-shadow: 0 0 18px rgba(245, 158, 11, 0.8);
+    }
+
+    h1 {
+      margin: 0 0 24px;
+      color: #fff;
+      font-size: clamp(42px, 5vw, 72px);
+      line-height: 0.88;
+      letter-spacing: -0.05em;
+    }
+
+    h1 span {
+      color: transparent;
+      background: linear-gradient(110deg, #fff 0%, #d7c4ff 42%, #f8b73a 100%);
+      background-clip: text;
+      -webkit-background-clip: text;
+    }
+
+    .scene-label {
+      margin: 0 0 8px;
+      color: var(--amber);
+      font: 700 12px/1 JetBrains Mono, monospace;
+      letter-spacing: 0.14em;
+      text-transform: uppercase;
+    }
+
+    .scene-title {
+      min-height: 64px;
+      margin: 0 0 12px;
+      color: #fff;
+      font-size: 26px;
+      line-height: 1.08;
+      letter-spacing: -0.02em;
+    }
+
+    .scene-copy {
+      min-height: 92px;
+      margin: 0;
+      color: #cabfe0;
+      font-size: 14px;
+      line-height: 1.65;
+    }
+
+    .scene-note {
+      margin-top: 22px;
+      padding: 14px 15px;
+      border-left: 2px solid var(--amber);
+      border-radius: 10px;
+      background: rgba(255, 255, 255, 0.055);
+      color: #d8cdeb;
+      font: 500 12px/1.55 JetBrains Mono, monospace;
+    }
+
+    .sidebar-body {
+      transition: opacity 220ms ease, transform 220ms ease;
+    }
+
+    .sidebar-body.is-changing {
+      opacity: 0;
+      transform: translateY(6px);
+    }
+
+    .mode-row {
+      display: grid;
+      gap: 12px;
+    }
+
+    .mode-toggle {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 14px;
+      width: 100%;
+      padding: 13px 14px;
+      border: 1px solid rgba(245, 158, 11, 0.28);
+      border-radius: 12px;
+      background: rgba(245, 158, 11, 0.08);
+      color: #ffe4ad;
+      cursor: pointer;
+      transition: border-color 180ms ease, background 180ms ease, transform 180ms ease;
+    }
+
+    .mode-toggle:hover {
+      border-color: rgba(245, 158, 11, 0.55);
+      background: rgba(245, 158, 11, 0.14);
+      transform: translateY(-1px);
+    }
+
+    .mode-toggle strong {
+      display: block;
+      font-size: 12px;
+      text-align: left;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+    }
+
+    .mode-toggle span {
+      display: block;
+      margin-top: 3px;
+      color: #b9a5d0;
+      font-size: 12px;
+      text-align: left;
+      text-transform: none;
+      letter-spacing: 0;
+    }
+
+    .switch-track {
+      position: relative;
+      width: 46px;
+      height: 26px;
+      flex: 0 0 auto;
+      border-radius: 999px;
+      background: rgba(255, 255, 255, 0.14);
+    }
+
+    .switch-thumb {
+      position: absolute;
+      top: 4px;
+      left: 4px;
+      width: 18px;
+      height: 18px;
+      border-radius: 999px;
+      background: #fff;
+      box-shadow: 0 4px 14px rgba(0, 0, 0, 0.35);
+      transition: transform 220ms cubic-bezier(0.16, 1, 0.3, 1);
+    }
+
+    body.full-mode .switch-thumb {
+      transform: translateX(20px);
+    }
+
+    .hint {
+      color: #8e80a0;
+      font-size: 12px;
+      line-height: 1.5;
+    }
+
+    .stage {
+      position: relative;
+      flex: 1;
+      min-width: 0;
+      overflow: hidden;
+    }
+
+    .stage::before {
+      position: absolute;
+      inset: 0;
+      background-image:
+        linear-gradient(rgba(255, 255, 255, 0.035) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(255, 255, 255, 0.035) 1px, transparent 1px);
+      background-size: 42px 42px;
+      mask-image: radial-gradient(circle at 54% 48%, black, transparent 74%);
+      content: "";
+    }
+
+    .article {
+      position: absolute;
+      top: 7vh;
+      left: clamp(34px, 6vw, 96px);
+      width: min(720px, 58vw);
+      height: 86vh;
+      padding: 38px 48px;
+      border: 1px solid rgba(255, 255, 255, 0.11);
+      border-radius: 18px;
+      background: rgba(255, 255, 255, 0.94);
+      color: #1d1726;
+      box-shadow: var(--shadow);
+      transform: rotateX(0.5deg) rotateY(0deg);
+    }
+
+    .article::after {
+      position: absolute;
+      inset: auto 48px 36px 48px;
+      height: 86px;
+      background: linear-gradient(to bottom, rgba(255, 255, 255, 0), #fff);
+      content: "";
+      pointer-events: none;
+    }
+
+    .article-browser {
+      display: flex;
+      align-items: center;
+      gap: 7px;
+      margin: -14px 0 28px;
+      color: #a5a0ad;
+      font: 600 11px/1 JetBrains Mono, monospace;
+    }
+
+    .browser-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 999px;
+      background: #d5cdda;
+    }
+
+    .article h2 {
+      width: 76%;
+      margin: 0 0 22px;
+      color: #23162f;
+      font-size: 42px;
+      line-height: 1;
+      letter-spacing: -0.04em;
+    }
+
+    .article p {
+      max-width: 590px;
+      margin: 0 0 17px;
+      color: #4f445b;
+      font-size: 16px;
+      line-height: 1.72;
+    }
+
+    .article .muted-line {
+      width: 88%;
+      color: #766b80;
+    }
+
+    .marker {
+      position: relative;
+      display: inline;
+      padding: 0 2px;
+      background:
+        linear-gradient(to bottom, transparent 56%, rgba(139, 92, 246, 0.16) 56%),
+        radial-gradient(circle at 50% 96%, rgba(74, 26, 122, 0.55) 1px, transparent 1.7px);
+      background-size: 100% 100%, 7px 3px;
+      background-repeat: repeat-x;
+      color: #2d163c;
+    }
+
+    .marker.is-hot {
+      background:
+        linear-gradient(to bottom, transparent 48%, rgba(245, 158, 11, 0.24) 48%),
+        radial-gradient(circle at 50% 96%, rgba(245, 158, 11, 0.72) 1px, transparent 1.7px);
+      background-size: 100% 100%, 7px 3px;
+      background-repeat: repeat-x;
+    }
+
+    .lens-orb {
+      position: absolute;
+      right: 28px;
+      bottom: 30px;
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 9px 15px;
+      border: 1px solid rgba(107, 33, 168, 0.18);
+      border-radius: 999px;
+      background: linear-gradient(135deg, #fff, #f1e8ff);
+      color: var(--primary-deep);
+      font-size: 13px;
+      font-weight: 800;
+      box-shadow: 0 8px 24px rgba(80, 60, 130, 0.18);
+    }
+
+    .lens-orb .live {
+      width: 7px;
+      height: 7px;
+      border-radius: 999px;
+      background: var(--green);
+    }
+
+    .lens-orb .hidden-count {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      min-width: 22px;
+      height: 18px;
+      padding: 0 7px;
+      border-radius: 999px;
+      background: #fef3c7;
+      color: #92400e;
+      font-size: 10px;
+    }
+
+    body.full-mode .lens-orb .hidden-count {
+      display: none;
+    }
+
+    .swiper {
+      position: absolute;
+      right: -20px;
+      top: 50%;
+      width: min(860px, 62vw);
+      padding: 78px 0 90px;
+      transform: translateY(-50%);
+    }
+
+    .swiper-slide {
+      position: relative;
+      display: flex;
+      width: 316px;
+      height: 432px;
+      user-select: none;
+    }
+
+    .lens-card {
+      position: relative;
+      display: flex;
+      width: 100%;
+      height: 100%;
+      flex-direction: column;
+      justify-content: space-between;
+      overflow: hidden;
+      padding: 24px;
+      border: 1px solid rgba(107, 33, 168, 0.2);
+      border-radius: 18px;
+      background: rgba(255, 255, 255, 0.96);
+      color: #1a1a1a;
+      box-shadow: 0 22px 60px rgba(18, 6, 34, 0.38);
+      transition: border-color 250ms ease, box-shadow 250ms ease, filter 250ms ease;
+    }
+
+    .swiper-slide:not(.swiper-slide-active) .lens-card {
+      filter: saturate(0.75) brightness(0.72) blur(0.2px);
+    }
+
+    .swiper-slide-active .lens-card {
+      border-color: rgba(245, 158, 11, 0.46);
+      box-shadow:
+        0 24px 70px rgba(0, 0, 0, 0.42),
+        0 0 0 1px rgba(245, 158, 11, 0.14),
+        0 0 44px rgba(245, 158, 11, 0.18);
+    }
+
+    .card-index {
+      position: absolute;
+      top: 10px;
+      right: 18px;
+      color: rgba(74, 26, 122, 0.06);
+      font-size: 86px;
+      font-weight: 900;
+      letter-spacing: -0.07em;
+    }
+
+    .card-icon {
+      display: grid;
+      width: 54px;
+      height: 54px;
+      place-items: center;
+      border-radius: 15px;
+      background: #faf6ff;
+      color: var(--primary-deep);
+      font-size: 24px;
+      box-shadow: inset 0 0 0 1px rgba(107, 33, 168, 0.12);
+    }
+
+    .card-icon.amber {
+      background: #fffbeb;
+      color: #92400e;
+    }
+
+    .card-icon.cyan {
+      background: #ecfeff;
+      color: #0e7490;
+    }
+
+    .card-eyebrow {
+      margin: 20px 0 8px;
+      color: var(--primary-deep);
+      font: 700 11px/1 JetBrains Mono, monospace;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+    }
+
+    .lens-card h3 {
+      margin: 0 0 13px;
+      color: #2b153d;
+      font-size: 28px;
+      line-height: 1.05;
+      letter-spacing: -0.03em;
+    }
+
+    .lens-card p {
+      margin: 0;
+      color: #5d5266;
+      font-size: 14px;
+      line-height: 1.58;
+    }
+
+    .quote {
+      margin: 18px 0 0;
+      padding: 10px 12px;
+      border-left: 3px solid rgba(107, 33, 168, 0.3);
+      border-radius: 8px;
+      background: #faf6ff;
+      color: #685872;
+      font-size: 12px;
+      font-style: italic;
+      line-height: 1.45;
+    }
+
+    .highlight-text {
+      display: inline;
+      padding: 0 4px;
+      border-radius: 4px;
+      background-image: linear-gradient(120deg, transparent 0%, transparent 100%);
+      background-size: 0% 100%;
+      background-repeat: no-repeat;
+      transition: background-size 620ms cubic-bezier(0.16, 1, 0.3, 1);
+    }
+
+    .swiper-slide-active .highlight-text {
+      background-image: linear-gradient(120deg, rgba(245, 158, 11, 0.25), rgba(245, 158, 11, 0.36));
+      background-size: 100% 100%;
+    }
+
+    .reaction-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+      margin-top: 18px;
+    }
+
+    .reaction-row span {
+      display: inline-flex;
+      align-items: center;
+      min-height: 24px;
+      padding: 0 8px;
+      border: 1px solid rgba(107, 33, 168, 0.16);
+      border-radius: 999px;
+      background: #fff;
+      color: var(--primary-deep);
+      font-size: 12px;
+      font-weight: 700;
+    }
+
+    .bloom {
+      position: absolute;
+      inset: 0;
+      pointer-events: none;
+    }
+
+    .shape {
+      position: absolute;
+      left: var(--x);
+      top: var(--y);
+      width: var(--s);
+      height: var(--s);
+      border: 2px solid var(--c);
+      opacity: 0;
+      transform: translate(-50%, -50%) scale(0);
+    }
+
+    .shape.fill {
+      background: var(--c);
+      border-color: transparent;
+    }
+
+    .shape.circle {
+      border-radius: 999px;
+    }
+
+    .shape.square {
+      border-radius: 3px;
+      rotate: 15deg;
+    }
+
+    .shape.plus::before,
+    .shape.plus::after {
+      position: absolute;
+      inset: 50% auto auto 50%;
+      width: 100%;
+      height: 2px;
+      border-radius: 999px;
+      background: var(--c);
+      content: "";
+      transform: translate(-50%, -50%);
+    }
+
+    .shape.plus::after {
+      transform: translate(-50%, -50%) rotate(90deg);
+    }
+
+    .swiper-slide-active .shape {
+      animation: bloom 880ms cubic-bezier(0.16, 1, 0.3, 1) var(--d) both;
+    }
+
+    @keyframes bloom {
+      0% {
+        opacity: 0;
+        transform: translate(-50%, -50%) scale(0) rotate(0deg);
+      }
+      18% {
+        opacity: 1;
+        transform: translate(calc(-50% + var(--dx) * 0.3), calc(-50% + var(--dy) * 0.3)) scale(1.12) rotate(18deg);
+      }
+      58% {
+        opacity: 1;
+        transform: translate(calc(-50% + var(--dx)), calc(-50% + var(--dy))) scale(1) rotate(42deg);
+      }
+      100% {
+        opacity: 0;
+        transform: translate(calc(-50% + var(--dx) * 1.16), calc(-50% + var(--dy) * 1.16)) scale(0.5) rotate(68deg);
+      }
+    }
+
+    .floating-lens {
+      position: absolute;
+      left: min(48vw, 620px);
+      top: 22vh;
+      width: 270px;
+      padding: 15px 16px;
+      border: 1px solid rgba(107, 33, 168, 0.18);
+      border-radius: 14px;
+      background: rgba(255, 255, 255, 0.98);
+      color: #1a1a1a;
+      box-shadow: 0 20px 50px rgba(80, 60, 130, 0.22);
+      opacity: 0;
+      transform: translateY(10px);
+      transition: opacity 320ms ease, transform 320ms cubic-bezier(0.16, 1, 0.3, 1);
+    }
+
+    .floating-lens strong {
+      display: block;
+      margin-bottom: 8px;
+      color: #4a1a7a;
+      font-size: 12px;
+    }
+
+    .floating-lens p {
+      margin: 0;
+      color: #554a61;
+      font-size: 13px;
+      line-height: 1.45;
+    }
+
+    .floating-lens.visible {
+      opacity: 1;
+      transform: translateY(0);
+    }
+
+    .companion-pop {
+      position: absolute;
+      right: 58px;
+      bottom: 52px;
+      display: grid;
+      gap: 7px;
+      width: 252px;
+      padding: 13px;
+      border: 1px solid rgba(107, 33, 168, 0.16);
+      border-radius: 13px;
+      background: rgba(255, 255, 255, 0.96);
+      color: #1a1a1a;
+      box-shadow: 0 20px 50px rgba(80, 60, 130, 0.22);
+      opacity: 0;
+      transform: translateY(8px);
+      transition: opacity 300ms ease, transform 300ms ease;
+    }
+
+    .companion-pop.visible {
+      opacity: 1;
+      transform: translateY(0);
+    }
+
+    .companion-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      color: #4a1a7a;
+      font-size: 12px;
+      font-weight: 800;
+    }
+
+    .chat-line {
+      padding: 7px 9px;
+      border: 1px solid rgba(107, 33, 168, 0.12);
+      border-radius: 8px;
+      background: #faf6ff;
+      color: #4c4256;
+      font-size: 12px;
+      line-height: 1.35;
+    }
+
+    .toss {
+      position: absolute;
+      right: 316px;
+      bottom: 135px;
+      display: grid;
+      width: 38px;
+      height: 38px;
+      place-items: center;
+      border: 1px solid rgba(107, 33, 168, 0.14);
+      border-radius: 999px;
+      background: rgba(255, 255, 255, 0.9);
+      color: #4a1a7a;
+      font: 800 12px/1 JetBrains Mono, monospace;
+      box-shadow: 0 10px 26px rgba(80, 60, 130, 0.18);
+      opacity: 0;
+    }
+
+    .toss.visible {
+      animation: toss 1200ms cubic-bezier(0.16, 1, 0.3, 1) both;
+    }
+
+    @keyframes toss {
+      0% {
+        opacity: 0;
+        transform: translateX(40px) translateY(20px) scale(0.72) rotate(8deg);
+      }
+      18% {
+        opacity: 1;
+      }
+      72% {
+        opacity: 1;
+        transform: translateX(-24px) translateY(-8px) scale(1) rotate(-5deg);
+      }
+      100% {
+        opacity: 0;
+        transform: translateX(-52px) translateY(-22px) scale(0.86) rotate(-10deg);
+      }
+    }
+
+    .full-only {
+      display: none;
+    }
+
+    body.full-mode .full-only {
+      display: flex;
+    }
+
+    body.full-mode .quiet-hidden {
+      opacity: 0.24;
+    }
+
+    .progress {
+      position: absolute;
+      right: 34px;
+      bottom: 24px;
+      left: 404px;
+      z-index: 8;
+      height: 3px;
+      overflow: hidden;
+      border-radius: 999px;
+      background: rgba(255, 255, 255, 0.1);
+    }
+
+    .progress span {
+      display: block;
+      width: var(--p, 16.6%);
+      height: 100%;
+      border-radius: inherit;
+      background: linear-gradient(90deg, var(--primary), var(--amber));
+      transition: width 260ms ease;
+    }
+
+    @media (max-width: 980px) {
+      body {
+        display: block;
+        overflow: auto;
+      }
+
+      .sidebar {
+        width: 100%;
+        min-width: 0;
+        min-height: auto;
+      }
+
+      .stage {
+        min-height: 760px;
+      }
+
+      .article {
+        left: 18px;
+        width: calc(100% - 36px);
+      }
+
+      .swiper {
+        right: 0;
+        width: 100%;
+      }
+
+      .progress {
+        left: 24px;
+      }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      *,
+      *::before,
+      *::after {
+        animation-duration: 1ms !important;
+        scroll-behavior: auto !important;
+        transition-duration: 1ms !important;
+      }
+    }
+  </style>
+</head>
+<body>
+  <aside class="sidebar">
+    <div>
+      <div class="brand-kicker"><span class="brand-dot"></span>Lumen v2</div>
+      <h1>Make pages<br><span>feel inhabited.</span></h1>
+      <div class="sidebar-body" id="sidebarBody">
+        <p class="scene-label" id="sceneLabel">Scene 01</p>
+        <h2 class="scene-title" id="sceneTitle">A real webpage, still the main character</h2>
+        <p class="scene-copy" id="sceneCopy">Lumen starts quiet. It does not replace the article, open a feed, or turn reading into a dashboard.</p>
+        <div class="scene-note" id="sceneNote">North star: persistent cards, restrained overlay.</div>
+      </div>
+    </div>
+
+    <div class="mode-row">
+      <button class="mode-toggle" id="modeToggle" type="button" aria-pressed="false">
+        <span>
+          <strong id="modeTitle">Quiet mode</strong>
+          <span id="modeCopy">Only the most restrained social signal is visible.</span>
+        </span>
+        <span class="switch-track" aria-hidden="true"><span class="switch-thumb"></span></span>
+      </button>
+      <div class="hint">Use arrow keys, mouse wheel, or click a card. This page is made for recording a short product intro.</div>
+    </div>
+  </aside>
+
+  <main class="stage">
+    <section class="article" aria-label="Demo article surface">
+      <div class="article-browser">
+        <span class="browser-dot"></span>
+        <span class="browser-dot"></span>
+        <span class="browser-dot"></span>
+        <span>example.com/long-reading</span>
+      </div>
+      <h2>The web feels different when someone has been here before.</h2>
+      <p>Most pages are silent after publication. Readers arrive alone, think alone, and leave no trace for the next person.</p>
+      <p class="muted-line">Lumen adds a small social layer that respects the page. A Lens can attach to <span class="marker">this exact passage</span>, persist over time, and become part of the page's memory.</p>
+      <p>Comments, questions, references, and tiny reactions accumulate where they belong: beside the thing people were reading.</p>
+      <p class="quiet-hidden">When a passage gets dense, Lumen can show overlap heat without turning the page into a wall of motion.</p>
+      <p class="full-only"><span class="marker is-hot">Full mode reveals more of the room</span>, but the reader decides when to open that layer.</p>
+      <div class="lens-orb"><span class="live"></span><span id="orbCount">4 Lens</span><span class="hidden-count">2 hidden</span></div>
+    </section>
+
+    <div class="floating-lens" id="floatingLens">
+      <strong>maya · question</strong>
+      <p>Is this the moment where a page becomes a place instead of a document?</p>
+    </div>
+
+    <div class="companion-pop" id="companionPop">
+      <div class="companion-row"><span>Companion on</span><span>2 here</span></div>
+      <div class="chat-line">alex: I am on this paragraph too.</div>
+      <div class="chat-line">maya: leaving a Lens, this is the good bit.</div>
+    </div>
+    <div class="toss" id="toss">aha</div>
+
+    <div class="swiper mySwiper">
+      <div class="swiper-wrapper">
+        <div class="swiper-slide">
+          <article class="lens-card">
+            <span class="card-index">01</span>
+            <div>
+              <div class="card-icon"><i class="fa-solid fa-file-lines"></i></div>
+              <p class="card-eyebrow">Original page</p>
+              <h3>The page stays quiet.</h3>
+              <p>No social chrome by default. Lumen waits at the edge until the reader asks for the layer.</p>
+              <div class="quote">"The page is the artifact."</div>
+            </div>
+            <div class="reaction-row"><span>quiet</span><span>page-bound</span></div>
+            <div class="bloom">
+              <span class="shape circle" style="--x: 20%; --y: 4%; --s: 12px; --c: #8b5cf6; --dx: -22px; --dy: -42px; --d: 0ms;"></span>
+              <span class="shape square fill" style="--x: 68%; --y: 0%; --s: 10px; --c: #f59e0b; --dx: 16px; --dy: -48px; --d: 60ms;"></span>
+              <span class="shape plus" style="--x: 98%; --y: 44%; --s: 14px; --c: #7c3aed; --dx: 46px; --dy: -6px; --d: 115ms;"></span>
+            </div>
+          </article>
+        </div>
+
+        <div class="swiper-slide">
+          <article class="lens-card">
+            <span class="card-index">02</span>
+            <div>
+              <div class="card-icon amber"><i class="fa-solid fa-highlighter"></i></div>
+              <p class="card-eyebrow">Anchored Lens</p>
+              <h3><span class="highlight-text">A card attaches to a passage.</span></h3>
+              <p>Selection becomes a durable Lens with quote recovery, not a floating comment that drifts away from context.</p>
+              <div class="quote">"This exact passage can carry a question, joke, or reference."</div>
+            </div>
+            <div class="reaction-row"><span>anchor</span><span>persistent</span></div>
+            <div class="bloom">
+              <span class="shape circle fill" style="--x: 34%; --y: 0%; --s: 11px; --c: #8b5cf6; --dx: -8px; --dy: -52px; --d: 0ms;"></span>
+              <span class="shape square" style="--x: 74%; --y: 100%; --s: 12px; --c: #f59e0b; --dx: 20px; --dy: 48px; --d: 70ms;"></span>
+              <span class="shape plus" style="--x: 0%; --y: 58%; --s: 15px; --c: #7c3aed; --dx: -46px; --dy: 10px; --d: 130ms;"></span>
+            </div>
+          </article>
+        </div>
+
+        <div class="swiper-slide">
+          <article class="lens-card">
+            <span class="card-index">03</span>
+            <div>
+              <div class="card-icon"><i class="fa-solid fa-layer-group"></i></div>
+              <p class="card-eyebrow">Async accumulation</p>
+              <h3>One page gathers many small traces.</h3>
+              <p>People arrive at different times, but their Lens cards make the next visit feel less empty.</p>
+              <div class="quote">"Knowledge emerges from participation. It does not seed it."</div>
+            </div>
+            <div class="reaction-row"><span>lol 3</span><span>aha 5</span><span>true 2</span></div>
+            <div class="bloom">
+              <span class="shape circle" style="--x: 12%; --y: 8%; --s: 11px; --c: #8b5cf6; --dx: -38px; --dy: -24px; --d: 0ms;"></span>
+              <span class="shape square fill" style="--x: 50%; --y: 0%; --s: 12px; --c: #f59e0b; --dx: 0px; --dy: -54px; --d: 55ms;"></span>
+              <span class="shape plus" style="--x: 100%; --y: 72%; --s: 13px; --c: #7c3aed; --dx: 52px; --dy: 18px; --d: 130ms;"></span>
+            </div>
+          </article>
+        </div>
+
+        <div class="swiper-slide">
+          <article class="lens-card">
+            <span class="card-index">04</span>
+            <div>
+              <div class="card-icon cyan"><i class="fa-solid fa-sliders"></i></div>
+              <p class="card-eyebrow">Reading modes</p>
+              <h3><span class="highlight-text">Quiet, Thinking, Full.</span></h3>
+              <p>The reader controls density. Lumen never decides that a Lens is important enough to interrupt.</p>
+              <div class="quote">"Reading modes are user control."</div>
+            </div>
+            <div class="reaction-row"><span>Quiet</span><span>Thinking</span><span>Full</span></div>
+            <div class="bloom">
+              <span class="shape circle fill" style="--x: 28%; --y: 0%; --s: 9px; --c: #22d3ee; --dx: -18px; --dy: -50px; --d: 0ms;"></span>
+              <span class="shape square" style="--x: 100%; --y: 38%; --s: 13px; --c: #f59e0b; --dx: 54px; --dy: -2px; --d: 70ms;"></span>
+              <span class="shape plus" style="--x: 16%; --y: 100%; --s: 15px; --c: #8b5cf6; --dx: -24px; --dy: 46px; --d: 120ms;"></span>
+            </div>
+          </article>
+        </div>
+
+        <div class="swiper-slide">
+          <article class="lens-card">
+            <span class="card-index">05</span>
+            <div>
+              <div class="card-icon amber"><i class="fa-solid fa-user-group"></i></div>
+              <p class="card-eyebrow">Companion</p>
+              <h3>Live company stays opt-in.</h3>
+              <p>Presence, tiny chat, and low-friction tosses appear only when a reader explicitly opens the door.</p>
+              <div class="quote">"Durable memory belongs in Lens cards."</div>
+            </div>
+            <div class="reaction-row"><span>2 here</span><span>tiny chat</span><span>toss</span></div>
+            <div class="bloom">
+              <span class="shape circle" style="--x: 38%; --y: 0%; --s: 10px; --c: #f59e0b; --dx: -8px; --dy: -52px; --d: 0ms;"></span>
+              <span class="shape square fill" style="--x: 92%; --y: 18%; --s: 12px; --c: #8b5cf6; --dx: 50px; --dy: -22px; --d: 75ms;"></span>
+              <span class="shape plus" style="--x: 8%; --y: 86%; --s: 14px; --c: #7c3aed; --dx: -44px; --dy: 32px; --d: 140ms;"></span>
+            </div>
+          </article>
+        </div>
+
+        <div class="swiper-slide">
+          <article class="lens-card">
+            <span class="card-index">06</span>
+            <div>
+              <div class="card-icon"><i class="fa-solid fa-seedling"></i></div>
+              <p class="card-eyebrow">The bet</p>
+              <h3><span class="highlight-text">Participation first.</span></h3>
+              <p>Lumen validates one thing: people will leave good traces when a webpage already feels inhabited.</p>
+              <div class="quote">"Entertainment substrate to participation to UGC to emergent knowledge."</div>
+            </div>
+            <div class="reaction-row"><span>UGC first</span><span>small group</span></div>
+            <div class="bloom">
+              <span class="shape circle fill" style="--x: 50%; --y: 0%; --s: 12px; --c: #8b5cf6; --dx: 0px; --dy: -56px; --d: 0ms;"></span>
+              <span class="shape square" style="--x: 100%; --y: 52%; --s: 12px; --c: #f59e0b; --dx: 54px; --dy: 8px; --d: 80ms;"></span>
+              <span class="shape plus" style="--x: 0%; --y: 42%; --s: 14px; --c: #7c3aed; --dx: -52px; --dy: -6px; --d: 140ms;"></span>
+            </div>
+          </article>
+        </div>
+      </div>
+    </div>
+
+    <div class="progress" aria-hidden="true"><span id="progressBar"></span></div>
+  </main>
+
+  <script src="https://cdn.jsdelivr.net/npm/swiper@11/swiper-bundle.min.js"></script>
+  <script>
+    const scenes = [
+      {
+        label: "Scene 01",
+        title: "A real webpage, still the main character",
+        copy: "Lumen starts quiet. It does not replace the article, open a feed, or turn reading into a dashboard.",
+        note: "North star: persistent cards, restrained overlay."
+      },
+      {
+        label: "Scene 02",
+        title: "A Lens belongs to a passage",
+        copy: "The social unit is a card anchored to real text. It can be playful, useful, questioning, or referential.",
+        note: "Cards are primary. No default floating comments."
+      },
+      {
+        label: "Scene 03",
+        title: "The page accumulates memory",
+        copy: "Lumen is async by design. The next reader can feel that someone else has already wrestled with the same page.",
+        note: "Do not optimize for total Lens count. Optimize for traces worth keeping."
+      },
+      {
+        label: "Scene 04",
+        title: "The reader controls the layer",
+        copy: "Quiet, Thinking, and Full are not ranking systems. They are a promise that reading mode belongs to the user.",
+        note: "Toggle Full mode in the lower-left control."
+      },
+      {
+        label: "Scene 05",
+        title: "Live presence is a door, not a default",
+        copy: "Companion mode adds same-page presence, tiny chat, and low-friction tosses only after a reader opts in.",
+        note: "Companion is ephemeral. Lens cards are the durable memory."
+      },
+      {
+        label: "Scene 06",
+        title: "The wider ecosystem can wait",
+        copy: "Atlas, Lounge, and knowledge infrastructure matter later. Lumen v2 first proves that participation can grow on pages.",
+        note: "Make webpages feel inhabited."
+      }
+    ];
+
+    const sidebarBody = document.getElementById("sidebarBody");
+    const sceneLabel = document.getElementById("sceneLabel");
+    const sceneTitle = document.getElementById("sceneTitle");
+    const sceneCopy = document.getElementById("sceneCopy");
+    const sceneNote = document.getElementById("sceneNote");
+    const progressBar = document.getElementById("progressBar");
+    const floatingLens = document.getElementById("floatingLens");
+    const companionPop = document.getElementById("companionPop");
+    const toss = document.getElementById("toss");
+    const modeToggle = document.getElementById("modeToggle");
+    const modeTitle = document.getElementById("modeTitle");
+    const modeCopy = document.getElementById("modeCopy");
+    const orbCount = document.getElementById("orbCount");
+
+    const swiper = new Swiper(".mySwiper", {
+      effect: "coverflow",
+      grabCursor: true,
+      centeredSlides: true,
+      slidesPerView: "auto",
+      speed: 650,
+      keyboard: {
+        enabled: true
+      },
+      mousewheel: {
+        thresholdDelta: 50
+      },
+      coverflowEffect: {
+        rotate: 36,
+        stretch: 0,
+        depth: 160,
+        modifier: 1,
+        slideShadows: true
+      },
+      on: {
+        init() {
+          updateScene(0, true);
+        },
+        slideChange() {
+          updateScene(this.realIndex, false);
+        }
+      }
+    });
+
+    function updateScene(index, instant) {
+      const scene = scenes[index];
+      progressBar.style.setProperty("--p", `${((index + 1) / scenes.length) * 100}%`);
+
+      floatingLens.classList.toggle("visible", index >= 1 && index <= 3);
+      companionPop.classList.toggle("visible", index === 4);
+      toss.classList.remove("visible");
+      if (index === 4) {
+        window.setTimeout(() => toss.classList.add("visible"), 260);
+      }
+
+      if (instant) {
+        writeScene(scene);
+        return;
+      }
+
+      sidebarBody.classList.add("is-changing");
+      window.setTimeout(() => {
+        writeScene(scene);
+        sidebarBody.classList.remove("is-changing");
+      }, 180);
+    }
+
+    function writeScene(scene) {
+      sceneLabel.textContent = scene.label;
+      sceneTitle.textContent = scene.title;
+      sceneCopy.textContent = scene.copy;
+      sceneNote.textContent = scene.note;
+    }
+
+    modeToggle.addEventListener("click", () => {
+      const isFull = document.body.classList.toggle("full-mode");
+      modeToggle.setAttribute("aria-pressed", String(isFull));
+      modeTitle.textContent = isFull ? "Full mode" : "Quiet mode";
+      modeCopy.textContent = isFull
+        ? "More Lens cards and overlap heat become visible."
+        : "Only the most restrained social signal is visible.";
+      orbCount.textContent = isFull ? "6 Lens" : "4 Lens";
+    });
+  </script>
+</body>
+</html>
