@@ -1,5 +1,5 @@
 {
-  "updatedAt": "2026-08-08",
+  "updatedAt": "2026-08-09",
   "statusOrder": [
     "now",
     "next",
@@ -25,7 +25,7 @@
       "progress": 62,
       "currentStage": "Dogfood and verification",
       "summary": "Keep the current page-bound Lens loop stable before inviting more users.",
-      "why": "The v2 hypothesis depends on reliable Lens creation, anchoring, reading modes, and companion opt-in behavior.",
+      "why": "The current beta hypothesis depends on reliable Lens creation, anchoring, reading modes, and companion opt-in behavior.",
       "notePath": "./features/beta-stabilization.md",
       "resumePoint": "Continue with manual smoke testing and backup/observability review before inviting more beta users.",
       "nextActions": [
@@ -96,11 +96,11 @@
       "summary": "Expose current, next, planned, exploring, deferred, and shipped feature tracks as a lightweight docs page.",
       "why": "A public roadmap helps beta users and future agents see what is moving without turning planning into a heavy project-management system.",
       "notePath": "./features/roadmap-page.md",
-      "resumePoint": "Roadmap is local/static-first, has a local stdio MCP server, and should stay out of the Lumen cloud server boundary.",
+      "resumePoint": "Roadmap is local/static-first, has a local stdio MCP server, and should stay out of the lumen cloud server boundary.",
       "nextActions": [
         "Review roadmap wording in the browser",
         "Configure bun run mcp:roadmap in the MCP client that should read the roadmap",
-        "Keep Lumen deployment free of Roadmap runtime"
+        "Keep lumen deployment free of Roadmap runtime"
       ],
       "lastWorkedAt": "2026-07-29",
       "scope": [
@@ -152,7 +152,7 @@
         },
         {
           "id": "service-separation",
-          "title": "Separate from Lumen server",
+          "title": "Separate from lumen server",
           "status": "done",
           "updatedAt": "2026-07-28"
         },
@@ -193,7 +193,7 @@
         {
           "date": "2026-07-28",
           "kind": "architecture",
-          "text": "Removed Roadmap from the Lumen server boundary and kept it as a local/static project notebook."
+          "text": "Removed Roadmap from the lumen server boundary and kept it as a local/static project notebook."
         },
         {
           "date": "2026-07-29",
@@ -218,19 +218,19 @@
       "title": "Theme System",
       "status": "now",
       "phase": "Beta Quality",
-      "progress": 80,
-      "currentStage": "Specimen coverage and visual QA",
-      "summary": "Switch complete Lumen UI styles through a shared theme contract, CSS variables, and generated motion profiles.",
-      "why": "Lumen will keep adding UI and motion; a theme contract prevents future components from hardcoding one visual style.",
+      "progress": 88,
+      "currentStage": "Visual QA",
+      "summary": "Switch complete lumen UI styles through a shared theme contract, CSS variables, and generated motion profiles.",
+      "why": "lumen will keep adding UI and motion; a theme contract prevents future components from hardcoding one visual style.",
       "notePath": "./features/theme-system.md",
-      "resumePoint": "Theme switching is merged into main with Classic and Signal skins available from both the extension popup and the webpage InfoPanel. Continue with specimen/manual visual QA across orb, card, composer, InfoPanel, markers, bloom, popup selector, and reduced-motion states before replacing more CSS overrides with direct token consumption.",
+      "resumePoint": "Theme switching has a documented specimen/manual QA checklist. Continue by running Classic and Signal through the checklist on real pages, then gradually replace CSS override rules with direct token consumption.",
       "nextActions": [
-        "Add specimen coverage or a manual visual QA checklist for orb, card, composer, InfoPanel, marker, bloom, popup selector, and reduced-motion states",
-        "Run the normal extension dev loop and inspect Classic and Signal on real pages from both popup and webpage InfoPanel entry points",
+        "Run the theme QA checklist across Classic and Signal on real pages from both popup and webpage InfoPanel entry points",
+        "Record any contrast, marker readability, bloom, reduced-motion, or density issues before changing more theme runtime behavior",
         "Progressively replace the post-hoc CSS override layer with direct token consumption in component styles",
-        "Extract UI/runtime/surface modules from content.tsx only at behavior-preserving seams that clarify ownership"
+        "Keep richer social or chat-room theme customization deferred until the page-bound Lens layer is stable"
       ],
-      "lastWorkedAt": "2026-08-07",
+      "lastWorkedAt": "2026-08-09",
       "scope": [
         "Core theme contract",
         "Extension CSS token extraction",
@@ -286,13 +286,14 @@
         {
           "id": "specimen",
           "title": "Specimen coverage",
-          "status": "now",
-          "updatedAt": "2026-08-06"
+          "status": "done",
+          "updatedAt": "2026-08-09"
         },
         {
           "id": "qa",
           "title": "Visual QA",
-          "status": "planned"
+          "status": "now",
+          "updatedAt": "2026-08-09"
         }
       ],
       "updates": [
@@ -315,6 +316,11 @@
           "date": "2026-08-07",
           "kind": "implementation",
           "text": "Merged theme switching into main and added the webpage InfoPanel UI skin switcher, so Classic and Signal can be changed from the page overlay as well as the extension popup."
+        },
+        {
+          "date": "2026-08-09",
+          "kind": "qa",
+          "text": "Added a focused theme specimen/manual QA checklist and kept richer social theme customization deferred so the page-bound Lens layer remains quiet."
         }
       ],
       "links": [
@@ -323,7 +329,7 @@
           "href": "./technical/theme-system-design.md"
         }
       ],
-      "updatedAt": "2026-08-07"
+      "updatedAt": "2026-08-09"
     },
     {
       "id": "operator-console",
@@ -333,7 +339,7 @@
       "progress": 32,
       "currentStage": "First-pass console implemented",
       "summary": "Turn the current server admin/test page into a small operator console for reviewing Lens cards, reports, pages, users, and health without direct database edits.",
-      "why": "Before inviting more beta users, operators need a product-shaped moderation and diagnostics surface that preserves Lumen's page-bound Lens center and avoids unsafe raw SQLite editing.",
+      "why": "Before inviting more beta users, operators need a product-shaped moderation and diagnostics surface that preserves lumen's page-bound Lens center and avoids unsafe raw SQLite editing.",
       "resumePoint": "First-pass Operator Console is implemented with operator-only read endpoints for Lenses, Pages, Users, and Analytics, plus a server-served console shell for Reports, Lenses, Pages, Users, Insights, and Status. Continue by hardening moderation workflow details, adding audit logging, then defining durable analytics events for impressions, opens, dwell, ref clicks, and anchor health.",
       "nextActions": [
         "Harden report review and Lens delete flows with clearer notes and confirmation states",
@@ -344,7 +350,7 @@
       ],
       "lastWorkedAt": "2026-08-06",
       "scope": [
-        "Operator-only web console served by the Lumen server",
+        "Operator-only web console served by the lumen server",
         "Reports queue with reviewed and dismissed workflow",
         "Lens search and detail views for body, URL, author, anonymity flag, tags, refs, reactions, reports, and anchor JSON",
         "Page/room view for all Lens on a canonical page",
@@ -364,7 +370,7 @@
         "Visible AI-authored moderation decisions",
         "Atlas or knowledge graph UI",
         "Editing user-authored Lens body text",
-        "Cross-site tracking beyond what is needed for Lumen operator diagnostics"
+        "Cross-site tracking beyond what is needed for lumen operator diagnostics"
       ],
       "stages": [
         {
@@ -453,12 +459,12 @@
         {
           "date": "2026-08-06",
           "kind": "planning",
-          "text": "Reviewed AGENTS.md routing, docs/project-status.md, Roadmap Studio guidance, server moderation routes, and the existing public admin/test page. The accepted direction is a Lumen Operator Console: operator-only Reports, Lenses, Pages, Users, Status, and audit workflows, with all writes routed through server APIs rather than direct SQLite editing."
+          "text": "Reviewed AGENTS.md routing, docs/project-status.md, Roadmap Studio guidance, server moderation routes, and the existing public admin/test page. The accepted direction is a lumen Operator Console: operator-only Reports, Lenses, Pages, Users, Status, and audit workflows, with all writes routed through server APIs rather than direct SQLite editing."
         },
         {
           "date": "2026-08-06",
           "kind": "planning",
-          "text": "Expanded the Operator Console roadmap into an implementation plan covering analytics events, Lens semantic text, embedding inputs, room-level clustering, cluster review, cross-page cluster candidates, graph persistence, and Atlas candidate promotion. The design remains internal/operator-only and avoids public rankings, reputation, default AI moderation, or user-visible Atlas UI in v2."
+          "text": "Expanded the Operator Console roadmap into an implementation plan covering analytics events, Lens semantic text, embedding inputs, room-level clustering, cluster review, cross-page cluster candidates, graph persistence, and Atlas candidate promotion. The design remains internal/operator-only and avoids public rankings, reputation, default AI moderation, or user-visible Atlas UI in current beta."
         },
         {
           "date": "2026-08-06",
@@ -744,7 +750,7 @@
         {
           "date": "2026-08-08",
           "kind": "verification",
-          "text": "Continued phase 12 with a real unpacked-extension runtime pass in Playwright Chromium. Fixed the CRXJS content-script loader contract by exporting onExecute from the bootstrap-only content entry, and fixed initial host reading-mode application by loading readingMode during bootContentRuntime. Verified #lumen-root injection, open Shadow DOM, Lumen isolated execution context, no-token overlay rendering, no runtime errors, stored Signal theme and Full reading mode application, and same-tab navigation survival. Authenticated publish/reaction/report/re-anchor/Companion smoke remains the final gate."
+          "text": "Continued phase 12 with a real unpacked-extension runtime pass in Playwright Chromium. Fixed the CRXJS content-script loader contract by exporting onExecute from the bootstrap-only content entry, and fixed initial host reading-mode application by loading readingMode during bootContentRuntime. Verified #lumen-root injection, open Shadow DOM, lumen isolated execution context, no-token overlay rendering, no runtime errors, stored Signal theme and Full reading mode application, and same-tab navigation survival. Authenticated publish/reaction/report/re-anchor/Companion smoke remains the final gate."
         },
         {
           "date": "2026-08-08",
@@ -875,20 +881,71 @@
       "updatedAt": "2026-07-27"
     },
     {
+      "id": "social-theme-customization",
+      "title": "Social Theme Customization",
+      "status": "deferred",
+      "phase": "Future Social Layer",
+      "progress": 0,
+      "currentStage": "Deferred",
+      "summary": "Explore richer visual customization for Companion, chat, and future Lounge surfaces without making the page-bound Lens reader layer louder.",
+      "why": "Chat spaces can carry more personality than the quiet webpage overlay, but the current beta should first stabilize page-bound Lens participation and restrained reader themes.",
+      "resumePoint": "Deferred after theme-system discussion. Preserve the split: Reader Theme stays quiet for webpage markers/cards; future Social Theme may customize chat surfaces only after current beta stability.",
+      "nextActions": [],
+      "lastWorkedAt": "2026-08-09",
+      "scope": [
+        "Future Companion and Lounge chat surface styling",
+        "Room-level social ambience and chat bubble treatment",
+        "Stronger but bounded social motion presets",
+        "A separate social theme contract from the reader theme contract"
+      ],
+      "outOfScope": [
+        "Changing page-bound Lens reader behavior in current beta",
+        "User-authored arbitrary CSS or JavaScript",
+        "Theme choices that override reading modes or accessibility preferences",
+        "Public theme marketplace before core participation is stable"
+      ],
+      "stages": [
+        {
+          "id": "defer",
+          "title": "Defer until social layer is reopened",
+          "status": "now",
+          "updatedAt": "2026-08-09"
+        }
+      ],
+      "updates": [
+        {
+          "date": "2026-08-09",
+          "kind": "decision",
+          "text": "Recorded richer chat/social theme customization as deferred. Reader themes should stay quiet; social surfaces may be more expressive later, but this is not part of current theme-system completion."
+        }
+      ],
+      "links": [
+        {
+          "label": "Theme system",
+          "href": "./features/theme-system.md"
+        },
+        {
+          "label": "Persistent Lounge design",
+          "href": "./product/persistent-lounge-design.md"
+        }
+      ],
+      "updatedAt": "2026-08-09"
+    },
+    {
       "id": "persistent-lounge",
       "title": "Persistent Lounge",
       "status": "deferred",
       "phase": "Future Ecosystem",
       "progress": 0,
       "currentStage": "Deferred",
-      "summary": "A durable social space may exist later, but page-bound Lens cards remain the v2 center.",
+      "summary": "A durable social space may exist later, but page-bound Lens cards remain the current beta center.",
       "why": "Durable Lounge history could compete with Lens as the page memory before the core participation loop is validated.",
       "scope": [
         "Keep product thinking available",
         "Revisit only after page Lens participation is stable"
       ],
       "outOfScope": [
-        "Durable Lounge chat in v2",
+        "Durable Lounge chat in current beta",
         "Replacing Lens cards as page memory"
       ],
       "stages": [],
@@ -908,11 +965,11 @@
       "phase": "Future Ecosystem",
       "progress": 0,
       "currentStage": "Deferred",
-      "summary": "Atlas remains a long-term ecosystem direction, not a visible Lumen v2 UI surface.",
-      "why": "v2 should validate contextual Lens participation before introducing knowledge graph interfaces.",
+      "summary": "Atlas remains a long-term ecosystem direction, not a visible lumen UI surface.",
+      "why": "current beta should validate contextual Lens participation before introducing knowledge graph interfaces.",
       "scope": [
         "Keep Lens data compatible with future node candidates",
-        "Avoid exposing graph UI in v2"
+        "Avoid exposing graph UI in current beta"
       ],
       "outOfScope": [
         "Knowledge graph UI",
