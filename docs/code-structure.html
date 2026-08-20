@@ -1,0 +1,784 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>lumen code structure</title>
+    <style>
+      :root {
+        color: #201629;
+        background: #fffdf8;
+        font-family: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+        --ink: #201629;
+        --muted: #6b6172;
+        --line: rgba(74, 26, 122, 0.16);
+        --panel: #ffffff;
+        --soft: #fff6e8;
+        --primary: #4a1a7a;
+        --accent: #d97706;
+        --green: #166534;
+        --red: #a23b3b;
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      body {
+        margin: 0;
+        line-height: 1.55;
+      }
+
+      a {
+        color: var(--primary);
+        text-decoration-color: rgba(74, 26, 122, 0.28);
+        text-underline-offset: 4px;
+      }
+
+      header {
+        border-bottom: 1px solid var(--line);
+        background: linear-gradient(180deg, #fffdf8 0%, #fff8ed 100%);
+      }
+
+      .wrap {
+        width: min(1180px, calc(100% - 40px));
+        margin: 0 auto;
+      }
+
+      .hero {
+        display: grid;
+        grid-template-columns: minmax(0, 1.05fr) minmax(320px, 0.95fr);
+        gap: 36px;
+        align-items: end;
+        padding: 64px 0 42px;
+      }
+
+      .eyebrow {
+        margin: 0 0 12px;
+        color: var(--accent);
+        font-size: 13px;
+        font-weight: 800;
+        letter-spacing: 0;
+        text-transform: uppercase;
+      }
+
+      h1 {
+        max-width: 760px;
+        margin: 0;
+        color: var(--primary);
+        font-size: clamp(36px, 7vw, 72px);
+        line-height: 0.98;
+        letter-spacing: 0;
+      }
+
+      .lead {
+        max-width: 720px;
+        margin: 20px 0 0;
+        color: #44364f;
+        font-size: 18px;
+      }
+
+      .hero-card,
+      .card,
+      .module,
+      .flow,
+      .note {
+        border: 1px solid var(--line);
+        border-radius: 8px;
+        background: var(--panel);
+        box-shadow: 0 18px 44px rgba(74, 26, 122, 0.07);
+      }
+
+      .hero-card {
+        padding: 18px;
+      }
+
+      .metric-grid {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 10px;
+      }
+
+      .metric {
+        min-height: 92px;
+        padding: 14px;
+        border-radius: 8px;
+        background: #fffaf2;
+        border: 1px solid rgba(217, 119, 6, 0.14);
+      }
+
+      .metric b {
+        display: block;
+        color: var(--ink);
+        font-size: 24px;
+        line-height: 1.1;
+      }
+
+      .metric span {
+        display: block;
+        margin-top: 6px;
+        color: var(--muted);
+        font-size: 13px;
+      }
+
+      nav {
+        position: sticky;
+        top: 0;
+        z-index: 10;
+        border-bottom: 1px solid var(--line);
+        background: rgba(255, 253, 248, 0.92);
+        backdrop-filter: blur(12px);
+      }
+
+      nav .wrap {
+        display: flex;
+        gap: 10px;
+        overflow-x: auto;
+        padding: 10px 0;
+      }
+
+      nav a {
+        display: inline-flex;
+        align-items: center;
+        min-height: 34px;
+        padding: 0 12px;
+        border: 1px solid transparent;
+        border-radius: 8px;
+        color: var(--muted);
+        font-size: 13px;
+        font-weight: 700;
+        text-decoration: none;
+        white-space: nowrap;
+      }
+
+      nav a:hover {
+        border-color: var(--line);
+        color: var(--primary);
+        background: #ffffff;
+      }
+
+      main {
+        padding: 42px 0 80px;
+      }
+
+      section {
+        margin-top: 44px;
+      }
+
+      section:first-child {
+        margin-top: 0;
+      }
+
+      h2 {
+        margin: 0 0 14px;
+        color: var(--ink);
+        font-size: 28px;
+        line-height: 1.15;
+        letter-spacing: 0;
+      }
+
+      h3 {
+        margin: 0 0 8px;
+        color: var(--primary);
+        font-size: 17px;
+        letter-spacing: 0;
+      }
+
+      p {
+        margin: 0;
+        color: var(--muted);
+      }
+
+      code {
+        padding: 1px 5px;
+        border-radius: 5px;
+        background: rgba(74, 26, 122, 0.08);
+        color: #35114f;
+        font-family: ui-monospace, SFMono-Regular, Consolas, "Liberation Mono", monospace;
+        font-size: 0.92em;
+      }
+
+      .grid {
+        display: grid;
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        gap: 14px;
+      }
+
+      .grid.two {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+      }
+
+      .card,
+      .module,
+      .note {
+        padding: 18px;
+      }
+
+      .module {
+        display: flex;
+        flex-direction: column;
+        min-height: 240px;
+      }
+
+      .module .tag {
+        align-self: flex-start;
+      }
+
+      .tag-row {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+        margin-top: 14px;
+      }
+
+      .tag {
+        display: inline-flex;
+        align-items: center;
+        min-height: 26px;
+        padding: 0 9px;
+        border-radius: 999px;
+        border: 1px solid rgba(74, 26, 122, 0.16);
+        background: #fffaf2;
+        color: #4f3f59;
+        font-size: 12px;
+        font-weight: 700;
+      }
+
+      .tag.good {
+        border-color: rgba(22, 101, 52, 0.18);
+        color: var(--green);
+        background: #f2fbf5;
+      }
+
+      .tag.warn {
+        border-color: rgba(217, 119, 6, 0.22);
+        color: #92400e;
+        background: #fff7ed;
+      }
+
+      .tag.risk {
+        border-color: rgba(162, 59, 59, 0.18);
+        color: var(--red);
+        background: #fff5f5;
+      }
+
+      .tree {
+        margin: 0;
+        padding: 18px;
+        overflow-x: auto;
+        border-radius: 8px;
+        border: 1px solid var(--line);
+        background: #201629;
+        color: #fff8ed;
+        font-family: ui-monospace, SFMono-Regular, Consolas, "Liberation Mono", monospace;
+        font-size: 13px;
+        line-height: 1.5;
+      }
+
+      .flow {
+        padding: 18px;
+      }
+
+      .flow-row {
+        display: grid;
+        grid-template-columns: repeat(5, minmax(130px, 1fr));
+        gap: 10px;
+      }
+
+      .flow-box {
+        position: relative;
+        min-height: 92px;
+        padding: 12px;
+        border: 1px solid rgba(74, 26, 122, 0.18);
+        border-radius: 8px;
+        background: #fffaf2;
+      }
+
+      .flow-box:not(:last-child)::after {
+        content: "";
+        position: absolute;
+        top: 50%;
+        right: -10px;
+        width: 10px;
+        border-top: 2px solid rgba(217, 119, 6, 0.45);
+      }
+
+      .flow-box strong {
+        display: block;
+        color: var(--ink);
+        font-size: 14px;
+      }
+
+      .flow-box span {
+        display: block;
+        margin-top: 6px;
+        color: var(--muted);
+        font-size: 12px;
+      }
+
+      table {
+        width: 100%;
+        border-collapse: collapse;
+        overflow: hidden;
+        border: 1px solid var(--line);
+        border-radius: 8px;
+        background: #ffffff;
+      }
+
+      th,
+      td {
+        padding: 12px 14px;
+        border-bottom: 1px solid var(--line);
+        text-align: left;
+        vertical-align: top;
+      }
+
+      th {
+        color: var(--primary);
+        background: #fff8ed;
+        font-size: 13px;
+      }
+
+      td {
+        color: var(--muted);
+        font-size: 14px;
+      }
+
+      tr:last-child td {
+        border-bottom: 0;
+      }
+
+      .split {
+        display: grid;
+        grid-template-columns: 0.92fr 1.08fr;
+        gap: 16px;
+      }
+
+      .callout {
+        border-left: 4px solid var(--accent);
+        background: #fff8ed;
+      }
+
+      .footer {
+        margin-top: 56px;
+        padding-top: 18px;
+        border-top: 1px solid var(--line);
+        color: var(--muted);
+        font-size: 13px;
+      }
+
+      @media (max-width: 900px) {
+        .hero,
+        .grid,
+        .grid.two,
+        .split {
+          grid-template-columns: 1fr;
+        }
+
+        .flow-row {
+          grid-template-columns: 1fr;
+        }
+
+        .flow-box:not(:last-child)::after {
+          top: auto;
+          right: auto;
+          bottom: -10px;
+          left: 22px;
+          width: 0;
+          height: 10px;
+          border-top: 0;
+          border-left: 2px solid rgba(217, 119, 6, 0.45);
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <header>
+      <div class="wrap hero">
+        <div>
+          <p class="eyebrow">SSLens / lumen current code map</p>
+          <h1>代码结构与职责边界梳理</h1>
+          <p class="lead">
+            这页按当前仓库状态整理，不是历史规划快照。重点是说明每个目录为什么存在、运行时如何串起来，以及哪些文件仍然承担多种变化原因。
+          </p>
+          <div class="tag-row">
+            <span class="tag good">Content runtime modularized</span>
+            <span class="tag warn">Server routes still dense</span>
+            <span class="tag">MV3 + Bun + SQLite</span>
+          </div>
+        </div>
+        <aside class="hero-card">
+          <div class="metric-grid">
+            <div class="metric">
+              <b>2</b>
+              <span>主要应用：Chrome 扩展与 Bun 后端</span>
+            </div>
+            <div class="metric">
+              <b>3</b>
+              <span>共享包：schema、anchoring、url</span>
+            </div>
+            <div class="metric">
+              <b>11</b>
+              <span>content runtime 入口行数，已降为 bootstrap only</span>
+            </div>
+            <div class="metric">
+              <b>3</b>
+              <span>当前审计热点：Overlay、routes、styles</span>
+            </div>
+          </div>
+        </aside>
+      </div>
+    </header>
+
+    <nav>
+      <div class="wrap">
+        <a href="#map">系统地图</a>
+        <a href="#flow">运行链路</a>
+        <a href="#extension">扩展结构</a>
+        <a href="#server">后端结构</a>
+        <a href="#packages">共享包</a>
+        <a href="#hotspots">审计热点</a>
+        <a href="#tree">目录树</a>
+      </div>
+    </nav>
+
+    <main class="wrap">
+      <section id="map">
+        <h2>系统地图</h2>
+        <div class="grid">
+          <article class="module">
+            <span class="tag good">apps/extension</span>
+            <h3>页面上的 Lens 体验</h3>
+            <p>
+              MV3 扩展负责注入 Shadow DOM overlay、读取用户设置、恢复锚点、渲染 CSS Custom Highlight、创建 Lens、处理阅读模式、Companion 和主题切换。
+            </p>
+            <div class="tag-row">
+              <span class="tag">React</span>
+              <span class="tag">content script</span>
+              <span class="tag">service worker bridge</span>
+            </div>
+          </article>
+          <article class="module">
+            <span class="tag warn">apps/server</span>
+            <h3>API、WebSocket 与持久化</h3>
+            <p>
+              Bun 单进程提供 REST API、WebSocket room、SQLite schema 和 operator console。Lens 是持久层核心，Companion 事件保持内存态。
+            </p>
+            <div class="tag-row">
+              <span class="tag">Bun.serve</span>
+              <span class="tag">SQLite</span>
+              <span class="tag">presence</span>
+            </div>
+          </article>
+          <article class="module">
+            <span class="tag good">packages/*</span>
+            <h3>跨端共享的低层能力</h3>
+            <p>
+              共享包提供边界清晰的领域模型、URL canonicalization、roomId 计算、W3C-style anchoring 与 fuzzy quote recovery。
+            </p>
+            <div class="tag-row">
+              <span class="tag">schema</span>
+              <span class="tag">url</span>
+              <span class="tag">anchoring</span>
+            </div>
+          </article>
+        </div>
+      </section>
+
+      <section id="flow">
+        <h2>核心运行链路</h2>
+        <div class="flow">
+          <div class="flow-row">
+            <div class="flow-box">
+              <strong>页面注入</strong>
+              <span><code>content.tsx</code> 调用 <code>bootContentRuntime</code>。</span>
+            </div>
+            <div class="flow-box">
+              <strong>房间解析</strong>
+              <span><code>bootstrap.tsx</code> 根据当前 URL 和 canonical link 计算 <code>roomId</code>。</span>
+            </div>
+            <div class="flow-box">
+              <strong>Overlay 编排</strong>
+              <span><code>Overlay.tsx</code> 组合 settings、lens-room、surface、ws、companion、UI。</span>
+            </div>
+            <div class="flow-box">
+              <strong>Worker 代理</strong>
+              <span><code>service-worker.ts</code> 代 content script 发 API 和 WebSocket。</span>
+            </div>
+            <div class="flow-box">
+              <strong>Server room</strong>
+              <span><code>routes.ts</code> 写入 SQLite，<code>ws.ts</code> 广播 room 事件。</span>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section id="extension">
+        <h2>扩展结构</h2>
+        <div class="split">
+          <div class="card">
+            <h3>职责边界</h3>
+            <table>
+              <thead>
+                <tr>
+                  <th>区域</th>
+                  <th>职责</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td><code>src/content.tsx</code></td>
+                  <td>content script 入口。当前只负责启动 runtime，并导出 CRXJS production loader 需要的 <code>onExecute</code>。</td>
+                </tr>
+                <tr>
+                  <td><code>src/content/bootstrap.tsx</code></td>
+                  <td>Shadow DOM mount、CSS 注入、主题初值、reading mode 初值、SPA route refresh。</td>
+                </tr>
+                <tr>
+                  <td><code>src/content/Overlay.tsx</code></td>
+                  <td>组合层。它连接所有 hook 和组件，仍是 content runtime 的主要协调者。</td>
+                </tr>
+                <tr>
+                  <td><code>src/service-worker.ts</code></td>
+                  <td>MV3 后台代理：HTTP API message bridge、WebSocket port bridge、heartbeat。</td>
+                </tr>
+                <tr>
+                  <td><code>src/popup.tsx</code></td>
+                  <td>扩展 popup：注册、token、默认 reading mode、站点开关、主题控制。</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+
+          <div class="card">
+            <h3>Content runtime 模块</h3>
+            <table>
+              <thead>
+                <tr>
+                  <th>模块</th>
+                  <th>单一职责</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td><code>settings/</code></td>
+                  <td>从 storage 读取 token、用户、reading mode、theme、hidden 状态，并提供变更命令。</td>
+                </tr>
+                <tr>
+                  <td><code>lens-room/</code></td>
+                  <td>Lens 列表状态、创建、反应、举报、re-anchor、active stack、anchor registry。</td>
+                </tr>
+                <tr>
+                  <td><code>surface/</code></td>
+                  <td>当前网页表面的选择、marker highlight、marker click、layout tick、cluster heat。</td>
+                </tr>
+                <tr>
+                  <td><code>ws/</code></td>
+                  <td>content script 到 service worker 的 WebSocket bridge，以及 room event 分发。</td>
+                </tr>
+                <tr>
+                  <td><code>companion/</code></td>
+                  <td>Companion presence、emoji、chat 的本地状态和事件模型。</td>
+                </tr>
+                <tr>
+                  <td><code>components/</code></td>
+                  <td>纯 UI 组件：Orb、InfoPanel、Composer、LensCard、LensPanel、CompanionChat 等。</td>
+                </tr>
+                <tr>
+                  <td><code>bloom/</code>、<code>visibility/</code></td>
+                  <td>视觉 bloom runtime 与隐藏状态下的 runtime reset 协调。</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+
+      <section id="server">
+        <h2>后端结构</h2>
+        <div class="grid two">
+          <article class="card">
+            <h3>API 侧</h3>
+            <p>
+              <code>index.ts</code> 是 Bun.serve router 与 process lifecycle，<code>routes.ts</code> 承担 JSON response、authz 检查、请求解析、SQLite query、row mapper、operator analytics 和 WebSocket publish。
+            </p>
+            <div class="tag-row">
+              <span class="tag warn">routes.ts 约 31KB</span>
+              <span class="tag">REST</span>
+              <span class="tag">admin read model</span>
+            </div>
+          </article>
+          <article class="card">
+            <h3>WebSocket 侧</h3>
+            <p>
+              <code>ws.ts</code> 管理 bearer token upgrade、room subscription、presence refcount、Companion presence、短 chat history、emoji/chat rate limit 和内存清理。
+            </p>
+            <div class="tag-row">
+              <span class="tag warn">presence + companion + throttling</span>
+              <span class="tag">in-memory</span>
+              <span class="tag">room publish</span>
+            </div>
+          </article>
+          <article class="card">
+            <h3>持久化与安全</h3>
+            <p>
+              <code>db.ts</code> 打开 SQLite 并应用 schema/migrations；<code>auth.ts</code> 负责 EdDSA bearer token；<code>rate-limit.ts</code> 提供轻量内存限流。
+            </p>
+            <div class="tag-row">
+              <span class="tag good">small files</span>
+              <span class="tag">SQLite</span>
+              <span class="tag">EdDSA</span>
+            </div>
+          </article>
+          <article class="card">
+            <h3>Operator console</h3>
+            <p>
+              <code>apps/server/public/index.html</code> 是静态 operator UI，读取 <code>/api/admin/*</code>、<code>/api/status</code> 等接口，不属于扩展 runtime。
+            </p>
+            <div class="tag-row">
+              <span class="tag">static HTML</span>
+              <span class="tag">reports</span>
+              <span class="tag">insights</span>
+            </div>
+          </article>
+        </div>
+      </section>
+
+      <section id="packages">
+        <h2>共享包</h2>
+        <div class="grid">
+          <article class="module">
+            <span class="tag good">packages/schema</span>
+            <h3>领域类型与验证</h3>
+            <p>
+              定义 Lens、anchor、reaction、reading mode、theme 等共享类型，同时提供运行时 validation。server 与 extension 都应依赖这里，而不是各自复制协议。
+            </p>
+          </article>
+          <article class="module">
+            <span class="tag good">packages/url</span>
+            <h3>URL canonicalization</h3>
+            <p>
+              统一 canonical URL 与 roomId 计算。server 用它校验 create Lens 的 <code>url</code> 和 <code>roomId</code> 是否一致，extension 用它进入同一个 page room。
+            </p>
+          </article>
+          <article class="module">
+            <span class="tag good">packages/anchoring</span>
+            <h3>锚点创建与恢复</h3>
+            <p>
+              W3C selector 风格的 anchoring 实现，包含 position、quote、fuzzy recovery。它是 surface 层的底层能力，不依赖 React、Chrome 或 server。
+            </p>
+          </article>
+        </div>
+      </section>
+
+      <section id="hotspots">
+        <h2>职责审计热点</h2>
+        <table>
+          <thead>
+            <tr>
+              <th>热点</th>
+              <th>当前混合点</th>
+              <th>建议边界</th>
+              <th>优先级</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td><code>apps/extension/src/content/Overlay.tsx</code></td>
+              <td>组合 settings、Lens room、Companion、surface、selection、card open、panel state、bloom trigger。</td>
+              <td>保持为 composition layer，但可继续把 re-anchor UI state、active card navigation、panel command wiring 拆成小 hook。</td>
+              <td><span class="tag warn">中</span></td>
+            </tr>
+            <tr>
+              <td><code>apps/server/src/routes.ts</code></td>
+              <td>请求解析、SQL query、row mapper、权限、业务动作、admin analytics 全在同一文件。</td>
+              <td>按 domain 拆成 <code>lenses</code>、<code>reactions</code>、<code>reports</code>、<code>admin</code>，保留统一 JSON/error helpers。</td>
+              <td><span class="tag risk">高</span></td>
+            </tr>
+            <tr>
+              <td><code>apps/server/src/ws.ts</code></td>
+              <td>presence、Companion presence、chat history、emoji validation、rate limit、Bun websocket lifecycle 混在一起。</td>
+              <td>抽出纯内存模型与 protocol validation，Bun websocket handler 只负责 IO 编排。</td>
+              <td><span class="tag warn">中</span></td>
+            </tr>
+            <tr>
+              <td><code>apps/extension/src/styles.css</code></td>
+              <td>全量 overlay、panel、card、companion、theme、animation 样式集中在约 49KB 文件。</td>
+              <td>若后续样式继续增长，可按 component 或 runtime layer 分 CSS modules/inline blocks；目前不建议为了行数机械拆分。</td>
+              <td><span class="tag">低</span></td>
+            </tr>
+            <tr>
+              <td><code>apps/extension/src/service-worker.ts</code></td>
+              <td>API proxy 与 WS bridge 共存，但都属于 MV3 后台平台适配。</td>
+              <td>当前可接受；如果增加更多后台能力，再拆 <code>api-bridge</code> 与 <code>ws-bridge</code>。</td>
+              <td><span class="tag">低</span></td>
+            </tr>
+          </tbody>
+        </table>
+      </section>
+
+      <section id="tree">
+        <h2>当前目录树</h2>
+        <pre class="tree">E:/src/SSLens
+|-- apps/
+|   |-- extension/
+|   |   |-- manifest.json
+|   |   |-- popup.html
+|   |   |-- src/
+|   |   |   |-- content.tsx                  # content entry, bootstrap only
+|   |   |   |-- content/
+|   |   |   |   |-- bootstrap.tsx             # Shadow DOM mount, route refresh
+|   |   |   |   |-- Overlay.tsx               # runtime composition layer
+|   |   |   |   |-- bloom/                    # bloom runtime hook
+|   |   |   |   |-- browser/                  # browser/platform helpers
+|   |   |   |   |-- companion/                # companion state and events
+|   |   |   |   |-- components/               # overlay UI components
+|   |   |   |   |-- lens-room/                # Lens room state and commands
+|   |   |   |   |-- settings/                 # storage-backed overlay settings
+|   |   |   |   |-- surface/                  # webpage selection, markers, clusters
+|   |   |   |   |-- visibility/               # hidden-state reset coordinator
+|   |   |   |   `-- ws/                       # service-worker WS bridge
+|   |   |   |-- service-worker.ts            # MV3 API and WS bridge
+|   |   |   |-- shared/                      # API, storage, config, canonicalize
+|   |   |   |-- marker.ts                    # CSS Custom Highlight rendering
+|   |   |   |-- popup.tsx
+|   |   |   |-- refs.tsx
+|   |   |   |-- shapes.tsx
+|   |   |   |-- theme.ts
+|   |   |   `-- styles.css
+|   |   `-- public/icons/
+|   `-- server/
+|       |-- src/
+|       |   |-- index.ts                     # Bun.serve router and lifecycle
+|       |   |-- routes.ts                    # REST handlers and admin read models
+|       |   |-- ws.ts                        # room WS, presence, companion
+|       |   |-- db.ts                        # SQLite schema and migrations
+|       |   |-- auth.ts                      # EdDSA bearer token
+|       |   |-- rate-limit.ts
+|       |   `-- ulid.ts
+|       `-- public/                         # operator console and privacy page
+|-- packages/
+|   |-- schema/                             # shared types and validators
+|   |-- url/                                # canonical URL and roomId
+|   `-- anchoring/                          # W3C selectors and fuzzy recovery
+|-- docs/                                   # product, architecture, roadmap
+|-- scripts/                                # roadmap, deploy, keygen, invite CLIs
+|-- data/                                   # local runtime data
+`-- promos/                                 # standalone promo/demo HTML</pre>
+      </section>
+
+      <section>
+        <div class="note callout">
+          <h3>结论</h3>
+          <p>
+            当前 content runtime 的模块化已经明显落地，入口、设置、WebSocket、Companion、surface、Lens room 和 UI 基本分离。下一轮单一职责优化不应再从 content entry 下手，而应优先审计后端 <code>routes.ts</code> 与 <code>ws.ts</code>，再温和收窄 <code>Overlay.tsx</code> 的 composition 责任。
+          </p>
+        </div>
+      </section>
+
+      <p class="footer">
+        Generated from the current repository structure on 2026-08-20. This page is documentation only and does not change runtime behavior.
+      </p>
+    </main>
+  </body>
+</html>
