@@ -29,7 +29,7 @@ async function renderForCurrentPage(renderOverlay: (props: OverlayProps) => Reac
     canonical = canonicalizeUrl(url, documentCanonical);
     roomId = await roomIdFor(url, documentCanonical);
   } catch (err) {
-    console.warn("[Lumen] could not derive room from URL, aborting:", err);
+    console.warn("[lumen] could not derive room from URL, aborting:", err);
     return;
   }
 

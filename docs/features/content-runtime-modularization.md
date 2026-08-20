@@ -242,7 +242,7 @@ Captured before the first extraction pass on 2026-08-08:
     `readingMode` in `bootContentRuntime` instead of hardcoding `quiet`.
   - verified an unpacked HTTP beta build in Playwright Chromium on
     `https://example.com/`: the page gets a `#lumen-root` host, open Shadow DOM,
-    Lumen isolated execution context, no-token overlay text, and no runtime
+    lumen isolated execution context, no-token overlay text, and no runtime
     errors.
   - verified stored `signal` theme and `full` reading mode are applied to the
     host on same-tab navigation to `https://example.org/`.

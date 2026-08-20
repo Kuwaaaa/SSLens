@@ -30,7 +30,7 @@ export const LUMEN_THEMES: Record<LumenThemeId, LumenThemeProfile> = {
   classic: {
     id: "classic",
     label: "Classic",
-    description: "Soft purple and amber, matching Lumen's current card-and-bloom language.",
+    description: "Soft purple and amber, matching lumen's current card-and-bloom language.",
     marker: {
       primary: "#6b21a8",
       cluster2: "#b45309",

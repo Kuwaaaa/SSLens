@@ -1,17 +1,17 @@
-# Lumen v2 Architecture
+# lumen Architecture
 
 Date: 2026-04-26
-Status: Architecture decision record for v2
+Status: Architecture decision record for current beta
 
 ## 1. Why this doc exists
 
-The v1 prototype (now archived as a sibling) proved we could inject markers into real webpages. It did not prove anything about the actual product hypothesis: that an entertainment-substrate UGC layer makes long-tail web pages feel inhabited.
+The 0.x prototype (now archived as a sibling) proved we could inject markers into real webpages. It did not prove anything about the actual product hypothesis: that an entertainment-substrate UGC layer makes long-tail web pages feel inhabited.
 
-v2 is being rebuilt to validate that hypothesis with a small invite-only beta. This document captures the architectural decisions made before code is written, so future contributors (human or AI) do not have to re-derive them.
+current beta is being rebuilt to validate that hypothesis with a small invite-only beta. This document captures the architectural decisions made before code is written, so future contributors (human or AI) do not have to re-derive them.
 
 ## 2. North star
 
-The v2 MVP succeeds when, after ~4 weeks of free-form usage by the invited cohort:
+The current beta MVP succeeds when, after ~4 weeks of free-form usage by the invited cohort:
 
 - At least 3 invited users are still actively creating Lens (not just reacting) in week 4
 - At least one allowlisted page has accumulated a Lens layer with multiple authors and at least one inter-Lens reference
@@ -30,7 +30,7 @@ Everything in this architecture exists to support that accumulation. Anything th
 | Host | Hetzner CX22 | €4.5/mo for 2vCPU/4GB/40GB, 20TB traffic |
 | Auth | EdDSA-signed bearer token from handle/invite redemption | No accounts, no passwords |
 | Backup | Litestream → R2 | Streaming SQLite replication |
-| Extension framework | Vite + MV3 + React + TypeScript | Carry over from v1 |
+| Extension framework | Vite + MV3 + React + TypeScript | Carry over from 0.x |
 | WS client (extension) | partysocket | ~3KB reconnecting WS, MV3-safe |
 | Anchoring | `@lumen/anchoring` (W3C selectors + `approx-string-match`) | ~250 LOC owned in-tree, three-layer restore (position → quote → fuzzy) |
 | Highlight rendering | CSS Custom Highlight API | No DOM mutation, no React fights |
@@ -153,7 +153,7 @@ Current beta storage boundary:
 - Single Hetzner CX22 in Falkenstein/Helsinki
 - Caddyfile + systemd unit + Bun binary + SQLite file
 - Litestream as separate systemd unit
-- No Docker for v2 (one process, one file — Docker is overhead at this scale)
+- No Docker for current beta (one process, one file — Docker is overhead at this scale)
 - Fly.io is the graduation path if we outgrow one box
 
 ## 5. Extension
@@ -302,7 +302,7 @@ The Niconico-style ghost comments animating in on scroll were attractive in rese
 | GitHub login | Optional (P1) | `users.github_login` | as a badge |
 | Per-Lens `anonymous` flag | Optional | `lenses.anonymous` | toggles author display to "Anonymous" |
 
-Anonymity is **moderation-aware**: the server still knows who wrote each Lens. The privacy policy must state this. Anyone wanting unlinkable anonymity is the wrong audience for v2.
+Anonymity is **moderation-aware**: the server still knows who wrote each Lens. The privacy policy must state this. Anyone wanting unlinkable anonymity is the wrong audience for current beta.
 
 ## 9. Failure modes the architecture is designed against
 
@@ -318,7 +318,7 @@ Anonymity is **moderation-aware**: the server still knows who wrote each Lens. T
 | Bad actor in invite group | Token revocation table | `/admin/revoke <user>` invalidates all their tokens |
 | SQLite file loss | Litestream streaming replication | RPO ~10s; restore from R2 |
 
-## 10. What v2 explicitly will NOT build
+## 10. What current beta explicitly will NOT build
 
 In MVP scope:
 
@@ -331,17 +331,17 @@ In MVP scope:
 - Reputation system / karma / public leaderboards
 - Atlas / 3D showroom / Toy Project workshop
 - Browser app shell
-- Cross-browser packaging (Chrome only for v2)
+- Cross-browser packaging (Chrome only for current beta)
 - Public reputation voting / "merging PRs to canonical knowledge"
 - Real-time voice/video rooms
 - Mobile
 
-If a feature is here, it is **deferred until after the v2 hypothesis is validated**. A successful 4-week soak may justify some of these for v3; an unsuccessful one means the premise needs to change before any of these matter.
+If a feature is here, it is **deferred until after the current beta hypothesis is validated**. A successful 4-week soak may justify some of these for v3; an unsuccessful one means the premise needs to change before any of these matter.
 
 ## 11. File layout (planned)
 
 ```
-SStree/                            (currently SStree-v2, will be renamed)
+lumen/
 ├── CLAUDE.md                      onboarding for AI assistants
 ├── README.md
 ├── package.json                   workspace root
@@ -380,7 +380,7 @@ SStree/                            (currently SStree-v2, will be renamed)
 
 ## 13. Visual identity (extension)
 
-The product is for young developers; the visual goal is **rich when engaged, invisible when not**. Animations and geometric flourishes appear on Lumen elements (cards, markers, popovers) — *never* on the article body itself.
+The product is for young developers; the visual goal is **rich when engaged, invisible when not**. Animations and geometric flourishes appear on lumen elements (cards, markers, popovers) — *never* on the article body itself.
 
 ### 13.1 Palette
 

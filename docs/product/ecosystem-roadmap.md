@@ -3,7 +3,7 @@
 Date: 2026-05-05
 Status: System-level planning note
 
-This document defines how Lumen, Lens, Atlas, learning paths, and toy projects
+This document defines how lumen, Lens, Atlas, learning paths, and toy projects
 fit together. It does not replace the MVP plan or the current project status.
 It exists to keep future feature work pointed at the same larger system without
 prematurely building that system.
@@ -14,27 +14,27 @@ The larger idea from `docs/Chat.md` is that knowledge can be open-sourced beyond
 software. People should be able to use other people's observations, explanations,
 projects, and paths as lenses for seeing more interesting things in the world.
 
-Lumen v2 is the first narrow test of that idea:
+lumen is the first narrow test of that idea:
 
 > Can a real webpage become a place where people leave useful, playful,
 > contextual Lens cards for each other?
 
-If Lumen validates participation, the next system layer is Atlas: a place where
+If lumen validates participation, the next system layer is Atlas: a place where
 people weave learning paths toward toy projects, using Lens cards and other
 materials as raw nodes.
 
 ## 2. System Layers
 
-### Lumen
+### lumen
 
-Lumen is the perception layer.
+lumen is the perception layer.
 
 - It lives on real webpages.
 - It captures contextual Lens cards.
 - It makes a page feel inhabited over time.
 - It keeps reading solo by default and social presence opt-in.
 
-Lumen should stay light. It should not become a full knowledge graph UI, project
+lumen should stay light. It should not become a full knowledge graph UI, project
 management app, or learning platform inside the page.
 
 ### Lens
@@ -67,13 +67,13 @@ Detailed Lounge design lives in `docs/product/persistent-lounge-design.md`.
 
 Atlas is the path-weaving and project layer.
 
-It is not the v2 MVP. It should start only after Lumen shows that people create
-and return to Lens cards. Atlas should use Lumen's activity as one source of
-material, not replace Lumen's page-bound experience.
+It is not the current beta MVP. It should start only after lumen shows that people create
+and return to Lens cards. Atlas should use lumen's activity as one source of
+material, not replace lumen's page-bound experience.
 
 ## 3. Lens As Node Candidate
 
-The future hook from Lumen to Atlas should be:
+The future hook from lumen to Atlas should be:
 
 ```text
 Lens -> Node Candidate -> Atlas Node / Path
@@ -117,7 +117,7 @@ Avoid:
 
 - forcing every Lens into a rigid schema,
 - turning the composer into a knowledge-base editor too early,
-- exposing a graph interface in Lumen,
+- exposing a graph interface in lumen,
 - letting AI generate visible Lens by default.
 
 The product should feel like a social card layer. The system can quietly keep
@@ -210,7 +210,7 @@ group sharing projects and paths, not a formal class.
 
 Build now:
 
-- Lumen beta stability.
+- lumen beta stability.
 - Richer Lens rendering where it directly improves cards.
 - References that preserve future node hooks.
 - Room/canonical debugging and server reliability.
@@ -231,6 +231,6 @@ Do not build yet:
 - AI-authored public knowledge nodes,
 - durable Lounge chat as a knowledge archive.
 
-The current discipline remains: validate Lumen participation first. Atlas becomes
+The current discipline remains: validate lumen participation first. Atlas becomes
 worth building only if people actually create Lens that others want to read,
 reference, and build from.

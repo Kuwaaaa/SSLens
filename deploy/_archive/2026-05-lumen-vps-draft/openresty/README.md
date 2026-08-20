@@ -1,6 +1,6 @@
-# Lumen OpenResty Deployment
+# lumen OpenResty Deployment
 
-This directory stores the versioned OpenResty config templates for the Lumen VPS.
+This directory stores the versioned OpenResty config templates for the lumen VPS.
 The VPS still runs OpenResty from its normal install path:
 
 ```text
@@ -18,7 +18,7 @@ Collected on 2026-05-06:
 - PID file: `/usr/local/openresty/nginx/logs/nginx.pid`
 - config test: `nginx: configuration file /usr/local/openresty/nginx/conf/nginx.conf test is successful`
 - public entrypoint: port 80 on the VPS
-- upstream Lumen server: `127.0.0.1:3000`
+- upstream lumen server: `127.0.0.1:3000`
 
 OpenResty is not running in Docker in the current deployment. It is a host-level
 systemd service that proxies traffic into the Bun container.
@@ -54,7 +54,7 @@ and upstream.
 - `nginx.conf.example` is a full minimal main config that includes `conf.d/*.conf`.
 - `conf.d/00-websocket-map.conf` defines `$connection_upgrade` for WebSocket proxying.
 - `conf.d/proxy-headers.conf` defines common reverse-proxy headers.
-- `services/lumen.conf` is the Lumen HTTP + WebSocket reverse proxy server block.
+- `services/lumen.conf` is the lumen HTTP + WebSocket reverse proxy server block.
 
 If the current VPS `nginx.conf` already contains other useful config, do not
 blindly replace it. Prefer adding the `include conf.d/*.conf;` line inside its

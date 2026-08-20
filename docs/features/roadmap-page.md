@@ -21,7 +21,7 @@ project notebook.
 - Keep `docs/roadmap.json` as the local/static source of truth.
 - Add feature notes under `docs/features/`.
 - Generate `docs/roadmap.md` for fresh-context agents.
-- Keep Roadmap out of the Lumen cloud server.
+- Keep Roadmap out of the lumen cloud server.
 - Provide a local-only preview server.
 - Provide a local stdio MCP server.
 
@@ -31,19 +31,19 @@ project notebook.
 - External feedback voting.
 - Real-time agent event dashboard in this phase.
 - Dedicated stage/update/link CRUD until the local notebook loop is useful.
-- Lumen server routes, migrations, or cloud runtime for Roadmap.
+- lumen server routes, migrations, or cloud runtime for Roadmap.
 
 ## Current State
 
 Roadmap has a static HTML view, JSON snapshot, generated agent Markdown,
 feature notebook notes, a local-only preview server, and a local stdio MCP
-server. It has been removed from the Lumen server boundary.
+server. It has been removed from the lumen server boundary.
 
 ## Next Actions
 
 - Review roadmap wording in the browser.
 - Configure `bun run mcp:roadmap` in the MCP client that should read Roadmap.
-- Keep Lumen deployment free of Roadmap runtime.
+- Keep lumen deployment free of Roadmap runtime.
 
 ## Decisions
 

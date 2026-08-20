@@ -1,6 +1,6 @@
 # @lumen/anchoring
 
-Text anchoring for Lumen. Turn a `Range` into a serializable
+Text anchoring for lumen. Turn a `Range` into a serializable
 `LensAnchor` (W3C Web Annotation Data Model selectors); turn a
 `LensAnchor` back into a `Range` on the current DOM.
 

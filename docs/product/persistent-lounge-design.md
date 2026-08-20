@@ -5,7 +5,7 @@ Status: Draft v0.1
 
 ## 1. Why This Exists
 
-Current companion mode is page-bound: a user opts into live presence on the current webpage, then leaves when the page changes or the tab closes. This is the right default for Lumen because the product center is still the webpage and its accumulated Lens layer.
+Current companion mode is page-bound: a user opts into live presence on the current webpage, then leaves when the page changes or the tab closes. This is the right default for lumen because the product center is still the webpage and its accumulated Lens layer.
 
 However, there is a second social need that page companion does not cover:
 
@@ -13,11 +13,11 @@ However, there is a second social need that page companion does not cover:
 
 This is not the same as page companion. It is a persistent room, provisionally called **Lounge**. A Lounge lets a small group remain connected across page changes, while Lens cards remain attached to webpages.
 
-The product risk is real: if Lounge becomes too strong, Lumen turns into a generic chat app and the page/Lens layer becomes secondary. The design must make Lounge supportive, not central.
+The product risk is real: if Lounge becomes too strong, lumen turns into a generic chat app and the page/Lens layer becomes secondary. The design must make Lounge supportive, not central.
 
 ## 2. Product Boundary
 
-Lumen has three social layers, ordered by importance:
+lumen has three social layers, ordered by importance:
 
 1. **Lens layer**: durable, page-bound, contextual, user-created cards. This is the product center.
 2. **Page companion**: ephemeral, page-bound, opt-in live presence for people reading the same page right now.
@@ -29,7 +29,7 @@ Lounge should never replace Lens as the durable memory of a page. If a conversat
 
 ### 3.1 Lens Remains Primary
 
-The main surface on a webpage is still the Lens layer. Lounge should not become the first thing a user sees, the biggest thing on the screen, or the default mode of using Lumen.
+The main surface on a webpage is still the Lens layer. Lounge should not become the first thing a user sees, the biggest thing on the screen, or the default mode of using lumen.
 
 ### 3.2 Explicit Entry
 
@@ -155,7 +155,7 @@ No large member list in MVP. No avatars required. Handles are enough.
 
 ### 6.4 Share Page To Lounge
 
-Manual page sharing is the key bridge from Lounge back to Lumen.
+Manual page sharing is the key bridge from Lounge back to lumen.
 
 Payload should include:
 
@@ -168,7 +168,7 @@ UI rendering:
 
 - A compact link card in Lounge chat.
 - Clicking opens the page.
-- If Lumen has Lens on that page, future versions may show `N Lens here`.
+- If lumen has Lens on that page, future versions may show `N Lens here`.
 
 This gives Lounge a reason to exist without turning it into automatic browsing telemetry.
 
@@ -273,7 +273,7 @@ Storage:
 
 ## 12. Decision Recommendation
 
-Build Lounge only after the current page-bound Lumen MVP is stable enough for small-cohort use.
+Build Lounge only after the current page-bound lumen MVP is stable enough for small-cohort use.
 
 When built, keep it small:
 

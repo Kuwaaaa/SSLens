@@ -4,7 +4,7 @@ Date: 2026-07-28
 Status: Product and architecture design
 
 This document reframes Roadmap Studio as a reusable project tool for a solo
-developer working with coding agents. Lumen can be the first host project, but
+developer working with coding agents. lumen can be the first host project, but
 the system should be separable and useful across other projects and domains.
 
 ## 1. User Goal
@@ -17,7 +17,7 @@ The system should support three goals:
 1. Record all features and their live state.
 2. Make every feature agent-friendly: a fresh-context agent can read the
    feature, understand the boundary, and update the roadmap while developing.
-3. Stay reusable across projects, not hard-wired to Lumen.
+3. Stay reusable across projects, not hard-wired to lumen.
 
 The shortest product statement:
 
@@ -568,7 +568,7 @@ Feature updates must preserve scope boundaries:
 - no product center is changed silently,
 - no agent expands allowed areas just because it is convenient.
 
-## 9. Reuse Outside Lumen
+## 9. Reuse Outside lumen
 
 Keep the core schema generic:
 
@@ -584,7 +584,7 @@ handoff
 artifact
 ```
 
-Keep Lumen-specific product rules in project configuration:
+Keep lumen-specific product rules in project configuration:
 
 ```text
 project_config
@@ -638,7 +638,7 @@ From human-agent collaboration research:
 
 ## 11. P0 Build Plan
 
-1. Keep Lumen as the first project using the local/static roadmap files.
+1. Keep lumen as the first project using the local/static roadmap files.
 2. Add generated `docs/roadmap.md`.
 3. Add feature notes under `docs/features/`.
 4. Add a local-only roadmap preview server.

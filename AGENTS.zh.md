@@ -1,6 +1,6 @@
-# AGENTS.zh.md - Lumen v2 AI 助手入口
+# AGENTS.zh.md - lumen AI 助手入口
 
-你正在处理 **Lumen v2**：一个浏览器扩展和小型后端，用来在真实网页上留下上下文 Lens 卡片。先读这份文件。它是 AI 入口和阅读路由，不是当前实现快照。
+你正在处理 **lumen**：一个浏览器扩展和小型后端，用来在真实网页上留下上下文 Lens 卡片。先读这份文件。它是 AI 入口和阅读路由，不是当前实现快照。
 
 ## 权威来源
 
@@ -13,23 +13,23 @@
 
 ## 产品中心
 
-Lumen 通过持久、上下文相关的 Lens 卡片，让网页变得像有人来过。用户可以在真实网页上留下玩笑、问题、解释和引用。Companion 是同页用户的显式 opt-in 实时层。Lounge 和 Atlas 是未来生态层，但 v2 的中心仍然是绑定网页的 Lens 卡片。
+lumen 通过持久、上下文相关的 Lens 卡片，让网页变得像有人来过。用户可以在真实网页上留下玩笑、问题、解释和引用。Companion 是同页用户的显式 opt-in 实时层。Lounge 和 Atlas 是未来生态层，但当前 beta 的中心仍然是绑定网页的 Lens 卡片。
 
 北极星：
 
-> Lumen exists to make a webpage feel inhabited through cards that persist, not chrome that interrupts.
+> lumen exists to make a webpage feel inhabited through cards that persist, not chrome that interrupts.
 
 ## 不可违背的原则
 
-1. **UGC first.** 知识可以从参与中涌现，但 UI 不能把 Lumen 包装成知识工具。
+1. **UGC first.** 知识可以从参与中涌现，但 UI 不能把 lumen 包装成知识工具。
 2. **娱乐性是底座。** 如果一个功能先像上课，再像“这里有人来过”，就应该重塑或推迟。
 3. **卡片是主体。** 不要把浮动文字或默认弹幕做成主体验。
 4. **默认单人阅读。** Companion 和 Lounge 都必须显式进入。
 5. **阅读模式是用户控制。** 不要因为某条 Lens “重要”就绕过 Quiet / Thinking / Full。
 6. **没有默认可见 AI 内容。** AI 未来可以是用户主动调用的草稿助手，但不能是默认公开评论者或解释者。
-7. **v2 没有知识图谱 UI。** Atlas 是真实的长期方向，但除非某个功能也能独立服务页面 Lens 体验，否则不要提前塞进 Lumen v2。
+7. **当前 beta 没有知识图谱 UI。** Atlas 是真实的长期方向，但除非某个功能也能独立服务页面 Lens 体验，否则不要提前塞进 lumen。
 8. **没有声望、karma、排行榜。** 保持小群体语气。
-9. **默认安静 marker。** 原网页是 artifact；Lumen 是克制的 overlay。
+9. **默认安静 marker。** 原网页是 artifact；lumen 是克制的 overlay。
 10. **不要优化 Lens 总量。** 成功指标是定性和累积性的。
 
 ## 按任务阅读
@@ -71,7 +71,7 @@ docs/               产品、架构、技术和状态文档
 scripts/            CLI 和共享工具脚本
 ```
 
-旧 v1 prototype 只能作为废弃参考。不要从里面 import 代码。
+旧 0.x prototype 只能作为废弃参考。不要从里面 import 代码。
 
 ## 工作约定
 
@@ -97,9 +97,9 @@ bun run dev:extension
 
 ## 需要保留的历史上下文
 
-- v1 在验证参与之前过早建设了知识基础设施；v2 是刻意收窄。
+- 0.x 在验证参与之前过早建设了知识基础设施；当前 beta 是刻意收窄。
 - 旧文档里可能把 scheduled co-reading 或浮动弹幕写成中心机制。这个框架已经被异步卡片累积、opt-in companion mode、reading modes 取代。
-- Atlas 是长期愿景的一部分，但 v2 应先验证 Lens 参与。
+- Atlas 是长期愿景的一部分，但当前 beta 应先验证 Lens 参与。
 - Lens body 是 Markdown。`[[lens:id]]` 和 `[[url:...]]` 引用是一等能力。
 - Per-Lens anonymity 是 moderation-aware：UI 可以隐藏作者，但 server 记录真实作者。
 - 视觉识别应延展现有的安静 marker、card、popover、几何 bloom 语言，而不是引入全新的动效词汇。

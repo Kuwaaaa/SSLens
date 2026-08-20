@@ -1,6 +1,6 @@
-# AGENTS.md - Lumen v2 Assistant Entry
+# AGENTS.md - lumen Assistant Entry
 
-You are working on **Lumen v2**, a browser extension and small backend for
+You are working on **lumen**, a browser extension and small backend for
 contextual social Lens cards on real webpages. Read this file first. It is the
 AI entry and routing document, not the current implementation snapshot.
 
@@ -17,20 +17,20 @@ Do not treat stale checklist text in older planning docs as current status.
 
 ## Product Center
 
-Lumen makes webpages feel inhabited through persistent, contextual Lens cards.
+lumen makes webpages feel inhabited through persistent, contextual Lens cards.
 People can leave playful comments, questions, explanations, and references on
 real pages. Companion is an opt-in live layer for people currently on the same
 page. Lounge and Atlas are future ecosystem layers, but page-bound Lens cards
-remain the v2 center.
+remain the current beta center.
 
 North star:
 
-> Lumen exists to make a webpage feel inhabited through cards that persist, not
+> lumen exists to make a webpage feel inhabited through cards that persist, not
 > chrome that interrupts.
 
 ## Non-Negotiable Principles
 
-1. **UGC first.** Knowledge may emerge from participation, but Lumen is not a
+1. **UGC first.** Knowledge may emerge from participation, but lumen is not a
    knowledge tool in the UI.
 2. **Entertainment is the substrate.** If a feature feels like school before it
    feels like people have been here, reshape or defer it.
@@ -41,10 +41,10 @@ North star:
    because a Lens seems important.
 6. **No visible AI-authored content.** AI may be an explicit draft assistant
    later, never a default public commenter or explainer.
-7. **No knowledge graph UI in v2.** Atlas is real but out of scope for Lumen v2
+7. **No knowledge graph UI in current beta.** Atlas is real but out of scope for lumen
    unless a feature is independently justified by the page Lens experience.
 8. **No reputation, karma, or leaderboards.** Preserve small-group tone.
-9. **Default quiet markers.** The page is the artifact; Lumen is a restrained
+9. **Default quiet markers.** The page is the artifact; lumen is a restrained
    overlay.
 10. **Do not optimize for total Lens count.** The success metric is qualitative
     and accumulative.
@@ -101,7 +101,7 @@ docs/              product, architecture, technical, and status docs
 scripts/           CLI and shared utility scripts
 ```
 
-The old v1 prototype is deprecated reference only. Do not import code from it.
+The old 0.x prototype is deprecated reference only. Do not import code from it.
 
 ## Working Conventions
 
@@ -131,12 +131,12 @@ production builds as the default development loop.
 
 ## Historical Context To Preserve
 
-- v1 overbuilt knowledge infrastructure before validating participation. v2 is
+- 0.x overbuilt knowledge infrastructure before validating participation. current beta is
   deliberately narrower.
 - Older docs may mention scheduled co-reading or floating danmaku as central.
   That framing is superseded by async card accumulation, opt-in companion mode,
   and reading modes.
-- Atlas is part of the larger vision, but v2 should validate Lens participation
+- Atlas is part of the larger vision, but current beta should validate Lens participation
   first.
 - Lens body is Markdown. `[[lens:id]]` and `[[url:...]]` references are
   first-class.

@@ -1,11 +1,11 @@
-# Lumen Lens Product Design
+# lumen Product Design
 
 Date: 2026-04-26
 Status: Draft v0.2
 
 ## 1. Core Positioning
 
-Lumen is first an entertainment and social discussion layer for webpages.
+lumen is first an entertainment and social discussion layer for webpages.
 
 It is not primarily a knowledge graph, AI reader, annotation tool, or serious learning app. Those can become higher-level capabilities, but the foundation is simpler:
 
@@ -13,11 +13,11 @@ It is not primarily a knowledge graph, AI reader, annotation tool, or serious le
 
 Short positioning:
 
-> Lumen = webpage comments + danmaku energy + contextual cards.
+> lumen = webpage comments + danmaku energy + contextual cards.
 
 Expanded positioning:
 
-> Lumen turns webpages into shared social spaces where people can leave funny comments, questions, polls, reactions, hot takes, and occasional knowledge cards directly beside the content they are reacting to.
+> lumen turns webpages into shared social spaces where people can leave funny comments, questions, polls, reactions, hot takes, and occasional knowledge cards directly beside the content they are reacting to.
 
 Knowledge is still important, but it should emerge from user discussion. A knowledge Lens is a refined form of social participation, not the default starting point.
 
@@ -33,7 +33,7 @@ The priority order is:
 6. Skill tree and personal growth as background systems
 7. AI assistance as creation acceleration
 
-This means Lumen should optimize first for:
+This means lumen should optimize first for:
 
 - “This webpage feels alive.”
 - “I want to see what people said here.”
@@ -97,11 +97,11 @@ A Lens must be anchored to context:
 - Page-level room
 - Video timestamp, later
 
-A Lens without context is just a generic comment. Lumen’s advantage is that comments live exactly where they matter.
+A Lens without context is just a generic comment. lumen’s advantage is that comments live exactly where they matter.
 
 ### 3.4 Default Quiet, Summoned Social Energy
 
-Lumen must not ruin reading.
+lumen must not ruin reading.
 
 Default state:
 
@@ -271,7 +271,7 @@ Traits:
 
 - Game-like
 - Can produce skill signals
-- Useful for learning without making Lumen feel like school
+- Useful for learning without making lumen feel like school
 
 ### 4.7 Live Message
 
@@ -333,7 +333,7 @@ formats can come later.
 The desired loop is:
 
 ```text
-Open a PDF in Lumen -> select text -> create Lens -> later readers see cards on
+Open a PDF in lumen -> select text -> create Lens -> later readers see cards on
 the same passage or a confidently matched copy of the same book
 ```
 
@@ -448,7 +448,7 @@ surface. Browser PDF viewers may expose text selection to users, but extension
 access to the PDF text layer, page geometry, and overlay behavior is not a
 stable product foundation.
 
-Prefer a Lumen-owned PDF reader, likely built on PDF.js:
+Prefer a lumen-owned PDF reader, likely built on PDF.js:
 
 ```text
 PDF.js render -> controlled text layer -> controlled selection -> Lens target
@@ -531,7 +531,7 @@ The current visual direction is:
 - Reaction buttons preserved
 - Knowledge metadata minimized
 
-Markers should distinguish Lumen from native blog styles without overpowering the original page.
+Markers should distinguish lumen from native blog styles without overpowering the original page.
 
 Preferred marker styles:
 
@@ -580,7 +580,7 @@ Bad AI uses for MVP:
 - Auto-mark the whole web
 - Replace user discussion
 - Generate too many fake comments
-- Make Lumen feel like an AI tutor
+- Make lumen feel like an AI tutor
 
 ## 10. MVP Product Shape
 
@@ -606,7 +606,7 @@ If Lens feels like homework, users will not create content.
 
 ### Too Noisy
 
-If markers and chat dominate the page, users will disable Lumen.
+If markers and chat dominate the page, users will disable lumen.
 
 ### Too Empty
 
@@ -626,6 +626,6 @@ The north star is not “users learn concepts.”
 
 The north star is:
 
-> A webpage becomes more fun, social, and insightful because Lumen is on.
+> A webpage becomes more fun, social, and insightful because lumen is on.
 
 Knowledge, memory, and skill growth should be downstream effects of that experience.

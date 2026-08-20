@@ -30,7 +30,7 @@ Flow:
 3. Content script sends `{ type: "companion_join" }` through the extension bridge; the service worker forwards it over the room WebSocket.
 4. Server adds the user to a separate in-memory companion presence map for the subscribed room.
 5. Client shows `N here now` only while companion mode is active.
-6. `Leave companion`, tab close, hidden Lumen state, or socket close removes the user.
+6. `Leave companion`, tab close, hidden lumen state, or socket close removes the user.
 
 The server tracks per-user connection counts so one user with multiple active tabs is not removed from companion presence until their last companion connection leaves.
 

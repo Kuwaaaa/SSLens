@@ -57,7 +57,7 @@ export function useOverlaySettings({ url, canonical }: UseOverlaySettingsInput) 
         setSiteHiddenState(hidden);
       })
       .catch((err) => {
-        console.warn("[Lumen] settings load failed:", err);
+        console.warn("[lumen] settings load failed:", err);
       })
       .finally(() => {
         if (!cancelled) setSettingsReady(true);

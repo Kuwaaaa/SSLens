@@ -1,17 +1,17 @@
-# Lumen v2 架构
+# lumen 架构
 
 日期：2026-04-26
-状态：v2 架构决策记录
+状态：当前 beta 架构决策记录
 
 ## 1. 这份文档为什么存在
 
-v1 prototype（已作为兄弟目录归档）证明了我们能把 marker 注入真实网页。它**没有**证明产品假设里任何一项：娱乐底座 + UGC 是否能让长尾网页"感觉有人"。
+0.x prototype（已作为兄弟目录归档）证明了我们能把 marker 注入真实网页。它**没有**证明产品假设里任何一项：娱乐底座 + UGC 是否能让长尾网页"感觉有人"。
 
-v2 是在小规模邀请制 beta 的前提下重新搭，专门为了验证那个假设。**这份文档记录所有动手前就要拍板的架构决定**，免得后来人（人类或 AI）重新推一遍。
+当前 beta 是在小规模邀请制 beta 的前提下重新搭，专门为了验证那个假设。**这份文档记录所有动手前就要拍板的架构决定**，免得后来人（人类或 AI）重新推一遍。
 
 ## 2. North Star
 
-v2 MVP 成功的定义——邀请群体经过 ~4 周自由使用之后：
+当前 beta MVP 成功的定义——邀请群体经过 ~4 周自由使用之后：
 
 - 第 4 周仍有至少 3 个邀请用户**主动创建** Lens（不只是 reaction）
 - 至少有一篇白名单文章累积出多作者 Lens 层，且至少出现一处 Lens 之间互相引用
@@ -30,7 +30,7 @@ v2 MVP 成功的定义——邀请群体经过 ~4 周自由使用之后：
 | 主机 | Hetzner CX22 | €4.5/月，2vCPU/4GB/40GB，20TB 流量 |
 | 鉴权 | handle/邀请码兑换 → EdDSA 签名 bearer token | 不要账号、不要密码 |
 | 备份 | Litestream → R2 | SQLite 流式复制 |
-| 扩展框架 | Vite + MV3 + React + TypeScript | 沿用 v1 |
+| 扩展框架 | Vite + MV3 + React + TypeScript | 沿用 0.x |
 | 扩展 WS 客户端 | partysocket | ~3KB 的重连 WS 库，MV3 兼容 |
 | Anchoring | `@lumen/anchoring`（W3C selectors + `approx-string-match`） | ~250 行自有代码，三层回退（position → quote → fuzzy） |
 | 高亮渲染 | CSS Custom Highlight API | 不动 DOM，不和 React 打架 |
@@ -152,7 +152,7 @@ Litestream 每 ~10s 把 DB 文件复制到 R2/B2。同伴事件流量**故意不
 - Hetzner CX22 单机，Falkenstein/Helsinki 机房
 - Caddyfile + systemd unit + Bun 二进制 + SQLite 文件
 - Litestream 作为单独 systemd unit
-- v2 不上 Docker（一个进程一个文件，Docker 是这个量级上的 overhead）
+-当前 beta 不上 Docker（一个进程一个文件，Docker 是这个量级上的 overhead）
 - 出量后的迁移路径：Fly.io
 
 ## 5. 扩展
@@ -301,7 +301,7 @@ Niconico 风格的滚动飘进的 ghost 评论在调研里很有吸引力，但�
 | GitHub 关联 | 可选（P1） | `users.github_login` | 作为徽章显示 |
 | 单条 Lens 的 `anonymous` flag | 可选 | `lenses.anonymous` | 置位时作者显示为 "Anonymous" |
 
-匿名是 **moderation-aware**：服务端仍然知道每条 Lens 是谁写的。隐私政策必须写明这件事。**想要不可关联匿名的人不是 v2 的目标用户。**
+匿名是 **moderation-aware**：服务端仍然知道每条 Lens 是谁写的。隐私政策必须写明这件事。**想要不可关联匿名的人不是当前 beta 的目标用户。**
 
 ## 9. 架构对抗的失败模式
 
@@ -317,7 +317,7 @@ Niconico 风格的滚动飘进的 ghost 评论在调研里很有吸引力，但�
 | 邀请群里出现坏人 | token 撤销表 | `/admin/revoke <user>` 把对应所有 token 作废 |
 | SQLite 文件丢失 | Litestream 流式复制 | RPO ~10s，从 R2 恢复 |
 
-## 10. v2 明确**不**做
+## 10.当前 beta 明确**不**做
 
 MVP 范围内：
 
@@ -330,17 +330,17 @@ MVP 范围内：
 - 声誉系统 / karma / 公开榜单
 - Atlas / 3D 展厅 / Toy Project 工坊
 - 浏览器 app shell
-- 跨浏览器打包（v2 只支持 Chrome）
+- 跨浏览器打包（当前 beta 只支持 Chrome）
 - 公开声誉投票 / "merge PR 进 canonical 知识"
 - 实时音视频房间
 - Mobile
 
-**这上面任何一项出现在这份清单里，就意味着"在 v2 假设被验证之前都不做"。** 4 周浸泡成功了或许给 v3 留出余地，失败了说明前提需要先改，那时候做这些也没意义。
+**这上面任何一项出现在这份清单里，就意味着"在当前 beta 假设被验证之前都不做"。** 4 周浸泡成功了或许给 v3 留出余地，失败了说明前提需要先改，那时候做这些也没意义。
 
 ## 11. 文件布局（计划）
 
 ```
-SStree/                            （目前是 SStree-v2，等手动改名）
+lumen/
 ├── CLAUDE.md                      给 AI 助手的入门
 ├── README.md
 ├── package.json                   workspace 根
@@ -379,7 +379,7 @@ SStree/                            （目前是 SStree-v2，等手动改名）
 
 ## 13. 视觉识别（扩展）
 
-产品面向年轻开发者，视觉目标是 **被注视时丰富，未被注视时隐形**。动画和几何点缀只出现在 Lumen 自己的元素上（卡片、marker、浮层）——**绝不出现在文章正文里**。
+产品面向年轻开发者，视觉目标是 **被注视时丰富，未被注视时隐形**。动画和几何点缀只出现在 lumen 自己的元素上（卡片、marker、浮层）——**绝不出现在文章正文里**。
 
 ### 13.1 调色
 

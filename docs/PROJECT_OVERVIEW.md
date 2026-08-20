@@ -1,15 +1,15 @@
-# Lumen v2 Project Overview
+# lumen Project Overview
 
 Date: 2026-05-06
 Status: Stable product overview
 
-This document explains what Lumen v2 is and why it exists. It is not the current
+This document explains what lumen is and why it exists. It is not the current
 implementation checklist. For current status, read `docs/project-status.md`. For
 AI assistant routing, read `AGENTS.md`.
 
-## 1. What Lumen Is
+## 1. What lumen Is
 
-Lumen is a browser extension that lets a small group leave contextual, playful
+lumen is a browser extension that lets a small group leave contextual, playful
 Lens cards on real webpages. A Lens is anchored to a page or passage, signed by
 a handle, and persists over time. As pages accumulate Lens cards, they start to
 feel inhabited.
@@ -20,16 +20,16 @@ Lens cards.
 
 The simplest description:
 
-> Lumen turns a webpage into a place that has been read, and occasionally a
+> lumen turns a webpage into a place that has been read, and occasionally a
 > place where someone else is reading right now.
 
 ## 2. The Bet
 
-The larger idea behind Lumen is that knowledge can be open-sourced beyond
+The larger idea behind lumen is that knowledge can be open-sourced beyond
 software: explanations, paths, observations, and small projects can become
 reusable lenses for other people.
 
-v2 deliberately narrows that idea to one testable claim:
+current beta deliberately narrows that idea to one testable claim:
 
 > People will participate on a webpage when it feels like other people have
 > been there. Knowledge emerges from participation; it does not seed it.
@@ -37,18 +37,18 @@ v2 deliberately narrows that idea to one testable claim:
 If this is true, a wider ecosystem can grow later. If not, building a knowledge
 graph first will not save the product.
 
-The v2 chain is:
+The current beta chain is:
 
 ```text
 entertainment substrate -> participation -> UGC -> emergent knowledge
 ```
 
-Reverse the arrows and the project falls back into the v1 trap: build knowledge
+Reverse the arrows and the project falls back into the 0.x trap: build knowledge
 infrastructure first, hope people arrive later, and discover that they do not.
 
 ## 3. Product Shape
 
-Lumen has three main layers in v2:
+lumen has three main layers in current beta:
 
 - **Async Lens accumulation.** Cards persist on real pages and become the page's
   durable social memory.
@@ -57,12 +57,12 @@ Lumen has three main layers in v2:
 - **Page companion.** A reader can opt into short-lived same-page presence,
   emoji tosses, and tiny chat.
 
-All three layers must respect the original page. Lumen is a quiet overlay, not a
+All three layers must respect the original page. lumen is a quiet overlay, not a
 replacement reading surface.
 
 ## 4. Scope Boundaries
 
-In v2, do not build:
+In current beta, do not build:
 
 - visible AI-authored Lens,
 - default floating danmaku,
@@ -71,7 +71,7 @@ In v2, do not build:
 - skill tree UI,
 - public reputation, karma, or leaderboards,
 - durable Lounge chat as page memory,
-- Atlas UI inside Lumen.
+- Atlas UI inside lumen.
 
 These ideas may return later if the Lens participation loop works. They are not
 the first thing to validate.
@@ -93,12 +93,12 @@ authorization without changing the public page-bound Lens model.
 
 ## 6. Relationship To Atlas
 
-The original conception in `docs/Chat.md` frames a larger ecosystem: Lumen as a
+The original conception in `docs/Chat.md` frames a larger ecosystem: lumen as a
 perception layer and Atlas as a future path-weaving / project layer.
 
-Atlas is real as a direction, but out of scope for Lumen v2. Lumen should keep
+Atlas is real as a direction, but out of scope for lumen. lumen should keep
 enough context that some Lens cards can later become node candidates, without
-turning the v2 UI into a knowledge management tool.
+turning the current beta UI into a knowledge management tool.
 
 For current ecosystem planning, read `docs/product/ecosystem-roadmap.md`.
 
@@ -128,6 +128,6 @@ as the current snapshot.
 
 ## 9. North Star
 
-> Lumen exists to make a webpage feel inhabited through cards that persist, not
+> lumen exists to make a webpage feel inhabited through cards that persist, not
 > chrome that interrupts. Knowledge, skill growth, and a wider ecosystem are
 > downstream effects of solving that one problem first.

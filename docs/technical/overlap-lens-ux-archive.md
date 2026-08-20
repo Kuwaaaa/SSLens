@@ -6,7 +6,7 @@ This note archives the current state of the overlapping Lens marker and Lens sta
 
 ## Product Intent
 
-Overlapping Lens should feel like a page has accumulated human traces, not like a badge-count UI. The page remains the artifact; Lumen should add quiet texture and reveal richer card stacks only when the user engages.
+Overlapping Lens should feel like a page has accumulated human traces, not like a badge-count UI. The page remains the artifact; lumen should add quiet texture and reveal richer card stacks only when the user engages.
 
 The current direction is:
 
@@ -178,7 +178,7 @@ Build still needs to be run after future changes before loading the unpacked ext
 
 - Do not wrap article text in `<mark>` or injected spans for marker rendering.
 - Do not reintroduce numeric floating cluster handles as the primary overlap UI.
-- Do not make Lens presence visible unless the user engages with Lumen.
+- Do not make Lens presence visible unless the user engages with lumen.
 - Do not optimize away repeated or overlapping Lens; repetition is a social signal.
 - Keep reading modes respected when deciding which Lens are visibly marked.
 

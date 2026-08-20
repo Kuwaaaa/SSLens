@@ -1,11 +1,11 @@
-# Lumen v2 MVP 计划
+# lumen MVP 计划
 
 日期：2026-04-26
-状态：替代 v1 计划。v1 已作为兄弟目录归档。
+状态：替代 0.x 计划。0.x 已作为兄弟目录归档。
 
 ## 1. MVP 命题
 
-v2 MVP 不是一份功能清单。它是**一个针对 ~10–15 个邀请用户的 4 周浸泡实验**，目的是搞清楚：异步累积的 Lens 卡片层到底能不能让一个页面感觉"有人"？opt-in 的同伴模式是不是"我现在想要陪伴"这件事的好形态？
+当前 beta MVP 不是一份功能清单。它是**一个针对 ~10–15 个邀请用户的 4 周浸泡实验**，目的是搞清楚：异步累积的 Lens 卡片层到底能不能让一个页面感觉"有人"？opt-in 的同伴模式是不是"我现在想要陪伴"这件事的好形态？
 
 **搭建期里每一行代码、每一份文档、每一个决定都要问**：这件事服务于让那 4 周浸泡有意义吗？不服务就推迟。
 
@@ -56,7 +56,7 @@ MVP 失败的判定：第 1 周后创建归零、Lens 间引用从未出现、
 
 **扩展**（apps/extension）：
 
-- 拆 v1：移除硬编码种子 Lens、移除 composer 里的 AI 按钮、移除渐变文字 marker、移除 web demo 的 skill-strip UI（web demo 大概率直接删掉）
+- 拆 0.x：移除硬编码种子 Lens、移除 composer 里的 AI 按钮、移除渐变文字 marker、移除 web demo 的 skill-strip UI（web demo 大概率直接删掉）
 - Service worker：partysocket WS 连接，tab URL 变化时切换房间
 - Content script：开 port 接 SW，请求当前房间，接收广播事件
 - 创建 UI：选中文本 → "Create Lens" → 选类型（第 1 周只做 Quick / Question）→ 发布
@@ -198,7 +198,7 @@ MVP 失败的判定：第 1 周后创建归零、Lens 间引用从未出现、
 - "ping the group: 我在读这个"动作
 - Lens 互引反向链接（"3 条 Lens 引用了这个"）
 
-### P2（v2 假设被验证后才做）
+### P2（当前 beta 假设被验证后才做）
 
 - Knowledge Lens 晋升机制
 - 跨页面用户主页

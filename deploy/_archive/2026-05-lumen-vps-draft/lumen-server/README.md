@@ -1,4 +1,4 @@
-# Lumen Server Docker Compose
+# lumen Server Docker Compose
 
 This directory is the versioned template for the VPS compose deployment. Copy it
 to the server management directory, normally:
@@ -10,7 +10,7 @@ to the server management directory, normally:
 The live application and persistent data stay under `/opt/lumen`:
 
 ```text
-/opt/lumen/current  -> mounted as /app; this is the Lumen repo root
+/opt/lumen/current  -> mounted as /app; this is the lumen repo root
 /opt/lumen/data     -> mounted as /app/data
 /opt/lumen/keys     -> mounted as /app/keys, read-only
 ```
@@ -60,7 +60,7 @@ location / {
 
 If OpenResty is later moved into Docker, `127.0.0.1` will no longer mean the VPS
 host from inside that OpenResty container. In that future layout, put OpenResty
-and Lumen on a shared Docker network and proxy to the compose service name, or
+and lumen on a shared Docker network and proxy to the compose service name, or
 use Docker's host gateway intentionally.
 
 ## Current Container Baseline

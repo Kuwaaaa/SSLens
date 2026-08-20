@@ -1,17 +1,17 @@
-# Lumen Operator Console 与 Lens Insights 设计
+# lumen Operator Console 与 Lens Insights 设计
 
 日期：2026-08-06
 状态：产品与技术规划
 
-本文整理 Lumen 数据库/运营面板、数据分析、Lens 语义聚类，以及未来
+本文整理 lumen 数据库/运营面板、数据分析、Lens 语义聚类，以及未来
 Atlas 预备层的设计讨论。它不是当前实现快照；当前实现状态仍以
 `docs/project-status.md` 为准。
 
 ## 1. 定位
 
-Lumen 需要的不是通用数据库面板，而是 **Operator Console**。
+lumen 需要的不是通用数据库面板，而是 **Operator Console**。
 
-数据库只是底层事实来源。面板真正要服务的是 Lumen 的产品语义：
+数据库只是底层事实来源。面板真正要服务的是 lumen 的产品语义：
 
 - Lens 是否被看见、被打开、被回应。
 - 某个页面是否开始有真实参与。
@@ -24,7 +24,7 @@ Operator Console 应该是内部运营、审核、诊断和洞察面板，不是
 
 核心边界：
 
-- 所有写操作走 Lumen 服务端 API，不从浏览器直接写 SQLite。
+- 所有写操作走 lumen 服务端 API，不从浏览器直接写 SQLite。
 - 不编辑用户写过的 Lens 正文。
 - 不做公开排行榜、声望、karma、用户排名。
 - 不优化 Lens 总数作为核心目标。
@@ -128,7 +128,7 @@ Lens 视图用于查看和诊断所有 Lens。
 
 ## 5. Pages / Rooms
 
-Lumen 是 page-bound 产品，因此页面视图非常关键。
+lumen 是 page-bound 产品，因此页面视图非常关键。
 
 输入 URL 或 roomId 后，应展示：
 
@@ -285,7 +285,7 @@ Analytics 应定位为 **产品洞察与运营诊断**，不是增长大屏。
 - orphan / anchor fail rate
 - anchor recovery success rate
 
-不要只看 Lens 总数。Lumen 不应该优化“评论越多越好”，而应该观察卡片
+不要只看 Lens 总数。lumen 不应该优化“评论越多越好”，而应该观察卡片
 是否自然进入阅读、页面是否形成轻量参与、内容是否保持小组感。
 
 ## 10. Page Analytics
@@ -307,7 +307,7 @@ Analytics 应定位为 **产品洞察与运营诊断**，不是增长大屏。
 
 页面分析用于判断：
 
-- 哪些页面被 Lumen 轻轻点亮。
+- 哪些页面被 lumen 轻轻点亮。
 - 哪些页面只是被 seed 过但没有后续参与。
 - 哪些页面产生多用户、多类型、多引用的真实讨论。
 - 哪些页面的锚定或内容质量需要维护。
@@ -357,7 +357,7 @@ Lens -> Semantic Cluster -> Atlas Candidate
 
 Semantic Groups 是内部实验能力：
 
-- 不作为 v2 用户侧知识图谱。
+- 不作为当前 beta 用户侧知识图谱。
 - 不作为公开分类系统。
 - 用来观察 Lens 的自然主题结构。
 - 为未来 Atlas 留下可复用的数据资产。
@@ -367,7 +367,7 @@ Semantic Groups 是内部实验能力：
 单页内 Lens 聚类：
 
 - 同一个 room 内聚出几个话题团。
-- 最贴合 Lumen v2 的 page-bound 中心。
+- 最贴合 lumen 的 page-bound 中心。
 - 适合回答“这篇页面下大家主要在讨论什么”。
 
 跨页面 Lens 聚类：
@@ -532,7 +532,7 @@ Atlas candidate:
   evidence: representative Lens + pages
 ```
 
-Atlas candidate 是未来结构化系统的种子，不是 v2 默认 UI。
+Atlas candidate 是未来结构化系统的种子，不是当前 beta 默认 UI。
 
 ## 14. 与推荐系统的关系
 
@@ -547,7 +547,7 @@ Atlas candidate 是未来结构化系统的种子，不是 v2 默认 UI。
 - 图分析：user / post / topic / page / ref / interaction graph。
 - 人工反馈闭环：审核、标注、合并、拆分、纠错。
 
-Lumen 可以借：
+lumen 可以借：
 
 - embedding
 - vector search
@@ -566,7 +566,7 @@ Lumen 可以借：
 - 作者权重 / 声望分
 - 自动推送
 
-Lumen 更适合先做“语义组织系统”，再谨慎考虑用户可控推荐。
+lumen 更适合先做“语义组织系统”，再谨慎考虑用户可控推荐。
 
 ## 15. 推荐路线
 
@@ -612,5 +612,5 @@ Atlas candidate 是未来图谱的种子。
 Recommendation 是更晚、更谨慎的用户可控能力。
 ```
 
-这样既不破坏 Lumen v2 的 page-bound card 中心，又能让 Atlas 从真实网页
+这样既不破坏 lumen 的 page-bound card 中心，又能让 Atlas 从真实网页
 上的 UGC 自然长出来，而不是凭空设计一套知识图谱。

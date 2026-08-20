@@ -1,4 +1,4 @@
-# Lumen v2 Extension
+# lumen Extension
 
 MV3 Chrome extension. Vite + React + TypeScript.
 
@@ -54,7 +54,7 @@ bun run build:extension:http-beta
 bun run build:http-beta
 ```
 
-The manifest uses broad `http://*/*` and `https://*/*` access so Lumen can run
+The manifest uses broad `http://*/*` and `https://*/*` access so lumen can run
 on arbitrary webpages. In the Chrome Web Store listing, explain this permission
 as necessary for anchoring Lens cards to the page the user is currently reading.
 

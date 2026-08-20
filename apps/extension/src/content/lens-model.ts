@@ -15,7 +15,7 @@ export function shouldShowInMode(lens: Lens, mode: ReadingMode): boolean {
     return ["question", "knowledge", "challenge"].includes(lens.type);
   }
   // quiet: keep the page sparse, but do show Quick Lens because Quick is
-  // the default creation mode for v2's small-group UGC loop.
+  // the default creation mode for current beta's small-group UGC loop.
   return ["quick", "knowledge", "challenge"].includes(lens.type);
 }
 

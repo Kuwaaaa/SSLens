@@ -5,7 +5,7 @@ Status: Draft v0.1
 
 ## 1. Goal
 
-Lumen must reliably attach Lens cards to specific webpage content. The first MVP supports normal HTML pages and single-range text selections. PDF, iframe-heavy pages, Shadow DOM, and virtualized content are deferred.
+lumen must reliably attach Lens cards to specific webpage content. The first MVP supports normal HTML pages and single-range text selections. PDF, iframe-heavy pages, Shadow DOM, and virtualized content are deferred.
 
 ## 2. Core Strategy
 
@@ -123,7 +123,7 @@ MVP recommendation:
 - Split text nodes around ranges.
 - Wrap segments in `span` or `mark` with `data-lumen-lens-id`.
 - Avoid relying on `Range.surroundContents()` for cross-node ranges.
-- Use Shadow DOM root for Lumen UI, but not necessarily for text highlights.
+- Use Shadow DOM root for lumen UI, but not necessarily for text highlights.
 
 Marker style:
 

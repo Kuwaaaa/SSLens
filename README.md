@@ -1,4 +1,4 @@
-# Lumen Lens
+# lumen
 
 Browser extension and backend for contextual social Lens cards on real webpages.
 

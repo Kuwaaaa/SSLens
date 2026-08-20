@@ -81,13 +81,13 @@ export function useLensRoom({
       })
       .catch(async (err) => {
         if (err instanceof Error && err.message.includes("fetchLenses 401")) {
-          console.warn("[Lumen] token was rejected by the server; logging out:", err);
+          console.warn("[lumen] token was rejected by the server; logging out:", err);
           if (!cancelled) {
             await onAuthRejected();
           }
           return;
         }
-        console.warn("[Lumen] fetchLenses failed:", err);
+        console.warn("[lumen] fetchLenses failed:", err);
       });
     return () => {
       cancelled = true;

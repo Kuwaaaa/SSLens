@@ -5,7 +5,7 @@
   "bin": {
     "lumen-roadmap-mcp": "scripts/roadmap-mcp-bin.js"
   },
-  "description": "Lumen v2 — social Lens layer for the web",
+  "description": "lumen - social Lens layer for the web",
   "workspaces": [
     "apps/*",
     "packages/*"

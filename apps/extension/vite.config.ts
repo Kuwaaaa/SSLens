@@ -9,7 +9,7 @@ function requireProductionApiBase(mode: string, apiBase: string | undefined) {
     const allowHttpBeta = /^(1|true|yes)$/i.test(process.env.LUMEN_ALLOW_HTTP_BETA ?? "");
     if (!normalized || /^https?:\/\/(localhost|127\.0\.0\.1)(?::\d+)?\/?$/i.test(normalized)) {
       throw new Error(
-        "Production extension builds require VITE_LUMEN_API_BASE to point at the public Lumen server. Set it in apps/extension/.env.production or pass it in the build environment.",
+        "Production extension builds require VITE_LUMEN_API_BASE to point at the public lumen server. Set it in apps/extension/.env.production or pass it in the build environment.",
       );
     }
     if (!normalized.startsWith("https://") && !allowHttpBeta) {

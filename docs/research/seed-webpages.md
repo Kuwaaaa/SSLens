@@ -1,11 +1,11 @@
-# Lumen Seed Webpages for Lens Experiments
+# lumen Seed Webpages for Lens Experiments
 
 Date: 2026-04-25
 Status: Candidate pool v0.1
 
 ## Selection Criteria
 
-A good Lumen experiment page should satisfy several of these:
+A good lumen experiment page should satisfy several of these:
 
 - Has dense ideas, metaphors, diagrams, formulas, code, or strong opinions.
 - Contains many anchorable text spans, headings, examples, and claims.

@@ -3,7 +3,7 @@
 Date: 2026-05-05
 Status: beta architecture notes
 
-This document summarizes where the current Lumen server is most likely to hit
+This document summarizes where the current lumen server is most likely to hit
 limits, what has already been fixed, and what a future session should look at
 next. Read this before changing server performance, persistence, or WebSocket
 behavior.
@@ -195,7 +195,7 @@ This is a guardrail, not a production abuse system:
 - depends on proxy-provided `x-forwarded-for` / `x-real-ip` for unauthenticated
   requests.
 
-If Lumen gets wider exposure, add reverse-proxy-level limits and better logging.
+If lumen gets wider exposure, add reverse-proxy-level limits and better logging.
 
 ## 5. Admin / Moderation Notes
 

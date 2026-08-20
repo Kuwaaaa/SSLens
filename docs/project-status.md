@@ -1,4 +1,4 @@
-# Lumen Project Status
+# lumen Project Status
 
 Date: 2026-05-06
 Status: pre-release beta stabilization
@@ -13,7 +13,7 @@ architecture planning until deployment is revisited explicitly.
 
 ## 1. Product Center
 
-Lumen v2 is a quiet, card-based UGC layer on real webpages. The durable unit is
+lumen is a quiet, card-based UGC layer on real webpages. The durable unit is
 the Lens card. Companion mode is an explicit, ephemeral live layer for people on
 the same page. Lounge and Atlas are future ecosystem directions, but they must
 not replace page-bound Lens cards as the product center.
@@ -174,7 +174,7 @@ The repo contains a simple GitHub Pages docs site:
 - `docs/roadmap.md`
 - `docs/privacy.html`
 
-Roadmap is intentionally not part of the Lumen cloud server. `docs/roadmap.json`
+Roadmap is intentionally not part of the lumen cloud server. `docs/roadmap.json`
 is the static roadmap snapshot, `docs/roadmap.md` is generated for
 fresh-context agents, and `bun run dev:roadmap` starts a local-only preview
 server.
@@ -245,7 +245,7 @@ Manual smoke tests:
 ### Phase C: Future Planning, Not Immediate Build
 
 - Lounge remains deferred until the current page-bound MVP is stable.
-- Atlas remains a system-level roadmap, not a v2 UI surface.
+- Atlas remains a system-level roadmap, not a current beta UI surface.
 - Do not add visible knowledge graph UI, public reputation, or durable Lounge
   chat without product review.
 

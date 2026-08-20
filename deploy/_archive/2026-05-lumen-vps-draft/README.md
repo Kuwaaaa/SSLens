@@ -1,6 +1,6 @@
 # Archived VPS Deployment Draft
 
-This folder preserves the temporary VPS deployment notes and templates created during the May 2026 Lumen server deployment discussion.
+This folder preserves the temporary VPS deployment notes and templates created during the May 2026 lumen server deployment discussion.
 
 Contents here are draft material only:
 

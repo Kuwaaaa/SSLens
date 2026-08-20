@@ -1,7 +1,7 @@
-# Lumen v2 MVP Plan
+# lumen MVP Plan
 
 Date: 2026-04-26
-Status: Replaces v1 plan. v1 is archived as a sibling.
+Status: Replaces 0.x plan. 0.x is archived as a sibling.
 
 > Current status note (2026-05-04): this plan remains the original MVP thesis
 > and discipline document, but several implementation checkboxes below are now
@@ -10,7 +10,7 @@ Status: Replaces v1 plan. v1 is archived as a sibling.
 
 ## 1. MVP thesis
 
-The v2 MVP is not a feature list. It is **a 4-week soak experiment with ~10–15 invited users**, designed to find out whether async-accumulating Lens cards on a page genuinely make the page feel inhabited, and whether opt-in companion mode is a good shape for "I want company right now."
+The current beta MVP is not a feature list. It is **a 4-week soak experiment with ~10–15 invited users**, designed to find out whether async-accumulating Lens cards on a page genuinely make the page feel inhabited, and whether opt-in companion mode is a good shape for "I want company right now."
 
 Every line of code, every doc, every decision in the build phase should ask: does this contribute to making that 4-week soak meaningful? If not, defer.
 
@@ -66,7 +66,7 @@ The plan assumes one builder working roughly full-time. Adjust elastically.
 
 **Extension** (apps/extension):
 
-- Strip v1 prototype: remove hardcoded seed Lens, remove AI buttons in composer, remove gradient-text marker styles, remove skill-strip UI from web demo if web demo is kept at all (likely delete the web demo)
+- Strip 0.x prototype: remove hardcoded seed Lens, remove AI buttons in composer, remove gradient-text marker styles, remove skill-strip UI from web demo if web demo is kept at all (likely delete the web demo)
 - Service worker: partysocket WS connection, room join/leave on tab URL change
 - Content script: opens a port to SW, requests current room, receives broadcast events
 - Compose UI: select text → "Create Lens" → choose type (Quick / Question only for week 1) → publish
@@ -208,7 +208,7 @@ Still needed before soak:
 - "Ping the group: I'm reading this" affordance
 - Inter-Lens reference reverse links ("3 Lens cite this")
 
-### P2 (only after v2 hypothesis validated)
+### P2 (only after current beta hypothesis validated)
 
 - Knowledge Lens promotion mechanic
 - Cross-page user profile pages

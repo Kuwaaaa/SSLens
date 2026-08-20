@@ -1,4 +1,4 @@
-# Lumen v2 Server
+# lumen Server
 
 Bun + WebSocket + SQLite. Single process, single SQLite file.
 
@@ -46,7 +46,7 @@ the canonical URL in `url`. `PATCH /api/lenses/:id/anchor` is limited to the
 original Lens author or an operator. `DELETE /api/lenses/:id` is operator-only
 and also removes reports/reactions for that Lens. Configure operators with
 comma-separated `LUMEN_OPERATOR_USER_IDS` or `LUMEN_OPERATOR_HANDLES`.
-Roadmap is intentionally not part of the Lumen server. Use `bun run
+Roadmap is intentionally not part of the lumen server. Use `bun run
 dev:roadmap` for local roadmap preview and `docs/roadmap.json` as the roadmap
 snapshot.
 

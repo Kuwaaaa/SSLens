@@ -176,7 +176,7 @@ setInterval(() => {
   pruneWsMemory();
 }, 10 * 60_000);
 
-console.log(`Lumen v2 server listening on http://localhost:${PORT}`);
+console.log(`lumen server listening on http://localhost:${PORT}`);
 
 function handleStatus(user: TokenPayload): Response {
   if (!isOperator(user.sub)) return json({ error: "forbidden" }, 403);

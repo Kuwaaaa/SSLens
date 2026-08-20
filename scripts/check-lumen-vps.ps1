@@ -171,7 +171,7 @@ try {
 
 try {
   $logs = Ssh "cd $ComposeDir && docker compose logs --tail=120 $Service"
-  Assert "server log has startup line" ($logs.Stdout -match "Lumen v2 server listening") "startup seen"
+  Assert "server log has startup line" ($logs.Stdout -match "lumen server listening") "startup seen"
   Assert "server log has no recent fatal markers" (-not ($logs.Stdout -match "(?i)(sqlite.*error|uncaught|panic|failed to start)")) "no fatal markers in last 120 lines"
 } catch {
   Fail "server logs" $_.Exception.Message
@@ -190,10 +190,10 @@ $healthJson = JsonBody $health
 Assert "public /lumen/api/health" ($health.Status -eq 200 -and $healthJson.ok -eq $true) "status=$($health.Status) body=$($health.Body)"
 
 $rootHealth = InvokeHttp "$RootBase/api/health"
-Assert "root /api/health remains non-Lumen" ($rootHealth.Status -eq 200 -and $rootHealth.Body -match "API is healthy" -and $rootHealth.Body -notmatch '"ok"\s*:\s*true') "body=$($rootHealth.Body)"
+Assert "root /api/health remains non-lumen" ($rootHealth.Status -eq 200 -and $rootHealth.Body -match "API is healthy" -and $rootHealth.Body -notmatch '"ok"\s*:\s*true') "body=$($rootHealth.Body)"
 
 $console = InvokeHttp "$PublicBase/"
-Assert "operator console loads" ($console.Status -eq 200 -and $console.Body -match "Lumen v2 operator console") "status=$($console.Status)"
+Assert "operator console loads" ($console.Status -eq 200 -and $console.Body -match "lumen operator console") "status=$($console.Status)"
 Assert "operator console is prefix-aware" ($console.Body -match "BASE_PATH" -and $console.Body -match "serverBasePath" -and $console.Body -match "\$\(`"privacy-link`"\)\.href") "base path script present"
 
 $privacy = InvokeHttp "$PublicBase/privacy"
@@ -312,4 +312,4 @@ if ($script:Failures.Count -gt 0) {
 }
 
 Write-Host ""
-Write-Host "All Lumen VPS checks passed." -ForegroundColor Green
+Write-Host "All lumen VPS checks passed." -ForegroundColor Green

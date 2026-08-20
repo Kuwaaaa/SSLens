@@ -1,6 +1,6 @@
 // Geometric shape blooms — small SVG primitives that emit from along a Lens
 // card's outline (or from the top edge of a marker), then fade. Part of
-// Lumen's visual identity: "something just happened here." Kept restrained
+// lumen's visual identity: "something just happened here." Kept restrained
 // per docs hard lines (cards are the primary form, never floating UI that
 // grabs attention from the article body itself).
 //

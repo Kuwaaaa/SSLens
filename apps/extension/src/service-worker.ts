@@ -18,7 +18,7 @@ import { WS_BASE } from "./shared/config";
 import type { LensAnchor, ReactionKind } from "@lumen/schema";
 
 chrome.runtime.onInstalled.addListener((details) => {
-  console.log("[Lumen] installed:", details.reason);
+  console.log("[lumen] installed:", details.reason);
 });
 
 type ApiRequest =

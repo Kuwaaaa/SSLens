@@ -118,7 +118,7 @@ function Popup() {
   if (token && user) {
     return (
       <div className="popup">
-        <h1>Lumen</h1>
+        <h1>lumen</h1>
         <p>
           Logged in as <strong>{user.handle}</strong>
         </p>
@@ -162,12 +162,12 @@ function Popup() {
               checked={siteHidden}
               onChange={(e) => void onSiteHiddenChange(e.currentTarget.checked)}
             />
-            <span>Disable Lumen on {currentHost}</span>
+            <span>Disable lumen on {currentHost}</span>
           </label>
         )}
 
         <p className="hint">
-          Page controls live in the Lumen panel on each webpage.
+          Page controls live in the lumen panel on each webpage.
         </p>
         <a className="privacy-link" href={`${API_BASE}/privacy`} target="_blank" rel="noreferrer">Privacy</a>
         <button className="secondary" onClick={onLogout}>Log out</button>
@@ -177,7 +177,7 @@ function Popup() {
 
   return (
     <div className="popup">
-      <h1>Lumen</h1>
+      <h1>lumen</h1>
       <p className="hint">Choose a handle to start.</p>
       <label>Handle</label>
       <input value={handle} onChange={(e) => setHandle(e.target.value)} placeholder="e.g. alice" />

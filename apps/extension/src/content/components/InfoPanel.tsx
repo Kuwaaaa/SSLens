@@ -127,7 +127,7 @@ export function InfoPanel({
     <section className={`info-panel ${chatFocused ? "chat-focus" : ""}`} data-lumen-overlay="">
       <div className="ip-header">
         <div>
-          <strong>Lumen</strong>
+          <strong>lumen</strong>
           <div className="ip-header-meta">{visible} visible</div>
         </div>
         <button className="close" onClick={onClose} aria-label="Close">x</button>

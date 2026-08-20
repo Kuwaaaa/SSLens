@@ -32,7 +32,7 @@ Atlas should never feel like school before it feels like possibility.
 ## 2. System Position
 
 ```
-Lumen (perception layer — page-bound Lens cards)
+lumen (perception layer — page-bound Lens cards)
   |
   | Lens as node candidate
   v
@@ -41,7 +41,7 @@ Atlas (path-weaving and project layer)
 
 A Lens is contextual, personal, and often playful. It does not automatically
 become a canonical knowledge node. Atlas can later promote, group, cite, or remix
-Lens into reusable path material. The bridge is intentional and slow: Lumen
+Lens into reusable path material. The bridge is intentional and slow: lumen
 validates participation first; Atlas becomes worth building only if people create
 Lens that others want to return to.
 
@@ -448,7 +448,7 @@ content is secondary; the structural test is primary.
 
 Status note: This section records a long, speculative conversation (2026-06)
 about what a node could *ultimately* be. It is long-horizon backend theory, not a
-v2 build target. Per `docs/project-status.md`, matching algorithms are deferred
+current beta build target. Per `docs/project-status.md`, matching algorithms are deferred
 ("later, if at all") and there is a hard non-negotiable against AI-authored
 knowledge nodes. The near-term node remains what Section 4 describes: a
 hand-authored restorable-state description with attached Lens/instances. Read

@@ -68,14 +68,14 @@ export function useWsBridge({
       }
       if (event.type === "error") {
         console.warn(
-          "[Lumen] WebSocket bridge failed. If HTTP API requests work, check token validity, extension service worker logs, and reverse-proxy Upgrade headers.",
+          "[lumen] WebSocket bridge failed. If HTTP API requests work, check token validity, extension service worker logs, and reverse-proxy Upgrade headers.",
           event.error ?? "",
         );
         return;
       }
       if (event.type === "close") {
         if (event.code !== 1000) {
-          console.warn("[Lumen] WebSocket closed:", {
+          console.warn("[lumen] WebSocket closed:", {
             code: event.code,
             reason: event.reason || "(no reason)",
             wasClean: event.wasClean,

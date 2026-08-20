@@ -1,4 +1,4 @@
-# Lumen Roadmap Studio Design
+# lumen Roadmap Studio Design
 
 Date: 2026-07-27
 Status: local-first P0 implementation plan
@@ -33,9 +33,9 @@ Roadmap is not Jira. It should stay small, product-shaped, and easy to read.
 
 ## 2. Source Of Truth And Service Boundary
 
-Roadmap is intentionally not part of the Lumen cloud service. Lumen may run on a
+Roadmap is intentionally not part of the lumen cloud service. lumen may run on a
 VPS, but the roadmap is a local/project-management notebook and should not add
-cloud runtime, database, authentication, or maintenance load to Lumen.
+cloud runtime, database, authentication, or maintenance load to lumen.
 
 Current P0 source of truth:
 
@@ -59,7 +59,7 @@ docs/roadmap.json -> docs/roadmap.html
 
 `bun run dev:roadmap` starts a local-only preview server. It may expose a local
 `/api/roadmap` compatibility endpoint for the HTML page, but this endpoint is
-not part of the Lumen server and should not be deployed with Lumen.
+not part of the lumen server and should not be deployed with lumen.
 
 ## 3. Data Model
 
@@ -87,7 +87,7 @@ feature.updatedAt
 ```
 
 SQLite may return later, but only as a separate local roadmap service or
-standalone tool. It should not share Lumen's server process or production
+standalone tool. It should not share lumen's server process or production
 database.
 
 ## 4. Local Tooling Plan
@@ -247,13 +247,13 @@ document.
 2. Add generated `docs/roadmap.md`.
 3. Add feature notes under `docs/features/`.
 4. Add local `bun run dev:roadmap` preview server.
-5. Remove Roadmap from the Lumen server and production SQLite schema.
+5. Remove Roadmap from the lumen server and production SQLite schema.
 6. Add a local operator studio page.
 7. Add dedicated local stage/update/link edit flows.
 
 ## 8. Guardrails
 
-- Roadmap must not add runtime load to the Lumen VPS.
+- Roadmap must not add runtime load to the lumen VPS.
 - Do not add Roadmap routes, tables, auth, or scheduled jobs to `apps/server`.
 - Roadmap does not replace `docs/project-status.md`.
 - `docs/project-status.md` remains the current implementation source of truth
@@ -261,4 +261,4 @@ document.
 - Roadmap entries should be product-readable and should include out-of-scope
   boundaries.
 - Atlas, Lounge, reputation, AI-authored Lens, and default danmaku must stay
-  visibly deferred unless the v2 product center changes through review.
+  visibly deferred unless the current beta product center changes through review.
